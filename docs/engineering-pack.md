@@ -314,7 +314,7 @@ Enable event committees and families to coordinate through meetings, RSVP tracki
 
 ## Phase 6 — Budget and Contributions
 
-Status: `[~] Started`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -329,12 +329,12 @@ Implement secure budget visibility and contribution tracking without leaking sen
 
 ### Remaining Work
 
-- `[ ] Add contribution CRUD endpoints`
-- `[ ] Add detailed budget line items if required for full-access users`
-- `[ ] Add committee chair proposal workflow if budget edits are not direct`
-- `[ ] Add tests proving no full budget exposure for lower visibility modes`
-- `[ ] Add frontend budget page for full, summary, contribution-only, and no-access states`
-- `[ ] Add export/report view for owners`
+- `[x] Add contribution CRUD endpoints`
+- `[x] Add detailed budget line items if required for full-access users`
+- `[x] Add committee chair proposal workflow if budget edits are not direct`
+- `[x] Add tests proving no full budget exposure for lower visibility modes`
+- `[x] Add frontend budget page for full, summary, contribution-only, and no-access states`
+- `[x] Add export/report view for owners`
 
 ### Acceptance Criteria
 
@@ -342,6 +342,15 @@ Implement secure budget visibility and contribution tracking without leaking sen
 - Contribution-only users can see progress but not totals/spend breakdown.
 - Only authorized roles can edit budget values.
 - Tests verify response shape per visibility mode.
+
+### Phase 6 Review Notes
+
+- Budget responses are shaped centrally by visibility mode and tested against over-sharing.
+- Full-access users can see totals, spent, remaining, line items, and contribution details.
+- Summary-access users see totals and contribution progress but not spent or line items.
+- Contribution-only users see contribution progress only.
+- Contribution CRUD, line-item CRUD, proposal create/review, and owner export endpoints are implemented.
+- Frontend includes a budget page showing full, summary, contribution-only, and no-access states.
 
 ## Phase 7 — Tasks, Vendors, Testimonials, and Media URLs
 

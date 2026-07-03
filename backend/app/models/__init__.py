@@ -1,6 +1,6 @@
 from app.models.audit_log import AuditLog
 from app.models.auth_challenge import AuthChallenge
-from app.models.budget import Budget, Contribution
+from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
 from app.models.invite import Invite
 from app.models.meeting import Meeting, MeetingRsvp
 from app.models.participant import Participant
@@ -17,6 +17,8 @@ __all__ = [
     "AuditLog",
     "AuthChallenge",
     "Budget",
+    "BudgetLineItem",
+    "BudgetProposal",
     "Contribution",
     "Invite",
     "Meeting",

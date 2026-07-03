@@ -35,6 +35,12 @@
 
 - `GET /projects/{project_id}/budget` returns a visibility-shaped budget object.
 - `PATCH /projects/{project_id}/budget` updates totals. Requires owner or partner role.
+- `GET /projects/{project_id}/budget/line-items` lists full-access line items.
+- `POST/PATCH/DELETE /projects/{project_id}/budget/line-items` manages detailed budget items for owners/partners.
+- `GET/POST/PATCH/DELETE /projects/{project_id}/budget/contributions` tracks pledged and paid contributions.
+- `GET/POST /projects/{project_id}/budget/proposals` supports committee chair budget proposals.
+- `PATCH /projects/{project_id}/budget/proposals/{proposal_id}/review` approves or rejects proposals for owners/partners.
+- `GET /projects/{project_id}/budget/export` returns an owner/partner export payload.
 
 ## Invites
 

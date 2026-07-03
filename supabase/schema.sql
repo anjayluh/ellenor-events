@@ -160,6 +160,32 @@ create table budgets (
   check (total >= 0 and spent >= 0)
 );
 
+create table budget_line_items (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  category text not null,
+  description text not null,
+  estimated_amount numeric(12, 2) not null default 0,
+  actual_amount numeric(12, 2) not null default 0,
+  status text not null default 'planned' check (status in ('planned','approved','paid','cancelled')),
+  created_at timestamptz default now(),
+  check (estimated_amount >= 0 and actual_amount >= 0)
+);
+
+create table budget_proposals (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  proposed_by uuid not null references users(id),
+  title text not null,
+  description text,
+  amount numeric(12, 2) not null default 0,
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  reviewed_by uuid references users(id),
+  reviewed_at timestamptz,
+  created_at timestamptz default now(),
+  check (amount >= 0)
+);
+
 create table contributions (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
@@ -190,5 +216,7 @@ create index idx_vendors_project on vendors(project_id);
 create index idx_invites_project on invites(project_id);
 create index idx_meetings_project_time on meetings(project_id, scheduled_time);
 create index idx_tasks_project on tasks(project_id);
+create index idx_budget_line_items_project on budget_line_items(project_id);
+create index idx_budget_proposals_project on budget_proposals(project_id);
 create index idx_contributions_project on contributions(project_id);
 create index idx_testimonials_project on testimonials(project_id);

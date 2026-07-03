@@ -48,3 +48,12 @@ insert into project_settings (project_id, whatsapp_first, email_fallback, rsvp_r
   ('10000000-0000-0000-0000-000000000001', true, true, false, 'owners_only', 'directory'),
   ('10000000-0000-0000-0000-000000000002', true, true, false, 'owners_only', 'directory')
 on conflict (project_id) do nothing;
+
+insert into budget_line_items (id, project_id, category, description, estimated_amount, actual_amount, status) values
+  ('60000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'decor', 'Introduction ceremony decor', 4500000, 1500000, 'approved'),
+  ('60000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'catering', 'Wedding reception catering', 16000000, 4500000, 'approved')
+on conflict (id) do nothing;
+
+insert into budget_proposals (id, project_id, proposed_by, title, description, amount, status) values
+  ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000103', 'Add family tent', 'Extra seating shade for elders.', 900000, 'pending')
+on conflict (id) do nothing;
