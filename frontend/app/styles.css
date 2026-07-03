@@ -64,3 +64,7 @@ a { color: inherit; text-decoration: none; }
 .metric span { color: var(--muted); display: block; }
 .metric strong { color: var(--purple); display: block; font-size: 3rem; margin-top: 8px; }
 @media (max-width: 860px) { .twoColumns, .threeColumns { grid-template-columns: 1fr; } .hero { padding: 34px; } .nav { display: none; } }
+
+.buttonRow { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.secondaryButton { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; color: white; cursor: pointer; font-weight: 800; padding: 14px 20px; }
+.tokenNote { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }

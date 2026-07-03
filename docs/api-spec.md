@@ -36,7 +36,11 @@
 ## Invites
 
 - `POST /invites` creates a secure expiring invite.
-- `POST /invites/accept` accepts an invite token.
+- `GET /invites/{token}` reads and records an opened invite.
+- `POST /invites/accept` accepts an invite token and creates/links project membership.
+- `POST /invites/{invite_id}/resend` renews and resends a pending/cancelled/expired invite.
+- `POST /invites/{invite_id}/cancel` cancels an unused invite.
+- `GET /invites/projects/{project_id}/analytics` summarizes invite status, sent count, and opened count.
 
 ## Staff
 

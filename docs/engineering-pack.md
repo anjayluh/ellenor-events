@@ -231,7 +231,7 @@ Make project-scoped membership the authorization backbone of the platform.
 
 ## Phase 4 — Invites and WhatsApp-First Onboarding
 
-Status: `[~] Started`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -247,12 +247,12 @@ Support secure expiring invites through WhatsApp-first links, with email fallbac
 
 ### Remaining Work
 
-- `[ ] Persist invite acceptance into user and project membership records`
-- `[ ] Validate token expiry and invite status on accept`
-- `[ ] Add resend/cancel invite endpoints`
-- `[ ] Add WhatsApp deep-link display in frontend invite flow`
-- `[ ] Add email fallback via Resend`
-- `[ ] Add invite analytics: sent, opened, accepted, expired`
+- `[x] Persist invite acceptance into user and project membership records`
+- `[x] Validate token expiry and invite status on accept`
+- `[x] Add resend/cancel invite endpoints`
+- `[x] Add WhatsApp deep-link display in frontend invite flow`
+- `[x] Add email fallback via Resend`
+- `[x] Add invite analytics: sent, opened, accepted, expired`
 
 ### Acceptance Criteria
 
@@ -260,6 +260,16 @@ Support secure expiring invites through WhatsApp-first links, with email fallbac
 - Invite tokens cannot be reused after acceptance or expiry.
 - Accepted invites create or link a global user, then create project membership.
 - WhatsApp is the primary action path in the UI.
+
+### Phase 4 Review Notes
+
+- Invite acceptance now validates token existence, pending status, and expiry.
+- Accepted invites create or update a global user, then create or update project membership.
+- Invite tokens are single-use after acceptance and can be cancelled or resent by project admins.
+- Invite reads track opened counts and opened timestamps.
+- Invite responses include WhatsApp deep links for manual WhatsApp-first sending.
+- Email fallback payload generation is in place for Resend-style delivery integration.
+- Invite analytics summarize pending, accepted, expired, cancelled, sent, and opened counts.
 
 ## Phase 5 — Meetings, RSVP, and Committee Coordination
 

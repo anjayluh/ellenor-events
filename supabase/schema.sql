@@ -104,10 +104,18 @@ create table invites (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   contact text not null,
-  role_assigned text not null,
+  role_assigned text not null check (role_assigned in ('OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER','FAMILY_VIEWER','GUEST_VIEWER')),
   token text unique not null,
-  status text not null default 'pending',
+  status text not null default 'pending' check (status in ('pending','accepted','expired','cancelled')),
+  delivery_channel text not null default 'whatsapp' check (delivery_channel in ('whatsapp','email')),
+  sent_count integer not null default 1,
+  opened_count integer not null default 0,
+  accepted_user_id uuid references users(id),
   expires_at timestamptz not null,
+  last_sent_at timestamptz,
+  opened_at timestamptz,
+  accepted_at timestamptz,
+  cancelled_at timestamptz,
   created_at timestamptz default now()
 );
 
