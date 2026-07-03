@@ -25,8 +25,11 @@
 ## Meetings
 
 - `GET /projects/{project_id}/meetings` lists project meetings.
-- `POST /projects/{project_id}/meetings` creates a meeting.
-- `POST /projects/{project_id}/meetings/{meeting_id}/rsvp` records RSVP status.
+- `POST /projects/{project_id}/meetings` creates a meeting for committee-capable roles.
+- `GET /projects/{project_id}/meetings/{meeting_id}` reads one meeting.
+- `PATCH /projects/{project_id}/meetings/{meeting_id}` updates meeting agenda, notes, decisions, status, or time.
+- `DELETE /projects/{project_id}/meetings/{meeting_id}` deletes a meeting for owner/partner/chair roles.
+- `POST /projects/{project_id}/meetings/{meeting_id}/rsvp` upserts RSVP status.
 
 ## Budget
 

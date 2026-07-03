@@ -273,7 +273,7 @@ Support secure expiring invites through WhatsApp-first links, with email fallbac
 
 ## Phase 5 — Meetings, RSVP, and Committee Coordination
 
-Status: `[~] Started`
+Status: `[x] Complete`
 
 ### Objective
 
@@ -288,12 +288,12 @@ Enable event committees and families to coordinate through meetings, RSVP tracki
 
 ### Remaining Work
 
-- `[ ] Restrict meeting creation by role`
-- `[ ] Add meeting update/delete endpoints`
-- `[ ] Add RSVP uniqueness/upsert behavior`
-- `[ ] Add meeting notes and decisions log`
-- `[ ] Add frontend meetings page with RSVP buttons`
-- `[ ] Add notification trigger for meeting creation/change`
+- `[x] Restrict meeting creation by role`
+- `[x] Add meeting update/delete endpoints`
+- `[x] Add RSVP uniqueness/upsert behavior`
+- `[x] Add meeting notes and decisions log`
+- `[x] Add frontend meetings page with RSVP buttons`
+- `[x] Add notification trigger for meeting creation/change`
 
 ### Acceptance Criteria
 
@@ -301,6 +301,16 @@ Enable event committees and families to coordinate through meetings, RSVP tracki
 - RSVP status is tracked per authenticated user.
 - Committee leadership can create and update meetings.
 - Meeting changes can trigger WhatsApp/email notifications.
+
+### Phase 5 Review Notes
+
+- Meeting creation and updates are restricted to owner, partner, committee chair, and committee member roles.
+- Meeting deletion is restricted to owner, partner, and committee chair roles.
+- Meeting detail, update, delete, and RSVP upsert endpoints are implemented.
+- Meeting notes, decisions log, status, and updated timestamp are now persisted.
+- RSVP records are unique per meeting/user and updates overwrite prior RSVP status.
+- Meeting create/update actions queue notification audit records for future WhatsApp/email delivery.
+- Frontend includes a meetings page starter with RSVP buttons.
 
 ## Phase 6 — Budget and Contributions
 

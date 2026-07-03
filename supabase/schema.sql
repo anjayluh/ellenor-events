@@ -125,8 +125,12 @@ create table meetings (
   type text not null,
   title text not null,
   agenda text,
+  notes text,
+  decisions_log text,
+  status text not null default 'scheduled' check (status in ('scheduled','completed','cancelled')),
   scheduled_time timestamptz not null,
   created_by uuid not null references users(id),
+  updated_at timestamptz,
   created_at timestamptz default now()
 );
 
@@ -134,8 +138,9 @@ create table meeting_rsvp (
   id uuid primary key default gen_random_uuid(),
   meeting_id uuid not null references meetings(id) on delete cascade,
   user_id uuid not null references users(id),
-  status text not null,
+  status text not null check (status in ('accepted','declined','tentative')),
   comment text,
+  responded_at timestamptz default now(),
   unique(meeting_id, user_id)
 );
 
