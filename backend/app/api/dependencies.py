@@ -1,24 +1,52 @@
 from uuid import UUID
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Depends, Header, HTTPException, Security, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.permissions import BudgetVisibilityMode, ProjectRole
+from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.project_member import ProjectMember
+from app.models.user import User
+
+bearer_scheme = HTTPBearer(auto_error=False)
 
 
 class CurrentUser:
-    def __init__(self, user_id: UUID):
-        self.id = user_id
+    def __init__(self, user: User):
+        self.id = user.id
+        self.name = user.name
+        self.phone = user.phone
+        self.email = user.email
 
 
-def get_current_user(x_user_id: str = Header(..., alias="X-User-Id")) -> CurrentUser:
-    # MVP adapter: replace this with Supabase/Firebase JWT validation before production.
-    try:
-        return CurrentUser(UUID(x_user_id))
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user id") from exc
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
+    x_user_id: str | None = Header(default=None, alias="X-User-Id"),
+    db: Session = Depends(get_db),
+) -> CurrentUser:
+    user_id: UUID | None = None
+
+    if credentials:
+        try:
+            user_id = decode_access_token(credentials.credentials)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid bearer token") from exc
+    elif settings.allow_dev_auth_headers and x_user_id:
+        try:
+            user_id = UUID(x_user_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid development user id") from exc
+
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token is required")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authenticated user does not exist")
+    return CurrentUser(user)
 
 
 def get_project_membership(

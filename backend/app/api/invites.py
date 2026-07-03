@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.models.invite import Invite
 from app.models.project_member import ProjectMember
 from app.schemas.invite import InviteAccept, InviteCreate, InviteRead
+from app.services.audit_service import write_audit_log
 from app.services.invite_service import build_invite_link
 from app.services.whatsapp_service import build_whatsapp_invite_url
 
@@ -39,6 +40,7 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         expires_at=datetime.now(timezone.utc) + timedelta(days=7),
     )
     db.add(invite)
+    write_audit_log(db, "invite.created", actor_user_id=current_user.id, project_id=payload.project_id, metadata={"contact": payload.contact, "role": str(payload.role_assigned)})
     db.commit()
     db.refresh(invite)
     invite_link = build_invite_link(token)
@@ -47,5 +49,7 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
 
 
 @router.post("/accept")
-def accept_invite(payload: InviteAccept):
+def accept_invite(payload: InviteAccept, db: Session = Depends(get_db)):
+    write_audit_log(db, "invite.accept_attempted", metadata={"token_prefix": payload.token[:8]})
+    db.commit()
     return {"status": "accepted", "token": payload.token}

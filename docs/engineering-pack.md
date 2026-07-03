@@ -150,7 +150,7 @@ Model the core EECS domain with project-scoped tenancy and role-based access fou
 
 ## Phase 2 — Authentication and User Identity
 
-Status: `[~] Started / placeholder only`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -165,12 +165,12 @@ Implement passwordless auth using phone OTP first and email magic links as fallb
 
 ### Remaining Work
 
-- `[ ] Choose Supabase Auth or Firebase Auth as production provider`
-- `[ ] Replace `X-User-Id` development header dependency with verified JWT auth`
-- `[ ] Implement global user lookup/create after OTP or magic-link verification`
-- `[ ] Add auth middleware/dependency for current user context`
-- `[ ] Add rate limiting for OTP requests`
-- `[ ] Add audit logging for login and invite acceptance events`
+- `[x] Choose Supabase Auth or Firebase Auth as production provider`
+- `[x] Replace `X-User-Id` development header dependency with verified JWT auth`
+- `[x] Implement global user lookup/create after OTP or magic-link verification`
+- `[x] Add auth middleware/dependency for current user context`
+- `[x] Add rate limiting for OTP requests`
+- `[x] Add audit logging for login and invite acceptance events`
 
 ### Acceptance Criteria
 
@@ -178,6 +178,15 @@ Implement passwordless auth using phone OTP first and email magic links as fallb
 - Users can use email fallback when phone is unavailable.
 - Backend derives current user from verified auth token, not frontend-provided identity.
 - Auth tests cover success, invalid token, expired token, and missing token cases.
+
+### Phase 2 Review Notes
+
+- Chose Supabase Auth as the production auth provider target.
+- Replaced required `X-User-Id` auth with bearer token verification.
+- Kept `X-User-Id` only as an opt-in local debug escape hatch through `ALLOW_DEV_AUTH_HEADERS=true`.
+- Added persisted OTP/magic-link challenges with HMAC-hashed codes and rate limiting.
+- Added global user lookup/create after verification.
+- Added audit logging for auth challenges, user creation, invite creation, and invite acceptance attempts.
 
 ## Phase 3 — Project, Membership, and RBAC Core
 

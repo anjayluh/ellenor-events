@@ -2,8 +2,14 @@
 
 ## Authentication
 
-- `POST /auth/login` requests OTP or email magic link.
-- `POST /auth/verify-otp` exchanges a verification code for a bearer token.
+- `POST /auth/login` requests phone OTP or email magic link.
+- `POST /auth/verify-otp` exchanges a verification code for a bearer token and returns the global user.
+
+### Auth Notes
+
+- Production target is Supabase Auth.
+- API clients must send `Authorization: Bearer <token>` for protected endpoints.
+- `X-User-Id` is not a production auth mechanism and is disabled unless explicitly enabled for local development.
 
 ## Projects
 

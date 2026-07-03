@@ -1,3 +1,5 @@
+from app.models.audit_log import AuditLog
+from app.models.auth_challenge import AuthChallenge
 from app.models.budget import Budget, Contribution
 from app.models.invite import Invite
 from app.models.meeting import Meeting, MeetingRsvp
@@ -11,6 +13,8 @@ from app.models.user import User
 from app.models.vendor import Vendor
 
 __all__ = [
+    "AuditLog",
+    "AuthChallenge",
     "Budget",
     "Contribution",
     "Invite",

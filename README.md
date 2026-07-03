@@ -69,3 +69,10 @@ psql "$DATABASE_URL" -f supabase/migrations/202607030001_initial_schema.sql
 psql "$DATABASE_URL" -f supabase/migrations/202607030002_rls_policies.sql
 psql "$DATABASE_URL" -f supabase/seed.sql
 ```
+
+
+## Authentication Strategy
+
+Phase 2 standardizes on Supabase Auth as the production provider. The backend accepts verified bearer tokens, maps token subjects to global `users`, and keeps a development OTP flow using `DEVELOPMENT_OTP_CODE` only when `ENVIRONMENT=development`.
+
+Do not rely on `X-User-Id` in production. It is disabled by default and only available if `ALLOW_DEV_AUTH_HEADERS=true` for local debugging.

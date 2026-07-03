@@ -181,3 +181,6 @@ create policy testimonials_select_members on testimonials
 create policy testimonials_mutate_admins on testimonials
   for all using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']))
   with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']));
+
+-- Auth hardening tables are created in 202607030003_auth_hardening.sql.
+-- They are service-role only because OTP hashes and audit records should not be exposed directly to clients.

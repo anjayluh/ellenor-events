@@ -9,6 +9,21 @@ create table users (
   check (phone is not null or email is not null)
 );
 
+create table auth_challenges (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references users(id),
+  contact text not null,
+  channel text not null check (channel in ('phone','email')),
+  purpose text not null default 'login',
+  code_hash text not null,
+  status text not null default 'pending' check (status in ('pending','verified','expired','cancelled')),
+  request_ip text,
+  expires_at timestamptz not null,
+  requested_at timestamptz default now(),
+  verified_at timestamptz
+);
+
+
 create table projects (
   id uuid primary key default gen_random_uuid(),
   type text not null check (type in ('wedding','introduction','linked')),
@@ -17,6 +32,15 @@ create table projects (
   partner_user_id uuid references users(id),
   event_date date,
   status text not null default 'active',
+  created_at timestamptz default now()
+);
+
+create table audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  actor_user_id uuid references users(id),
+  project_id uuid references projects(id),
+  action text not null,
+  metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz default now()
 );
 
@@ -130,6 +154,9 @@ create table testimonials (
   caption text
 );
 
+create index idx_auth_challenges_contact_status on auth_challenges(contact, status, requested_at);
+create index idx_audit_logs_actor_action on audit_logs(actor_user_id, action, created_at);
+create index idx_audit_logs_project_action on audit_logs(project_id, action, created_at);
 create index idx_project_members_project_user on project_members(project_id, user_id);
 create index idx_project_links_primary on project_links(primary_project_id);
 create index idx_project_links_linked on project_links(linked_project_id);
