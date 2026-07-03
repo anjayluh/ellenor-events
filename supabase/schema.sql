@@ -32,7 +32,18 @@ create table projects (
   partner_user_id uuid references users(id),
   event_date date,
   status text not null default 'active',
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  check (status in ('active','archived','completed','cancelled'))
+);
+
+create table project_settings (
+  project_id uuid primary key references projects(id) on delete cascade,
+  whatsapp_first boolean not null default true,
+  email_fallback boolean not null default true,
+  rsvp_required boolean not null default false,
+  budget_editing_mode text not null default 'owners_only' check (budget_editing_mode in ('owners_only','chair_can_propose','chair_can_edit')),
+  vendor_mode text not null default 'directory' check (vendor_mode in ('directory','marketplace_later')),
+  updated_at timestamptz default now()
 );
 
 create table audit_logs (
@@ -157,6 +168,7 @@ create table testimonials (
 create index idx_auth_challenges_contact_status on auth_challenges(contact, status, requested_at);
 create index idx_audit_logs_actor_action on audit_logs(actor_user_id, action, created_at);
 create index idx_audit_logs_project_action on audit_logs(project_id, action, created_at);
+create index idx_project_settings_project on project_settings(project_id);
 create index idx_project_members_project_user on project_members(project_id, user_id);
 create index idx_project_links_primary on project_links(primary_project_id);
 create index idx_project_links_linked on project_links(linked_project_id);

@@ -2,6 +2,7 @@ alter table users enable row level security;
 alter table projects enable row level security;
 alter table project_members enable row level security;
 alter table project_links enable row level security;
+-- project_settings RLS is added in 202607030004_project_rbac_core.sql.
 alter table participants enable row level security;
 alter table vendors enable row level security;
 alter table invites enable row level security;

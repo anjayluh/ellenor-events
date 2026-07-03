@@ -27,6 +27,8 @@ BUDGET_READ_LEVELS = {
 
 BUDGET_WRITE_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER}
 PROJECT_ADMIN_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER, ProjectRole.COMMITTEE_CHAIR}
+PROJECT_OWNER_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER}
+MEMBER_DELETE_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER}
 
 
 def require_role(actual: ProjectRole, allowed: set[ProjectRole]) -> None:

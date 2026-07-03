@@ -190,7 +190,7 @@ Implement passwordless auth using phone OTP first and email magic links as fallb
 
 ## Phase 3 — Project, Membership, and RBAC Core
 
-Status: `[~] Started`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -206,12 +206,12 @@ Make project-scoped membership the authorization backbone of the platform.
 
 ### Remaining Work
 
-- `[ ] Add full CRUD for project members with role transitions`
-- `[ ] Add role-change restrictions, especially preventing owner lockout`
-- `[ ] Add project settings endpoint`
-- `[ ] Add project archive/restore flow`
-- `[ ] Add participant endpoints for non-user family, guest, and vendor records`
-- `[ ] Add test coverage for cross-project access denial`
+- `[x] Add full CRUD for project members with role transitions`
+- `[x] Add role-change restrictions, especially preventing owner lockout`
+- `[x] Add project settings endpoint`
+- `[x] Add project archive/restore flow`
+- `[x] Add participant endpoints for non-user family, guest, and vendor records`
+- `[x] Add test coverage for cross-project access denial`
 
 ### Acceptance Criteria
 
@@ -219,6 +219,15 @@ Make project-scoped membership the authorization backbone of the platform.
 - Project member operations are scoped by `project_id`.
 - Non-members cannot read or mutate project data.
 - Owner cannot accidentally remove the last owner/admin path.
+
+### Phase 3 Review Notes
+
+- Added member update/delete endpoints with role-transition support.
+- Added last-owner lockout prevention for demotion and deletion.
+- Added project update, archive, restore, settings read, and settings update endpoints.
+- Added project-scoped participant CRUD endpoints for family, guests, and non-account people.
+- Added project settings database model, schema, seed data, migration, and RLS policy.
+- Added RBAC service tests for owner lockout behavior.
 
 ## Phase 4 — Invites and WhatsApp-First Onboarding
 

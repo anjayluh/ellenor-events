@@ -43,3 +43,8 @@ insert into contributions (id, project_id, contributor, pledged, paid, status) v
   ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Bride family', 5000000, 3000000, 'partial'),
   ('50000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'Committee friends', 12000000, 4500000, 'partial')
 on conflict (id) do nothing;
+
+insert into project_settings (project_id, whatsapp_first, email_fallback, rsvp_required, budget_editing_mode, vendor_mode) values
+  ('10000000-0000-0000-0000-000000000001', true, true, false, 'owners_only', 'directory'),
+  ('10000000-0000-0000-0000-000000000002', true, true, false, 'owners_only', 'directory')
+on conflict (project_id) do nothing;

@@ -7,6 +7,7 @@ from app.models.participant import Participant
 from app.models.project import Project
 from app.models.project_link import ProjectLink
 from app.models.project_member import ProjectMember
+from app.models.project_settings import ProjectSettings
 from app.models.task import Task
 from app.models.testimonial import Testimonial
 from app.models.user import User
@@ -24,6 +25,7 @@ __all__ = [
     "Project",
     "ProjectLink",
     "ProjectMember",
+    "ProjectSettings",
     "Task",
     "Testimonial",
     "User",
