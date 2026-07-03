@@ -31,6 +31,27 @@
 - `DELETE /projects/{project_id}/meetings/{meeting_id}` deletes a meeting for owner/partner/chair roles.
 - `POST /projects/{project_id}/meetings/{meeting_id}/rsvp` upserts RSVP status.
 
+## Tasks
+
+- `GET /projects/{project_id}/tasks` lists project-scoped tasks, optionally filtered by assignee.
+- `POST /projects/{project_id}/tasks` creates an assignable task for committee-capable roles.
+- `PATCH /projects/{project_id}/tasks/{task_id}` updates task title, assignee, status, or due date.
+- `DELETE /projects/{project_id}/tasks/{task_id}` removes a task.
+
+## Vendors
+
+- `GET /projects/{project_id}/vendors` lists first-class vendor directory records.
+- `POST /projects/{project_id}/vendors` creates a vendor without requiring a user account.
+- `PATCH /projects/{project_id}/vendors/{vendor_id}` updates vendor status, contact, notes, and external URL.
+- `DELETE /projects/{project_id}/vendors/{vendor_id}` removes a vendor.
+
+## Testimonials
+
+- `GET /projects/{project_id}/testimonials` lists URL-only media/testimonial records.
+- `POST /projects/{project_id}/testimonials` stores a URL and caption only.
+- `PATCH /projects/{project_id}/testimonials/{testimonial_id}` updates URL metadata.
+- `DELETE /projects/{project_id}/testimonials/{testimonial_id}` removes a testimonial.
+
 ## Budget
 
 - `GET /projects/{project_id}/budget` returns a visibility-shaped budget object.

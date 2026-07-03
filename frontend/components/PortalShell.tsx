@@ -9,6 +9,8 @@ export function PortalShell({ children }: Readonly<{ children: React.ReactNode }
           <Link href="/">Client Portal</Link>
           <Link href="/meetings">Meetings</Link>
           <Link href="/budget">Budget</Link>
+          <Link href="/committee">Committee</Link>
+          <Link href="/vendors">Vendors</Link>
           <Link href="/staff">Staff Portal</Link>
         </nav>
       </header>

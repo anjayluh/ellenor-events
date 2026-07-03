@@ -354,7 +354,7 @@ Implement secure budget visibility and contribution tracking without leaking sen
 
 ## Phase 7 — Tasks, Vendors, Testimonials, and Media URLs
 
-Status: `[ ] Not started beyond database scaffold for tasks/testimonials`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -367,12 +367,12 @@ Complete event operations modules while preserving MVP simplicity.
 
 ### Remaining Work
 
-- `[ ] Add task CRUD endpoints and assignee views`
-- `[ ] Add vendor directory model and endpoints`
-- `[ ] Decide whether vendors are participants or a first-class table in v1`
-- `[ ] Add testimonial CRUD endpoints storing URL and caption only`
-- `[ ] Add frontend committee/tasks page`
-- `[ ] Add frontend vendor directory page`
+- `[x] Add task CRUD endpoints and assignee views`
+- `[x] Add vendor directory model and endpoints`
+- `[x] Decide whether vendors are participants or a first-class table in v1`
+- `[x] Add testimonial CRUD endpoints storing URL and caption only`
+- `[x] Add frontend committee/tasks page`
+- `[x] Add frontend vendor directory page`
 
 ### Acceptance Criteria
 
@@ -380,6 +380,15 @@ Complete event operations modules while preserving MVP simplicity.
 - Vendors can be tracked without requiring accounts.
 - Testimonials store external URLs only.
 - UI presents operational modules without exposing unauthorized budget data.
+
+### Phase 7 Review Notes
+
+- Added project-scoped task CRUD endpoints with optional assignee filtering.
+- Confirmed vendors are first-class v1 project records, separate from participants and users.
+- Added vendor directory CRUD endpoints for committee-capable roles.
+- Added testimonial CRUD endpoints that validate and store external URLs only.
+- Added committee/tasks and vendor directory frontend pages.
+- Added tests for testimonial URL validation and project-scoped task lookup behavior.
 
 ## Phase 8 — Frontend Client Portal
 
