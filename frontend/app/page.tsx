@@ -1,14 +1,22 @@
 import { BudgetPreview } from "../components/BudgetPreview";
 import { EventCard } from "../components/EventCard";
 import { PortalShell } from "../components/PortalShell";
+import { StateBlock } from "../components/StateBlock";
+import { apiGet } from "../lib/api";
+import { demoProjects } from "../lib/demo-data";
+import type { Project } from "../lib/types";
 
-const events = [
-  { title: "Wedding - John & Mary", role: "PARTNER", type: "wedding", date: "2026-09-12" },
-  { title: "Introduction - Sarah", role: "FAMILY_VIEWER", type: "introduction", date: "2026-08-03" },
-  { title: "Wedding - Peter & Jane", role: "COMMITTEE_CHAIR", type: "wedding", date: "2026-10-20" }
-];
+async function getProjects(): Promise<{ projects: Project[]; isDemo: boolean }> {
+  try {
+    return { projects: await apiGet<Project[]>("/projects"), isDemo: false };
+  } catch {
+    return { projects: demoProjects, isDemo: true };
+  }
+}
 
-export default function Home() {
+export default async function Home() {
+  const { projects, isDemo } = await getProjects();
+
   return (
     <PortalShell>
       <section className="hero">
@@ -20,16 +28,25 @@ export default function Home() {
         </p>
       </section>
 
+      {isDemo ? <StateBlock title="Demo mode" message="Start the FastAPI backend and sign in to load live project data." /> : null}
+
       <section className="grid twoColumns">
         <div className="panel">
           <h2>Your Events</h2>
           <div className="stack">
-            {events.map((event) => (
-              <EventCard key={event.title} {...event} />
+            {projects.map((event) => (
+              <EventCard
+                key={event.id}
+                id={event.id}
+                title={event.title}
+                role={event.role ?? "FAMILY_VIEWER"}
+                type={event.type}
+                date={event.event_date ?? "TBC"}
+              />
             ))}
           </div>
         </div>
-        <BudgetPreview visibility="SUMMARY_ACCESS" />
+        <BudgetPreview visibility={projects[0]?.budget_visibility_mode ?? "SUMMARY_ACCESS"} />
       </section>
     </PortalShell>
   );

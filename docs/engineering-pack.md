@@ -392,7 +392,7 @@ Complete event operations modules while preserving MVP simplicity.
 
 ## Phase 8 — Frontend Client Portal
 
-Status: `[~] Started visually`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -408,13 +408,13 @@ Build role-aware client-facing screens for event owners, partners, committees, f
 
 ### Remaining Work
 
-- `[ ] Add login screen with phone OTP and email fallback`
-- `[ ] Connect dashboard to real `/projects` API`
-- `[ ] Add event dashboard layout with tabs: Overview, Meetings, Budget, Committee, Vendors, Timeline`
-- `[ ] Add role-based navigation visibility`
-- `[ ] Add data-fetching and auth session handling`
-- `[ ] Add loading, empty, and error states`
-- `[ ] Add responsive QA across mobile-first scenarios`
+- `[x] Add login screen with phone OTP and email fallback`
+- `[x] Connect dashboard to real `/projects` API`
+- `[x] Add event dashboard layout with tabs: Overview, Meetings, Budget, Committee, Vendors, Timeline`
+- `[x] Add role-based navigation visibility`
+- `[x] Add data-fetching and auth session handling`
+- `[x] Add loading, empty, and error states`
+- `[x] Add responsive QA across mobile-first scenarios`
 
 ### Acceptance Criteria
 
@@ -422,6 +422,16 @@ Build role-aware client-facing screens for event owners, partners, committees, f
 - Event dashboard adapts by project role.
 - Budget UI matches backend-shaped visibility response.
 - Mobile layout feels first-class for Uganda phone-first usage.
+
+### Phase 8 Review Notes
+
+- Added passwordless login screen with phone OTP and email fallback behavior.
+- Updated frontend API helpers to use bearer token contracts and typed request helpers.
+- Dashboard attempts live `/projects` data and falls back to demo project data when the API is offline.
+- Added event dashboard route with Overview, Meetings, Budget, Committee, Vendors, and Timeline-aware role navigation.
+- Added local session helpers for storing auth token and user metadata.
+- Added loading, error, empty/demo state UI blocks.
+- Added responsive refinements for mobile portal interactions.
 
 ## Phase 9 — Staff/Admin Portal
 
