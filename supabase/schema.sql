@@ -9,6 +9,15 @@ create table users (
   check (phone is not null or email is not null)
 );
 
+create table staff_members (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  role text not null default 'SUPPORT_AGENT' check (role in ('PLATFORM_ADMIN','OPERATIONS_MANAGER','SUPPORT_AGENT','STAFF_VIEWER')),
+  status text not null default 'active' check (status in ('active','inactive')),
+  created_at timestamptz default now(),
+  unique(user_id)
+);
+
 create table auth_challenges (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references users(id),
@@ -204,6 +213,7 @@ create table testimonials (
   caption text
 );
 
+create index idx_staff_members_user_status on staff_members(user_id, status);
 create index idx_auth_challenges_contact_status on auth_challenges(contact, status, requested_at);
 create index idx_audit_logs_actor_action on audit_logs(actor_user_id, action, created_at);
 create index idx_audit_logs_project_action on audit_logs(project_id, action, created_at);

@@ -74,6 +74,10 @@
 
 ## Staff
 
-- `GET /staff/dashboard`
-- `GET /staff/projects`
-- `GET /staff/analytics`
+### Staff Authorization
+
+Staff access is controlled by `staff_members`, separate from project roles. Staff endpoints require a bearer-authenticated user with an active staff role.
+
+- `GET /staff/dashboard` returns active/archive counts, RSVP summary, project health, and risk alerts.
+- `GET /staff/projects` returns project health rows across all projects.
+- `GET /staff/analytics` returns aggregate operational metrics.

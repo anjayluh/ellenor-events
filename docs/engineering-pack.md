@@ -435,7 +435,7 @@ Build role-aware client-facing screens for event owners, partners, committees, f
 
 ## Phase 9 — Staff/Admin Portal
 
-Status: `[~] Started as placeholder`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -449,11 +449,11 @@ Create an internal staff view for operational oversight without breaking tenant 
 
 ### Remaining Work
 
-- `[ ] Define staff role hierarchy and access model`
-- `[ ] Add staff user authorization separate from project roles`
-- `[ ] Build staff project list and project health view`
-- `[ ] Add risk alert rules for low RSVP, overdue tasks, budget variance, and missing vendors`
-- `[ ] Add audit logging for staff access to project data`
+- `[x] Define staff role hierarchy and access model`
+- `[x] Add staff user authorization separate from project roles`
+- `[x] Build staff project list and project health view`
+- `[x] Add risk alert rules for low RSVP, overdue tasks, budget variance, and missing vendors`
+- `[x] Add audit logging for staff access to project data`
 
 ### Acceptance Criteria
 
@@ -461,6 +461,15 @@ Create an internal staff view for operational oversight without breaking tenant 
 - Staff users can review operational health across projects.
 - Staff access is logged for accountability.
 - Sensitive budget detail remains permission-aware.
+
+### Phase 9 Review Notes
+
+- Added `staff_members` table/model with platform roles separate from project membership roles.
+- Staff endpoints now require active staff authorization via bearer-authenticated user identity.
+- Staff dashboard returns project health, RSVP summary, active/archive counts, and risk alerts.
+- Risk alerts cover overdue tasks, missing required vendor categories, and budget variance.
+- Staff dashboard, project list, and analytics access is audit logged.
+- Staff frontend now shows project health, risk alerts, and analytics-style metrics.
 
 ## Phase 10 — Notifications and Communication
 

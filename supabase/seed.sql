@@ -57,3 +57,7 @@ on conflict (id) do nothing;
 insert into budget_proposals (id, project_id, proposed_by, title, description, amount, status) values
   ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000103', 'Add family tent', 'Extra seating shade for elders.', 900000, 'pending')
 on conflict (id) do nothing;
+
+insert into staff_members (id, user_id, role, status) values
+  ('80000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'PLATFORM_ADMIN', 'active')
+on conflict (user_id) do nothing;
