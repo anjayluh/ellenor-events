@@ -19,7 +19,7 @@ backend/     FastAPI API, RBAC, SQLAlchemy models, Pydantic contracts
 frontend/    Next.js starter client/staff portal UI
 supabase/    Postgres schema and RLS-ready constraints
 docs/        System design, API spec, UI wireframes
-.github/     CI placeholder
+.github/     CI and uptime workflows
 ```
 
 ## Open in VS Code
@@ -76,3 +76,23 @@ psql "$DATABASE_URL" -f supabase/seed.sql
 Phase 2 standardizes on Supabase Auth as the production provider. The backend accepts verified bearer tokens, maps token subjects to global `users`, and keeps a development OTP flow using `DEVELOPMENT_OTP_CODE` only when `ENVIRONMENT=development`.
 
 Do not rely on `X-User-Id` in production. It is disabled by default and only available if `ALLOW_DEV_AUTH_HEADERS=true` for local debugging.
+
+
+## Deployment
+
+Deployment is configured for Supabase + Render + Vercel. See `docs/deployment-guide.md` for the full production checklist.
+
+- Backend: `render.yaml` + `backend/Dockerfile`
+- Frontend: `frontend/vercel.json`
+- Monitoring: `.github/workflows/uptime.yml` with `PRODUCTION_API_HEALTH_URL` repository variable
+
+
+## Contributor Guides
+
+- Contributor onboarding: `CONTRIBUTING.md`
+- Backend setup/testing: `backend/README.md`
+- Frontend setup/testing: `frontend/README.md`
+- Supabase migrations/seed data: `supabase/README.md`
+- Full QA and deployment runbook: `docs/qa-deployment-runbook.md`
+- Deployment checklist: `docs/deployment-guide.md`
+- Security checklist: `docs/security-checklist.md`

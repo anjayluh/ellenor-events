@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: ellenor-events-api
+    runtime: docker
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Ellenor Events Coordination System
+      - key: ENVIRONMENT
+        value: production
+      - key: AUTH_PROVIDER
+        value: supabase
+      - key: ALLOW_DEV_AUTH_HEADERS
+        value: false
+      - key: WHATSAPP_MODE
+        value: manual_links
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: WHATSAPP_CLOUD_API_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false

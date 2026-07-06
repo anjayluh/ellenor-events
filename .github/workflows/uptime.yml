@@ -1,0 +1,20 @@
+name: Uptime
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check production API health
+        env:
+          PRODUCTION_API_HEALTH_URL: ${{ vars.PRODUCTION_API_HEALTH_URL }}
+        run: |
+          if [ -z "$PRODUCTION_API_HEALTH_URL" ]; then
+            echo "Set repository variable PRODUCTION_API_HEALTH_URL to enable uptime checks."
+            exit 0
+          fi
+          curl --fail --show-error --silent "$PRODUCTION_API_HEALTH_URL"

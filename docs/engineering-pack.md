@@ -546,7 +546,7 @@ Prove tenant isolation, RBAC, budget security, and core flows before deployment.
 
 ## Phase 12 — Deployment and Operations
 
-Status: `[~] CI placeholder created, deployment not started`
+Status: `[~] Deployment pack complete; external provisioning pending`
 
 ### Objective
 
@@ -560,13 +560,13 @@ Deploy the MVP using free-tier-friendly services.
 
 ### Remaining Work
 
-- `[ ] Create Supabase project and apply schema/migrations`
-- `[ ] Deploy frontend to Vercel`
-- `[ ] Deploy backend to Render or Railway`
-- `[ ] Configure production environment variables`
-- `[ ] Configure CORS for production frontend URL`
-- `[ ] Add PostHog analytics or Supabase logs fallback`
-- `[ ] Add uptime/health monitoring`
+- `[~]` Create Supabase project and apply schema/migrations; repo migration workflow is documented
+- `[~]` Deploy frontend to Vercel; `frontend/vercel.json` is ready
+- `[~]` Deploy backend to Render or Railway; `render.yaml` is ready for Render
+- `[~]` Configure production environment variables; required keys are documented
+- `[x]` Configure CORS for production frontend URL through `FRONTEND_URL` and `CORS_ORIGINS`
+- `[x]` Add PostHog analytics or Supabase logs fallback; MVP uses Supabase logs fallback
+- `[x]` Add uptime/health monitoring through scheduled GitHub Actions workflow
 
 ### Acceptance Criteria
 
@@ -574,6 +574,16 @@ Deploy the MVP using free-tier-friendly services.
 - Backend can connect to Supabase Postgres.
 - Auth provider works in production.
 - Health endpoint is reachable publicly.
+
+### Phase 12 Review Notes
+
+- Added Render Blueprint configuration for the FastAPI backend.
+- Added Vercel project configuration for the Next.js frontend.
+- Added production CORS origin support with comma-separated `CORS_ORIGINS`.
+- Added deployment guide covering Supabase migrations, Render, Vercel, environment variables, CORS, smoke tests, and operations.
+- Added full QA/deployment runbook and contributor onboarding READMEs.
+- Added scheduled GitHub Actions uptime workflow that activates when `PRODUCTION_API_HEALTH_URL` is configured.
+- External service provisioning remains pending because Supabase, Vercel, and Render account actions must be completed by an authenticated project owner.
 
 ## 6. MVP Scope Cutoff
 

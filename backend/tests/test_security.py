@@ -29,3 +29,17 @@ def test_current_user_requires_token_when_dev_header_disabled():
     with pytest.raises(HTTPException) as exc_info:
         get_current_user(credentials=None, x_user_id=None, db=None)
     assert exc_info.value.status_code == 401
+
+
+def test_allowed_cors_origins_deduplicates_frontend_and_extra_origins():
+    from app.core.config import Settings
+
+    settings = Settings(
+        frontend_url="https://ellenor-events.vercel.app",
+        cors_origins="https://preview.vercel.app, https://ellenor-events.vercel.app",
+    )
+
+    assert settings.allowed_cors_origins == [
+        "https://ellenor-events.vercel.app",
+        "https://preview.vercel.app",
+    ]

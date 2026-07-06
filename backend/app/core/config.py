@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     development_otp_code: str = "000000"
     allow_dev_auth_headers: bool = False
     frontend_url: str = "http://localhost:3000"
+    cors_origins: str | None = None
     whatsapp_mode: str = "manual_links"
     email_provider: str = "resend"
     resend_api_key: str | None = None
@@ -26,6 +27,13 @@ class Settings(BaseSettings):
     notification_max_attempts: int = 3
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+
+    @property
+    def allowed_cors_origins(self) -> list[str]:
+        origins = [self.frontend_url]
+        if self.cors_origins:
+            origins.extend(origin.strip() for origin in self.cors_origins.split(",") if origin.strip())
+        return list(dict.fromkeys(origins))
 
 
 @lru_cache
