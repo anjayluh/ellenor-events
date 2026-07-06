@@ -15,6 +15,7 @@ from app.services.audit_service import write_audit_log
 from app.services.email_service import build_email_invite_payload
 from app.services.notification_service import create_notification
 from app.services.invite_service import (
+    aware_datetime,
     build_invite_link,
     create_membership_from_invite,
     default_invite_expiry,
@@ -107,7 +108,7 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
 @router.get("/{token}", response_model=InviteRead)
 def get_invite(token: str, db: Session = Depends(get_db)):
     invite = find_invite_by_token(db, token)
-    if invite.status == "pending" and invite.expires_at < datetime.now(timezone.utc):
+    if invite.status == "pending" and aware_datetime(invite.expires_at) < datetime.now(timezone.utc):
         invite.status = "expired"
     mark_invite_opened(invite)
     write_audit_log(db, "invite.opened", project_id=invite.project_id, metadata={"token_prefix": token[:8]})

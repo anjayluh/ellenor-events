@@ -509,7 +509,7 @@ Deliver WhatsApp-first notifications with email fallback.
 
 ## Phase 11 — Testing, QA, and Security Hardening
 
-Status: `[~] Started with health test only`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -522,12 +522,12 @@ Prove tenant isolation, RBAC, budget security, and core flows before deployment.
 
 ### Remaining Work
 
-- `[ ] Install backend dependencies and run pytest`
-- `[ ] Install frontend dependencies and run Next.js build`
-- `[ ] Add API tests for auth, projects, members, invites, meetings, budget visibility, and cross-project denial`
-- `[ ] Add frontend component tests or smoke tests`
-- `[ ] Add security checklist for auth, invite tokens, headers, CORS, and secrets`
-- `[ ] Add linting/formatting workflow`
+- `[x] Install backend dependencies and run pytest`
+- `[x] Install frontend dependencies and run Next.js build`
+- `[x] Add API tests for auth, projects, members, invites, meetings, budget visibility, and cross-project denial`
+- `[x] Add frontend component tests or smoke tests`
+- `[x] Add security checklist for auth, invite tokens, headers, CORS, and secrets`
+- `[x] Add linting/formatting workflow`
 
 ### Acceptance Criteria
 
@@ -535,6 +535,14 @@ Prove tenant isolation, RBAC, budget security, and core flows before deployment.
 - Tests fail if budget data leaks across visibility modes.
 - Tests fail if project data can be accessed without membership.
 - Secrets are not committed.
+
+### Phase 11 Review Notes
+
+- Added reusable API test fixtures with in-memory database isolation.
+- Added API coverage for auth denial, project scoping, member owner-lockout, invites, meetings, budget visibility, and cross-project denial.
+- Added frontend smoke test script covering required portal routes and API/session wiring.
+- Added CI steps for backend pytest plus frontend lint, typecheck, smoke test, and build on Node 20.19.0.
+- Added deployment-oriented security checklist for auth, RBAC, invite tokens, budget privacy, CORS, and secrets.
 
 ## Phase 12 — Deployment and Operations
 

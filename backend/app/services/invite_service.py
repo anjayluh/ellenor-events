@@ -24,6 +24,12 @@ def default_invite_expiry() -> datetime:
     return datetime.now(timezone.utc) + timedelta(days=7)
 
 
+def aware_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
 def normalize_invite_contact(contact: str) -> str:
     cleaned = contact.strip()
     if cleaned.startswith("+"):
@@ -44,7 +50,7 @@ def ensure_invite_can_be_accepted(invite: Invite) -> None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Invite has already been accepted")
     if invite.status == "cancelled":
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite has been cancelled")
-    if invite.expires_at < now:
+    if aware_datetime(invite.expires_at) < now:
         invite.status = "expired"
         raise HTTPException(status_code=status.HTTP_410_GONE, detail="Invite has expired")
     if invite.status != "pending":
