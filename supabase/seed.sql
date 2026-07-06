@@ -61,3 +61,8 @@ on conflict (id) do nothing;
 insert into staff_members (id, user_id, role, status) values
   ('80000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000101', 'PLATFORM_ADMIN', 'active')
 on conflict (user_id) do nothing;
+
+insert into notification_preferences (project_id, whatsapp_enabled, email_fallback_enabled, meeting_updates, invite_updates, budget_updates) values
+  ('10000000-0000-0000-0000-000000000001', true, true, true, true, false),
+  ('10000000-0000-0000-0000-000000000002', true, true, true, true, false)
+on conflict (project_id) do nothing;

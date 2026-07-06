@@ -109,6 +109,36 @@ create table vendors (
   created_at timestamptz default now()
 );
 
+create table notification_preferences (
+  project_id uuid primary key references projects(id) on delete cascade,
+  whatsapp_enabled boolean not null default true,
+  email_fallback_enabled boolean not null default true,
+  meeting_updates boolean not null default true,
+  invite_updates boolean not null default true,
+  budget_updates boolean not null default false,
+  updated_at timestamptz default now()
+);
+
+create table notifications (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  recipient_user_id uuid references users(id),
+  recipient_contact text,
+  channel text not null default 'whatsapp' check (channel in ('whatsapp','email')),
+  provider text not null default 'manual_whatsapp',
+  subject text,
+  body text not null,
+  status text not null default 'prepared' check (status in ('prepared','sent','failed','retry_scheduled')),
+  provider_payload jsonb not null default '{}'::jsonb,
+  attempts integer not null default 0,
+  max_attempts integer not null default 3,
+  last_error text,
+  next_retry_at timestamptz,
+  prepared_at timestamptz default now(),
+  sent_at timestamptz,
+  created_at timestamptz default now()
+);
+
 create table invites (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
@@ -223,6 +253,8 @@ create index idx_project_links_primary on project_links(primary_project_id);
 create index idx_project_links_linked on project_links(linked_project_id);
 create index idx_participants_project on participants(project_id);
 create index idx_vendors_project on vendors(project_id);
+create index idx_notifications_project_status on notifications(project_id, status);
+create index idx_notifications_next_retry on notifications(next_retry_at) where next_retry_at is not null;
 create index idx_invites_project on invites(project_id);
 create index idx_meetings_project_time on meetings(project_id, scheduled_time);
 create index idx_tasks_project on tasks(project_id);

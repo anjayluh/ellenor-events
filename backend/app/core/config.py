@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     whatsapp_mode: str = "manual_links"
     email_provider: str = "resend"
     resend_api_key: str | None = None
+    resend_from_email: str = "Ellenor Events <noreply@ellenor.events>"
+    whatsapp_cloud_api_token: str | None = None
+    whatsapp_phone_number_id: str | None = None
+    notification_max_attempts: int = 3
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

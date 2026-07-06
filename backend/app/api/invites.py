@@ -13,6 +13,7 @@ from app.models.project_member import ProjectMember
 from app.schemas.invite import InviteAccept, InviteAcceptRead, InviteAnalytics, InviteCreate, InviteRead
 from app.services.audit_service import write_audit_log
 from app.services.email_service import build_email_invite_payload
+from app.services.notification_service import create_notification
 from app.services.invite_service import (
     build_invite_link,
     create_membership_from_invite,
@@ -81,6 +82,16 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         if payload.delivery_channel == "whatsapp"
         else {"email": build_email_invite_payload(invite.contact, invite_link)}
     )
+    create_notification(
+        db,
+        project_id=payload.project_id,
+        channel=payload.delivery_channel,
+        recipient_contact=invite.contact,
+        subject="Your Ellenor Events invitation",
+        body=f"You have been invited to coordinate an Ellenor event. Open: {invite_link}",
+        actor_user_id=current_user.id,
+        metadata={"invite_id": str(invite.id), "role": payload.role_assigned.value},
+    )
     write_audit_log(
         db,
         "invite.created",
@@ -137,6 +148,16 @@ def resend_invite(invite_id: UUID, current_user: CurrentUser = Depends(get_curre
     invite.status = "pending"
     invite.expires_at = default_invite_expiry()
     mark_invite_sent(invite)
+    create_notification(
+        db,
+        project_id=invite.project_id,
+        channel=invite.delivery_channel,
+        recipient_contact=invite.contact,
+        subject="Your Ellenor Events invitation",
+        body=f"Your Ellenor event invitation was resent. Open: {build_invite_link(invite.token)}",
+        actor_user_id=current_user.id,
+        metadata={"invite_id": str(invite.id), "resent": True},
+    )
     write_audit_log(db, "invite.resent", actor_user_id=current_user.id, project_id=invite.project_id, metadata={"invite_id": str(invite.id)})
     db.commit()
     db.refresh(invite)

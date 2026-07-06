@@ -72,6 +72,13 @@
 - `POST /invites/{invite_id}/cancel` cancels an unused invite.
 - `GET /invites/projects/{project_id}/analytics` summarizes invite status, sent count, and opened count.
 
+## Notifications
+
+- `GET /projects/{project_id}/notifications` lists outgoing notification history for project admins.
+- `GET /projects/{project_id}/notifications/preferences` reads WhatsApp/email preferences.
+- `PATCH /projects/{project_id}/notifications/preferences` updates notification preferences.
+- `POST /projects/{project_id}/notifications/{notification_id}/retry` queues retry tracking for failed/prepared notifications.
+
 ## Staff
 
 ### Staff Authorization

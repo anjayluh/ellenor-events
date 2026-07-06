@@ -3,6 +3,7 @@ from app.models.auth_challenge import AuthChallenge
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
 from app.models.invite import Invite
 from app.models.meeting import Meeting, MeetingRsvp
+from app.models.notification import Notification, NotificationPreference
 from app.models.participant import Participant
 from app.models.project import Project
 from app.models.project_link import ProjectLink
@@ -24,6 +25,8 @@ __all__ = [
     "Invite",
     "Meeting",
     "MeetingRsvp",
+    "Notification",
+    "NotificationPreference",
     "Participant",
     "Project",
     "ProjectLink",

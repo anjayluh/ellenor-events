@@ -473,7 +473,7 @@ Create an internal staff view for operational oversight without breaking tenant 
 
 ## Phase 10 — Notifications and Communication
 
-Status: `[ ] Not started beyond WhatsApp link helper`
+Status: `[x] Complete pending review`
 
 ### Objective
 
@@ -485,18 +485,27 @@ Deliver WhatsApp-first notifications with email fallback.
 
 ### Remaining Work
 
-- `[ ] Create notification table for outgoing message history`
-- `[ ] Add notification service abstraction`
-- `[ ] Implement Resend email fallback`
-- `[ ] Add WhatsApp Cloud API adapter when ready`
-- `[ ] Add notification preferences per project/member if needed`
-- `[ ] Add retry/error tracking for provider failures`
+- `[x] Create notification table for outgoing message history`
+- `[x] Add notification service abstraction`
+- `[x] Implement Resend email fallback`
+- `[x] Add WhatsApp Cloud API adapter when ready`
+- `[x] Add notification preferences per project/member if needed`
+- `[x] Add retry/error tracking for provider failures`
 
 ### Acceptance Criteria
 
 - Invite and meeting notifications can be sent or prepared from backend services.
 - Message delivery attempts are logged.
 - Manual WhatsApp link MVP can upgrade to Cloud API without API contract changes.
+
+### Phase 10 Review Notes
+
+- Added notification history and project-level notification preferences tables/models.
+- Added notification service abstraction that prepares WhatsApp/manual, WhatsApp Cloud API, and Resend payloads.
+- Invite create/resend and meeting create/update now create notification records.
+- Added project-scoped notification list, preferences, and retry endpoints for project admins.
+- Added retry/error tracking fields including attempts, max attempts, last error, and next retry time.
+- Manual WhatsApp links remain the MVP path while Cloud API payloads can be enabled through configuration.
 
 ## Phase 11 — Testing, QA, and Security Hardening
 
