@@ -23,6 +23,8 @@ class ProjectRead(ProjectCreate):
     id: UUID
     owner_user_id: UUID
     status: str
+    role: str | None = None
+    budget_visibility_mode: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -47,3 +47,15 @@ export async function apiPost<TResponse, TPayload>(path: string, payload: TPaylo
   });
   return parseResponse<TResponse>(response);
 }
+
+export async function apiPatch<TResponse, TPayload>(path: string, payload: TPayload, token?: string): Promise<TResponse> {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders(token)
+    },
+    body: JSON.stringify(payload)
+  });
+  return parseResponse<TResponse>(response);
+}

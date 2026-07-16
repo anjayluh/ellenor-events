@@ -9,7 +9,7 @@ Production-ready MVP scaffold for a multi-tenant event coordination platform for
 - Participants are not users; guests, family members, and vendors can exist without accounts.
 - Every tenant query is scoped by `project_id`.
 - Budget access is enforced server-side through role and visibility mode checks.
-- WhatsApp-first communication with email fallback.
+- Email-first communication for the MVP, with WhatsApp/manual links remaining optional.
 - MVP stores media URLs only; no internal file storage.
 
 ## Monorepo Structure
@@ -94,6 +94,7 @@ Deployment is configured for Supabase + Render + Vercel. See `docs/deployment-gu
 - Frontend setup/testing: `frontend/README.md`
 - Supabase migrations/seed data: `supabase/README.md`
 - Full QA and deployment runbook: `docs/qa-deployment-runbook.md`
+- User flow coverage matrix: `docs/user-flow-coverage.md`
 - Remote Supabase configuration: `docs/remote-supabase.md`
 - Deployment checklist: `docs/deployment-guide.md`
 - Security checklist: `docs/security-checklist.md`

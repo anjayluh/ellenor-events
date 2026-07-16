@@ -5,6 +5,7 @@ import { apiGet } from "../lib/api";
 import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
 import type { Project } from "../lib/types";
 import { EventCard } from "./EventCard";
+import { ProjectOnboardingForm } from "./ProjectOnboardingForm";
 import { StateBlock } from "./StateBlock";
 
 export function MyEventsPanel() {
@@ -53,12 +54,23 @@ export function MyEventsPanel() {
   }
 
   if (projects.length === 0) {
-    return <StateBlock title="No events yet" message="Once you are added to an event, it will appear here." />;
+    return (
+      <section className="grid twoColumns">
+        <StateBlock title="No events yet" message="Create your first event workspace, or accept an invitation from an owner or committee chair." />
+        <ProjectOnboardingForm onCreated={() => void loadProjects()} />
+      </section>
+    );
   }
 
   return (
-    <section className="panel">
-      <h2>Your Events</h2>
+    <section className="panel actionPanel">
+      <div className="sectionHeader">
+        <div>
+          <p className="eyebrow">Workspace</p>
+          <h2>Your Events</h2>
+        </div>
+        <span className="badge">{projects.length} active</span>
+      </div>
       <div className="stack">
         {projects.map((event) => (
           <EventCard
@@ -71,6 +83,10 @@ export function MyEventsPanel() {
           />
         ))}
       </div>
+      <details className="inlineDisclosure">
+        <summary>Start another event</summary>
+        <ProjectOnboardingForm onCreated={() => void loadProjects()} />
+      </details>
     </section>
   );
 }
