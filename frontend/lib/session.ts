@@ -1,4 +1,5 @@
 import type { AuthToken, AuthUser } from "./types";
+import { clearActiveProjectId } from "./active-project";
 
 const TOKEN_KEY = "eecs_access_token";
 const USER_KEY = "eecs_user";
@@ -31,6 +32,7 @@ export function clearSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(TOKEN_KEY);
   window.localStorage.removeItem(USER_KEY);
+  clearActiveProjectId();
   emitAuthChange();
 }
 

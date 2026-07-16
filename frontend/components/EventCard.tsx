@@ -6,9 +6,10 @@ type EventCardProps = {
   role: string;
   type: string;
   date: string;
+  onOpen?: () => void;
 };
 
-export function EventCard({ id, title, role, type, date }: EventCardProps) {
+export function EventCard({ id, title, role, type, date, onOpen }: EventCardProps) {
   const content = (
     <>
       <h3>{title}</h3>
@@ -24,5 +25,5 @@ export function EventCard({ id, title, role, type, date }: EventCardProps) {
     return <article className="eventCard">{content}</article>;
   }
 
-  return <Link className="eventCard clickableCard" href={`/events/${id}`}>{content}</Link>;
+  return <Link className="eventCard clickableCard" href={`/events/${id}`} onClick={onOpen}>{content}</Link>;
 }

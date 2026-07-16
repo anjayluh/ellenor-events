@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "../lib/api";
+import { setActiveProjectId } from "../lib/active-project";
 import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
 import type { Project } from "../lib/types";
 import { EventCard } from "./EventCard";
@@ -80,6 +81,7 @@ export function MyEventsPanel() {
             role={event.role ?? "Member"}
             type={event.type}
             date={event.event_date ?? "TBC"}
+            onOpen={() => setActiveProjectId(event.id)}
           />
         ))}
       </div>

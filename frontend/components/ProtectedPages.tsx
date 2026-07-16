@@ -2,8 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
-import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
+import { getAccessToken } from "../lib/session";
+import { useActiveProject } from "../lib/useActiveProject";
 import type { BudgetResponse, Project, ProjectRole } from "../lib/types";
+import { ActiveEventSwitcher } from "./ActiveEventSwitcher";
 import { ProjectOnboardingForm } from "./ProjectOnboardingForm";
 import { StateBlock } from "./StateBlock";
 
@@ -23,38 +25,6 @@ function canEditBudget(role?: ProjectRole | null) {
   return Boolean(role && BUDGET_EDITOR_ROLES.includes(role));
 }
 
-function useFirstProject() {
-  const [project, setProject] = useState<Project | null>(null);
-  const [state, setState] = useState<"anonymous" | "loading" | "ready" | "empty" | "error">("loading");
-  const [message, setMessage] = useState("");
-
-  async function load() {
-    const token = getAccessToken();
-    if (!token) {
-      setState("anonymous");
-      setProject(null);
-      return;
-    }
-
-    setState("loading");
-    try {
-      const projects = await apiGet<Project[]>("/projects", token);
-      setProject(projects[0] ?? null);
-      setState(projects[0] ? "ready" : "empty");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not load your project membership.");
-      setState("error");
-    }
-  }
-
-  useEffect(() => {
-    void load();
-    return subscribeToAuthChanges(() => void load());
-  }, []);
-
-  return { project, state, message, reload: load };
-}
-
 function Guard({ state, message, onCreated }: { state: string; message?: string; onCreated?: () => void }) {
   if (state === "anonymous") return <StateBlock title="Login required" message="Sign in before viewing private event data." />;
   if (state === "loading") return <StateBlock title="Loading" message="Fetching live data from the backend." />;
@@ -71,7 +41,7 @@ function Guard({ state, message, onCreated }: { state: string; message?: string;
 }
 
 export function MeetingsClientPage() {
-  const { project, state, message, reload } = useFirstProject();
+  const { projects, project, state, message, selectProject, reload } = useActiveProject();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [title, setTitle] = useState("");
   const [agenda, setAgenda] = useState("");
@@ -132,6 +102,8 @@ export function MeetingsClientPage() {
   if (state !== "ready") return guard;
 
   return (
+    <>
+    <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
     <section className="grid twoColumns">
       <article className="panel actionPanel">
         <p className="eyebrow">Meetings</p>
@@ -184,11 +156,12 @@ export function MeetingsClientPage() {
         )) : <StateBlock title="No meetings yet" message={canCoordinate(project?.role) ? "Create the first planning touchpoint." : "Meetings created for your event will appear here."} />}
       </section>
     </section>
+    </>
   );
 }
 
 export function BudgetClientPage() {
-  const { project, state, message, reload } = useFirstProject();
+  const { projects, project, state, message, selectProject, reload } = useActiveProject();
   const [budget, setBudget] = useState<BudgetResponse | null>(null);
   const [total, setTotal] = useState("");
   const [spent, setSpent] = useState("");
@@ -237,6 +210,8 @@ export function BudgetClientPage() {
   if (!budget) return <StateBlock title="Budget unavailable" message="Your role may not have budget access for this event." />;
 
   return (
+    <>
+    <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
     <section className="grid twoColumns">
       <article className="panel">
         <p className="eyebrow">{budget.visibility.replaceAll("_", " ")}</p>
@@ -272,11 +247,12 @@ export function BudgetClientPage() {
         <p>Pledged: {budget.pledged_total == null ? "Hidden" : `UGX ${budget.pledged_total.toLocaleString()}`}</p>
       </article>
     </section>
+    </>
   );
 }
 
 export function CommitteeClientPage() {
-  const { project, state, message, reload } = useFirstProject();
+  const { projects, project, state, message, selectProject, reload } = useActiveProject();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState("");
   const [dueDate, setDueDate] = useState("");
@@ -322,6 +298,8 @@ export function CommitteeClientPage() {
   if (state !== "ready") return guard;
 
   return (
+    <>
+    <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
     <section className="grid twoColumns">
       <article className="panel actionPanel">
         <p className="eyebrow">Committee</p>
@@ -348,11 +326,12 @@ export function CommitteeClientPage() {
         {tasks.length ? tasks.map((task) => <article className="panel" key={task.id}><p className="eyebrow">{task.status}</p><h2>{task.title}</h2><p>Due: {task.due_date ?? "Not set"}</p></article>) : <StateBlock title="No tasks yet" message={canCoordinate(project?.role) ? "Create the first committee task." : "Committee tasks will appear here once created."} />}
       </section>
     </section>
+    </>
   );
 }
 
 export function VendorsClientPage() {
-  const { project, state, message, reload } = useFirstProject();
+  const { projects, project, state, message, selectProject, reload } = useActiveProject();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
@@ -402,6 +381,8 @@ export function VendorsClientPage() {
   if (state !== "ready") return guard;
 
   return (
+    <>
+    <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
     <section className="grid twoColumns">
       <article className="panel actionPanel">
         <p className="eyebrow">Vendors</p>
@@ -434,6 +415,7 @@ export function VendorsClientPage() {
         {vendors.length ? vendors.map((vendor) => <article className="panel" key={vendor.id}><p className="eyebrow">{vendor.category}</p><h2>{vendor.name}</h2><p>Status: {vendor.status}</p><p>Contact: {vendor.contact ?? "Not set"}</p></article>) : <StateBlock title="No vendors yet" message={canCoordinate(project?.role) ? "Add the first vendor option." : "Vendor directory records will appear here once created."} />}
       </section>
     </section>
+    </>
   );
 }
 
