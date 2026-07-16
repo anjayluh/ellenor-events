@@ -1,59 +1,41 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { apiPost } from "../lib/api";
 import { saveSession } from "../lib/session";
 import type { AuthToken } from "../lib/types";
 
-type LoginChallenge = {
-  status: string;
-  channel: string;
-  contact: string;
-  development_code?: string | null;
-  development_magic_link?: string | null;
-};
+type Mode = "login" | "register";
 
 export function LoginForm() {
-  const [contact, setContact] = useState("+256700000101");
-  const [name, setName] = useState("Amina Owner");
-  const [code, setCode] = useState("000000");
-  const [challenge, setChallenge] = useState<LoginChallenge | null>(null);
-  const [message, setMessage] = useState("Use the development OTP while production Supabase Auth is being connected.");
+  const [mode, setMode] = useState<Mode>("login");
+  const [email, setEmail] = useState("anjayluh.wakabi@gmail.com");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [message, setMessage] = useState("Sign in with your email and password.");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function requestLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const payload = contact.includes("@") ? { email: contact } : { phone: contact };
-      const result = await apiPost<LoginChallenge, typeof payload>("/auth/login", payload);
-      setChallenge(result);
-      setMessage(`Verification sent by ${result.channel}.`);
-    } catch {
-      setChallenge({ status: "demo", channel: contact.includes("@") ? "email" : "phone", contact, development_code: "000000" });
-      setMessage("API is offline, so the demo login flow is active.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  const isValid = useMemo(() => {
+    const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const hasPassword = password.length >= 8;
+    const hasNameIfRegistering = mode === "login" || name.trim().length >= 2;
+    return hasEmail && hasPassword && hasNameIfRegistering;
+  }, [email, password, name, mode]);
 
-  async function verifyOtp() {
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isValid || isSubmitting) return;
+
     setIsSubmitting(true);
+    setMessage(mode === "login" ? "Signing you in..." : "Creating your account...");
     try {
-      const result = await apiPost<AuthToken, { contact: string; code: string; name: string }>("/auth/verify-otp", {
-        contact,
-        code,
-        name
-      });
+      const path = mode === "login" ? "/auth/login" : "/auth/register";
+      const payload = mode === "login" ? { email, password } : { email, password, name };
+      const result = await apiPost<AuthToken, typeof payload>(path, payload);
       saveSession(result);
-      setMessage(`Signed in as ${result.user.name ?? result.user.phone ?? result.user.email}.`);
-    } catch {
-      saveSession({
-        access_token: "demo-token",
-        token_type: "bearer",
-        user: { id: "00000000-0000-0000-0000-000000000101", name, phone: contact.includes("@") ? null : contact, email: contact.includes("@") ? contact : null }
-      });
-      setMessage("Demo session saved. Start the backend to use real OTP verification.");
+      setMessage(`Signed in as ${result.user.name ?? result.user.email}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Authentication failed. Please check your details.");
     } finally {
       setIsSubmitting(false);
     }
@@ -61,36 +43,32 @@ export function LoginForm() {
 
   return (
     <div className="panel authPanel">
-      <form className="stack" onSubmit={requestLogin}>
+      <div className="segmentedControl" aria-label="Authentication mode">
+        <button className={mode === "login" ? "active" : ""} type="button" disabled={isSubmitting} onClick={() => setMode("login")}>Sign in</button>
+        <button className={mode === "register" ? "active" : ""} type="button" disabled={isSubmitting} onClick={() => setMode("register")}>Create account</button>
+      </div>
+
+      <form className="stack" onSubmit={submit}>
+        {mode === "register" ? (
+          <label>
+            Display name
+            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Your full name" autoComplete="name" />
+          </label>
+        ) : null}
         <label>
-          Phone or email
-          <input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="+256700000101" />
+          Email
+          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@example.com" type="email" autoComplete="email" />
         </label>
         <label>
-          Display name
-          <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Amina Owner" />
+          Password
+          <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" type="password" autoComplete={mode === "login" ? "current-password" : "new-password"} />
         </label>
-        <button className="primaryButton" disabled={isSubmitting} type="submit">
-          Request OTP / magic link
+        <button className="primaryButton" disabled={!isValid || isSubmitting} type="submit">
+          {isSubmitting ? (mode === "login" ? "Signing in..." : "Creating...") : (mode === "login" ? "Sign in" : "Create account")}
         </button>
       </form>
 
-      {challenge ? (
-        <div className="stack authChallenge">
-          <p>{message}</p>
-          {challenge.development_code ? <p className="tokenNote">Development code: {challenge.development_code}</p> : null}
-          {challenge.development_magic_link ? <p className="tokenNote">{challenge.development_magic_link}</p> : null}
-          <label>
-            Verification code
-            <input value={code} onChange={(event) => setCode(event.target.value)} />
-          </label>
-          <button className="secondaryButton light" disabled={isSubmitting} type="button" onClick={verifyOtp}>
-            Verify and continue
-          </button>
-        </div>
-      ) : (
-        <p>{message}</p>
-      )}
+      <p>{message}</p>
     </div>
   );
 }

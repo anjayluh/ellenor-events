@@ -2,8 +2,8 @@
 
 ## Login
 
-- Phone number field
-- OTP field
+- Email field
+- Password field
 - Email fallback link
 
 ## Dashboard

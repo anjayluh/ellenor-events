@@ -37,7 +37,7 @@ def create_access_token(
     encoded_header = _base64url_encode(_json_dumps(header))
     encoded_payload = _base64url_encode(_json_dumps(payload))
     signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
-    signature = hmac.new(settings.jwt_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+    signature = hmac.new(settings.jwt_signing_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
     return f"{encoded_header}.{encoded_payload}.{_base64url_encode(signature)}"
 
 
@@ -49,7 +49,7 @@ def decode_access_token(token: str) -> UUID:
             raise ValueError("Unsupported token algorithm")
 
         signing_input = f"{encoded_header}.{encoded_payload}".encode("ascii")
-        expected_signature = hmac.new(settings.jwt_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
+        expected_signature = hmac.new(settings.jwt_signing_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
         actual_signature = _base64url_decode(encoded_signature)
         if not hmac.compare_digest(expected_signature, actual_signature):
             raise ValueError("Invalid token signature")
@@ -57,8 +57,13 @@ def decode_access_token(token: str) -> UUID:
         payload = json.loads(_base64url_decode(encoded_payload))
         subject = payload.get("sub")
         expires_at = payload.get("exp")
+        issuer = payload.get("iss")
         if not subject or not expires_at:
             raise ValueError("Missing token claims")
+        if settings.uses_remote_supabase_auth and settings.environment == "production":
+            expected_issuer = f"{settings.supabase_url.rstrip('/')}/auth/v1" if settings.supabase_url else None
+            if issuer != expected_issuer:
+                raise ValueError("Invalid token issuer")
         if datetime.now(timezone.utc).timestamp() >= float(expires_at):
             raise ValueError("Access token expired")
         return UUID(subject)

@@ -2,13 +2,9 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import type { Project } from "../lib/types";
 
-const meetings = ["Planning Meeting", "General Family Meeting", "Vendor Review"];
-const tasks = ["Confirm decor quote", "Collect family RSVP list", "Finalize meeting notes"];
-const vendors = ["Kampala Decor House", "Pearl Gardens Catering", "Nile Lens Studio"];
-
 export function EventDashboard({ project }: { project: Project }) {
   const role = project.role ?? "FAMILY_VIEWER";
-  const visibility = project.budget_visibility_mode ?? "CONTRIBUTION_ONLY";
+  const visibility = project.budget_visibility_mode ?? "NO_ACCESS";
 
   return (
     <>
@@ -27,21 +23,9 @@ export function EventDashboard({ project }: { project: Project }) {
           <p className="eyebrow">Overview</p>
           <h2>Coordination Snapshot</h2>
           <p>Status: {project.status}</p>
-          <p>Linked ceremony views, role-based navigation, and mobile-first tabs start here.</p>
+          <p>Use the tabs above to view live meetings, committee tasks, vendors, and budget areas allowed for your role.</p>
         </article>
         <BudgetPreview visibility={visibility} />
-      </section>
-
-      <section className="grid threeColumns" id="meetings">
-        {meetings.map((meeting) => <article className="panel" key={meeting}><p className="eyebrow">Meeting</p><h2>{meeting}</h2><p>RSVP controls appear for authenticated members.</p></article>)}
-      </section>
-
-      <section className="grid threeColumns" id="committee">
-        {tasks.map((task) => <article className="panel" key={task}><p className="eyebrow">Task</p><h2>{task}</h2><p>Assigned committee work stays project-scoped.</p></article>)}
-      </section>
-
-      <section className="grid threeColumns" id="vendors">
-        {vendors.map((vendor) => <article className="panel" key={vendor}><p className="eyebrow">Vendor</p><h2>{vendor}</h2><p>Directory records do not require user accounts.</p></article>)}
       </section>
     </>
   );

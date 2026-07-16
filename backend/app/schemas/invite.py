@@ -10,7 +10,7 @@ class InviteCreate(BaseModel):
     project_id: UUID
     contact: str
     role_assigned: ProjectRole
-    delivery_channel: str = "whatsapp"
+    delivery_channel: str = "email"
 
 
 class InviteRead(BaseModel):
@@ -21,7 +21,7 @@ class InviteRead(BaseModel):
     status: str
     invite_link: str
     whatsapp_url: str | None = None
-    delivery_channel: str = "whatsapp"
+    delivery_channel: str = "email"
     expires_at: datetime
     sent_count: int = 0
     opened_count: int = 0

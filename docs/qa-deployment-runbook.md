@@ -128,7 +128,7 @@ Defined in `supabase/seed.sql`:
 | Chair role | `COMMITTEE_CHAIR`, `SUMMARY_ACCESS` |
 | Family viewer role | `FAMILY_VIEWER`, `CONTRIBUTION_ONLY` |
 
-Frontend demo fixtures are in `frontend/lib/demo-data.ts` and `frontend/lib/staff-demo.ts`.
+Frontend views must use authenticated API responses only; the old demo fixture files were removed.
 
 ## 5. Running Automated QA
 
@@ -142,7 +142,7 @@ source .venv/bin/activate
 pytest
 ```
 
-Current expected result: `42 passed`.
+Current expected result: all backend tests pass.
 
 Coverage areas:
 
@@ -194,16 +194,15 @@ Sample login request:
 
 ```json
 {
-  "contact": "+256700000101",
-  "channel": "phone",
-  "name": "Amina Owner"
+  "email": "anjayluh.wakabi@gmail.com",
+  "password": "<tester-password>"
 }
 ```
 
 Expected QA:
 
-- `POST /auth/login` returns an OTP challenge in development.
-- `POST /auth/verify-otp` with `000000` returns an access token in development.
+- `POST /auth/login` signs in with Supabase Auth email/password.
+- `POST /auth/register` creates an email/password account when signup is enabled.
 - Missing/tampered bearer tokens return `401`.
 - `X-User-Id` remains disabled unless `ALLOW_DEV_AUTH_HEADERS=true` locally.
 
@@ -235,7 +234,7 @@ Sample invite create:
   "project_id": "10000000-0000-0000-0000-000000000002",
   "contact": "+256700123456",
   "role_assigned": "COMMITTEE_MEMBER",
-  "delivery_channel": "whatsapp"
+  "delivery_channel": "email"
 }
 ```
 
@@ -310,9 +309,9 @@ Expected QA:
 
 Expected QA:
 
-- Frontend homepage renders seeded wedding/introduction demo cards.
-- Login page can request OTP/magic-link challenge from the backend.
-- Budget page visibly changes by role/visibility mode using demo data.
+- Frontend homepage shows only public product information until login.
+- Login page signs in with Supabase email/password and disables submit until valid.
+- Budget page loads live backend-shaped visibility data for the signed-in member.
 - Invite route at `/invite/[token]` renders the acceptance path.
 
 ### Phase 9 — Staff Portal

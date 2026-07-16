@@ -15,8 +15,8 @@ class Notification(Base):
     project_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
     recipient_user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
     recipient_contact: Mapped[str | None] = mapped_column(String, nullable=True)
-    channel: Mapped[str] = mapped_column(String, default="whatsapp")
-    provider: Mapped[str] = mapped_column(String, default="manual_whatsapp")
+    channel: Mapped[str] = mapped_column(String, default="email")
+    provider: Mapped[str] = mapped_column(String, default="resend")
     subject: Mapped[str | None] = mapped_column(String, nullable=True)
     body: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String, default="prepared", index=True)
@@ -34,7 +34,7 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
     project_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("projects.id"), primary_key=True)
-    whatsapp_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    whatsapp_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
     email_fallback_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     meeting_updates: Mapped[bool] = mapped_column(Boolean, default=True)
     invite_updates: Mapped[bool] = mapped_column(Boolean, default=True)

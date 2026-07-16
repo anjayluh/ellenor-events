@@ -1,6 +1,9 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -8,6 +11,14 @@ from app.models.notification import Notification, NotificationPreference
 from app.services.audit_service import write_audit_log
 from app.services.email_service import build_resend_email_payload
 from app.services.whatsapp_service import build_whatsapp_cloud_payload, build_whatsapp_manual_url
+
+
+@dataclass
+class PreparedNotification:
+    id: UUID
+    project_id: UUID
+    channel: str
+    provider: str
 
 
 def get_or_create_notification_preferences(db: Session, project_id: UUID) -> NotificationPreference:
@@ -40,8 +51,46 @@ def create_notification(
     subject: str | None = None,
     actor_user_id: UUID | None = None,
     metadata: dict | None = None,
-) -> Notification:
+) -> Notification | PreparedNotification:
     provider, provider_payload = build_provider_payload(channel, recipient_contact, subject, body)
+    if settings.uses_remote_supabase_auth:
+        notification_id = db.execute(
+            text(
+                """
+                select public.create_notification(
+                    :project_id,
+                    :recipient_user_id,
+                    :recipient_contact,
+                    :channel,
+                    :provider,
+                    :subject,
+                    :body,
+                    cast(:provider_payload as jsonb),
+                    :max_attempts
+                )
+                """
+            ),
+            {
+                "project_id": str(project_id),
+                "recipient_user_id": str(recipient_user_id) if recipient_user_id else None,
+                "recipient_contact": recipient_contact,
+                "channel": channel,
+                "provider": provider,
+                "subject": subject,
+                "body": body,
+                "provider_payload": json.dumps(provider_payload),
+                "max_attempts": settings.notification_max_attempts,
+            },
+        ).scalar_one()
+        write_audit_log(
+            db,
+            "notification.prepared",
+            actor_user_id=actor_user_id,
+            project_id=project_id,
+            metadata={"notification_id": str(notification_id), "channel": channel, "provider": provider, **(metadata or {})},
+        )
+        return PreparedNotification(id=notification_id, project_id=project_id, channel=channel, provider=provider)
+
     notification = Notification(
         project_id=project_id,
         recipient_user_id=recipient_user_id,
@@ -78,7 +127,7 @@ def queue_project_notification(
     notification = create_notification(
         db,
         project_id=project_id,
-        channel="whatsapp",
+        channel="email",
         subject=title,
         body=message,
         actor_user_id=actor_user_id,

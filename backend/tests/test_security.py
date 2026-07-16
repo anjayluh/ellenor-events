@@ -43,3 +43,25 @@ def test_allowed_cors_origins_deduplicates_frontend_and_extra_origins():
         "https://ellenor-events.vercel.app",
         "https://preview.vercel.app",
     ]
+
+
+def test_postgresql_url_is_normalized_for_psycopg_driver():
+    from app.core.config import Settings
+
+    settings = Settings(database_url="postgresql://postgres:postgres@db.example.supabase.co:5432/postgres")
+
+    assert settings.sqlalchemy_database_url == "postgresql+psycopg://postgres:postgres@db.example.supabase.co:5432/postgres"
+
+
+def test_remote_supabase_auth_requires_url_and_anon_key():
+    from app.core.config import Settings
+
+    disabled = Settings(auth_provider="supabase", supabase_url="https://example.supabase.co")
+    enabled = Settings(
+        auth_provider="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_anon_key="anon-key",
+    )
+
+    assert disabled.uses_remote_supabase_auth is False
+    assert enabled.uses_remote_supabase_auth is True

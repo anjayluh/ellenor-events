@@ -1,5 +1,7 @@
 # Contributing to Ellenor Events
 
+Project operating roles and engineering skill expectations live in `AGENTS.md`. Read them before making architecture, backend, frontend, database, security, QA, DevOps, or documentation changes.
+
 Welcome. This project is a multi-tenant event coordination platform, so small changes can have tenant-isolation and privacy consequences. Keep work focused, tested, and documented.
 
 ## Repository Map

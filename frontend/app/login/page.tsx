@@ -5,9 +5,9 @@ export default function LoginPage() {
   return (
     <PortalShell>
       <section className="hero compact">
-        <p className="eyebrow">Passwordless Login</p>
-        <h1>Phone-first access for families, partners, and committees.</h1>
-        <p>Request an OTP by phone or use email fallback while Supabase Auth is connected.</p>
+        <p className="eyebrow">Secure Login</p>
+        <h1>Email and password access backed by Supabase Auth.</h1>
+        <p>Personal event data, budgets, vendors, meetings, and staff tools stay hidden until your account is authenticated and authorized.</p>
       </section>
       <LoginForm />
     </PortalShell>

@@ -2,14 +2,15 @@
 
 ## Authentication
 
-- `POST /auth/login` requests phone OTP or email magic link.
-- `POST /auth/verify-otp` exchanges a verification code for a bearer token and returns the global user.
+- `POST /auth/register` creates a Supabase Auth email/password account and returns a bearer token when Supabase returns a session.
+- `POST /auth/login` signs in with Supabase Auth email/password and returns the Supabase bearer token plus the mapped global user.
 
 ### Auth Notes
 
 - Production target is Supabase Auth.
 - API clients must send `Authorization: Bearer <token>` for protected endpoints.
 - `X-User-Id` is not a production auth mechanism and is disabled unless explicitly enabled for local development.
+- Public pages must not render project, budget, vendor, meeting, or staff data before authentication.
 
 ## Projects
 

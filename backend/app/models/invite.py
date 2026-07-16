@@ -17,7 +17,7 @@ class Invite(Base):
     role_assigned: Mapped[str] = mapped_column(String)
     token: Mapped[str] = mapped_column(String, unique=True, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
-    delivery_channel: Mapped[str] = mapped_column(String, default="whatsapp")
+    delivery_channel: Mapped[str] = mapped_column(String, default="email")
     sent_count: Mapped[int] = mapped_column(Integer, default=1)
     opened_count: Mapped[int] = mapped_column(Integer, default=0)
     accepted_user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)

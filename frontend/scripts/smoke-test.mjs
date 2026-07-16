@@ -20,9 +20,7 @@ for (const route of requiredRoutes) {
 }
 
 const shell = readFileSync(join(root, 'components/PortalShell.tsx'), 'utf8');
-for (const label of ['Client Portal', 'Meetings', 'Budget', 'Committee', 'Vendors', 'Staff Portal']) {
-  assert.match(shell, new RegExp(label), `Portal shell should include ${label} navigation`);
-}
+assert.match(shell, /AuthNav/, 'Portal shell should delegate navigation to auth-aware client nav');
 
 const api = readFileSync(join(root, 'lib/api.ts'), 'utf8');
 assert.match(api, /Authorization/, 'API client should support bearer authorization');
@@ -32,3 +30,10 @@ const session = readFileSync(join(root, 'lib/session.ts'), 'utf8');
 assert.match(session, /localStorage/, 'Session helpers should persist browser auth state');
 
 console.log('Frontend smoke test passed');
+
+const loginForm = readFileSync(join(root, 'components/LoginForm.tsx'), 'utf8');
+assert.match(loginForm, /password/, 'Login form should collect password for Supabase email auth');
+assert.doesNotMatch(loginForm, /demo-token/, 'Login form should not save demo sessions');
+
+const homePage = readFileSync(join(root, 'app/page.tsx'), 'utf8');
+assert.doesNotMatch(homePage, /demoProjects/, 'Home page should not expose demo project data to anonymous users');

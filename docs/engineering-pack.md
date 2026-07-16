@@ -154,7 +154,7 @@ Status: `[x] Complete pending review`
 
 ### Objective
 
-Implement passwordless auth using phone OTP first and email magic links as fallback.
+Implement Supabase-backed authentication. Current MVP uses email/password sign-in.
 
 ### Completed Deliverables
 
@@ -167,14 +167,14 @@ Implement passwordless auth using phone OTP first and email magic links as fallb
 
 - `[x] Choose Supabase Auth or Firebase Auth as production provider`
 - `[x] Replace `X-User-Id` development header dependency with verified JWT auth`
-- `[x] Implement global user lookup/create after OTP or magic-link verification`
+- `[x] Implement global user lookup/create after Supabase Auth verification`
 - `[x] Add auth middleware/dependency for current user context`
-- `[x] Add rate limiting for OTP requests`
+- `[x] Use Supabase Auth controls for email/password login attempts`
 - `[x] Add audit logging for login and invite acceptance events`
 
 ### Acceptance Criteria
 
-- Users can sign in with phone OTP without a password.
+- Users can sign in with email/password through Supabase Auth.
 - Users can use email fallback when phone is unavailable.
 - Backend derives current user from verified auth token, not frontend-provided identity.
 - Auth tests cover success, invalid token, expired token, and missing token cases.
@@ -184,7 +184,7 @@ Implement passwordless auth using phone OTP first and email magic links as fallb
 - Chose Supabase Auth as the production auth provider target.
 - Replaced required `X-User-Id` auth with bearer token verification.
 - Kept `X-User-Id` only as an opt-in local debug escape hatch through `ALLOW_DEV_AUTH_HEADERS=true`.
-- Added persisted OTP/magic-link challenges with HMAC-hashed codes and rate limiting.
+- Added Supabase Auth JWT validation and public user profile synchronization.
 - Added global user lookup/create after verification.
 - Added audit logging for auth challenges, user creation, invite creation, and invite acceptance attempts.
 
@@ -408,7 +408,7 @@ Build role-aware client-facing screens for event owners, partners, committees, f
 
 ### Remaining Work
 
-- `[x] Add login screen with phone OTP and email fallback`
+- `[x] Add login screen with email/password auth`
 - `[x] Connect dashboard to real `/projects` API`
 - `[x] Add event dashboard layout with tabs: Overview, Meetings, Budget, Committee, Vendors, Timeline`
 - `[x] Add role-based navigation visibility`
@@ -425,12 +425,12 @@ Build role-aware client-facing screens for event owners, partners, committees, f
 
 ### Phase 8 Review Notes
 
-- Added passwordless login screen with phone OTP and email fallback behavior.
+- Added email/password login screen backed by Supabase Auth.
 - Updated frontend API helpers to use bearer token contracts and typed request helpers.
-- Dashboard attempts live `/projects` data and falls back to demo project data when the API is offline.
+- Dashboard loads live `/projects` data only after authentication and does not expose project data anonymously.
 - Added event dashboard route with Overview, Meetings, Budget, Committee, Vendors, and Timeline-aware role navigation.
 - Added local session helpers for storing auth token and user metadata.
-- Added loading, error, empty/demo state UI blocks.
+- Added loading, error, empty, and unauthenticated state UI blocks.
 - Added responsive refinements for mobile portal interactions.
 
 ## Phase 9 — Staff/Admin Portal
@@ -596,7 +596,7 @@ Deploy the MVP using free-tier-friendly services.
 - `[~] Meetings and RSVP tracking`
 - `[~] Budget visibility enforcement`
 - `[ ] Contributions tracking`
-- `[ ] Phone-first auth`
+- `[~] Email/password Supabase Auth MVP`
 - `[ ] Basic notifications through WhatsApp manual links and email fallback`
 
 ### Can Wait Until v1.1+

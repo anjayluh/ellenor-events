@@ -8,15 +8,18 @@ Use this checklist before deploying Ellenor Events Coordination System and after
 - [x] Development `X-User-Id` auth is gated by `ALLOW_DEV_AUTH_HEADERS` and must stay disabled in production.
 - [x] JWTs are signed server-side and reject invalid signatures, missing claims, and expired tokens.
 - [ ] Production auth provider keys are configured outside GitHub in deployment secrets.
-- [ ] OTP and magic-link delivery provider logs are monitored for abuse.
+- [ ] Supabase Auth email/password logs are monitored for abuse and unusual login attempts.
 
 ## Tenant Isolation and RBAC
 
+- [x] Anonymous users see only public marketing/login surfaces.
+- [x] Staff/admin navigation is not exposed in public navigation.
 - [x] Project-owned reads and writes are filtered by `project_id`.
 - [x] Non-members receive `403` for project, member, meeting, and budget APIs.
 - [x] Project roles live in `project_members`, not global users.
 - [x] Last-owner demotion/removal is blocked.
-- [ ] Supabase RLS policies are applied in production before public traffic.
+- [x] Supabase RLS policies are applied in production before public traffic.
+- [x] Backend SQLAlchemy requests assume the Supabase `authenticated` database role before project-scoped queries.
 
 ## Budget Privacy
 
@@ -32,7 +35,7 @@ Use this checklist before deploying Ellenor Events Coordination System and after
 - [x] Expired, cancelled, and accepted invites cannot be accepted.
 - [x] Invite reuse is rejected.
 - [x] Notification payloads are stored as metadata, not provider secrets.
-- [ ] WhatsApp Cloud API and Resend tokens are configured only as environment variables.
+- [ ] Email provider tokens are configured only as environment variables when outbound email delivery is enabled.
 
 ## Headers, CORS, and Secrets
 

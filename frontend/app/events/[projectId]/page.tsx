@@ -1,33 +1,33 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { EventDashboard } from "../../../components/EventDashboard";
 import { PortalShell } from "../../../components/PortalShell";
 import { StateBlock } from "../../../components/StateBlock";
 import { apiGet } from "../../../lib/api";
-import { demoProjects } from "../../../lib/demo-data";
+import { getAccessToken } from "../../../lib/session";
 import type { Project } from "../../../lib/types";
 
-type EventPageProps = {
-  params: Promise<{ projectId: string }>;
-};
+export default function EventPage() {
+  const params = useParams<{ projectId: string }>();
+  const [project, setProject] = useState<Project | null>(null);
+  const [state, setState] = useState<"anonymous" | "loading" | "ready" | "error">("loading");
 
-async function getProject(projectId: string): Promise<Project | null> {
-  try {
-    return await apiGet<Project>(`/projects/${projectId}`);
-  } catch {
-    return demoProjects.find((project) => project.id === projectId) ?? null;
-  }
-}
-
-export default async function EventPage({ params }: EventPageProps) {
-  const { projectId } = await params;
-  const project = await getProject(projectId);
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) { setState("anonymous"); return; }
+    void apiGet<Project>(`/projects/${params.projectId}`, token)
+      .then((data) => { setProject(data); setState("ready"); })
+      .catch(() => setState("error"));
+  }, [params.projectId]);
 
   return (
     <PortalShell>
-      {project ? (
-        <EventDashboard project={project} />
-      ) : (
-        <StateBlock title="Event not found" message="The event could not be loaded from the API or demo data." />
-      )}
+      {state === "anonymous" ? <StateBlock title="Login required" message="Sign in before viewing this event dashboard." /> : null}
+      {state === "loading" ? <StateBlock title="Loading event" message="Fetching live project data from the API." /> : null}
+      {state === "error" ? <StateBlock title="Event not found" message="The event could not be loaded for your account." /> : null}
+      {state === "ready" && project ? <EventDashboard project={project} /> : null}
     </PortalShell>
   );
 }

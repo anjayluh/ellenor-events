@@ -12,7 +12,7 @@ class ProjectSettings(Base):
     __tablename__ = "project_settings"
 
     project_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("projects.id"), primary_key=True)
-    whatsapp_first: Mapped[bool] = mapped_column(Boolean, default=True)
+    whatsapp_first: Mapped[bool] = mapped_column(Boolean, default=False)
     email_fallback: Mapped[bool] = mapped_column(Boolean, default=True)
     rsvp_required: Mapped[bool] = mapped_column(Boolean, default=False)
     budget_editing_mode: Mapped[str] = mapped_column(String, default="owners_only")

@@ -86,3 +86,11 @@ a { color: inherit; text-decoration: none; }
 .authChallenge { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px; }
 .secondaryButton.light { color: white; background: var(--purple-soft); }
 @media (max-width: 620px) { .main { padding: 28px 4vw; } .hero h1 { font-size: 2.25rem; } .buttonRow { flex-direction: column; } .buttonRow a, .buttonRow button { text-align: center; width: 100%; } }
+
+.navButton { background: transparent; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-weight: 700; padding: 0; }
+.primaryButton:disabled, .secondaryButton:disabled, .ghostButton:disabled, .navButton:disabled, .segmentedControl button:disabled { cursor: not-allowed; opacity: 0.55; }
+.segmentedControl { background: rgba(53, 21, 93, 0.08); border-radius: 999px; display: inline-flex; gap: 4px; margin-bottom: 18px; padding: 4px; }
+.segmentedControl button { background: transparent; border: 0; border-radius: 999px; color: var(--purple); cursor: pointer; font-weight: 800; padding: 10px 14px; }
+.segmentedControl button.active { background: white; box-shadow: 0 8px 24px rgba(53, 21, 93, 0.12); }
+.panel label { color: var(--purple); display: grid; font-weight: 800; gap: 8px; }
+.panel input { border: 1px solid var(--border); border-radius: 16px; font: inherit; padding: 13px 14px; }

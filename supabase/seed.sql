@@ -45,8 +45,8 @@ insert into contributions (id, project_id, contributor, pledged, paid, status) v
 on conflict (id) do nothing;
 
 insert into project_settings (project_id, whatsapp_first, email_fallback, rsvp_required, budget_editing_mode, vendor_mode) values
-  ('10000000-0000-0000-0000-000000000001', true, true, false, 'owners_only', 'directory'),
-  ('10000000-0000-0000-0000-000000000002', true, true, false, 'owners_only', 'directory')
+  ('10000000-0000-0000-0000-000000000001', false, true, false, 'owners_only', 'directory'),
+  ('10000000-0000-0000-0000-000000000002', false, true, false, 'owners_only', 'directory')
 on conflict (project_id) do nothing;
 
 insert into budget_line_items (id, project_id, category, description, estimated_amount, actual_amount, status) values
@@ -63,6 +63,6 @@ insert into staff_members (id, user_id, role, status) values
 on conflict (user_id) do nothing;
 
 insert into notification_preferences (project_id, whatsapp_enabled, email_fallback_enabled, meeting_updates, invite_updates, budget_updates) values
-  ('10000000-0000-0000-0000-000000000001', true, true, true, true, false),
-  ('10000000-0000-0000-0000-000000000002', true, true, true, true, false)
+  ('10000000-0000-0000-0000-000000000001', false, true, true, true, false),
+  ('10000000-0000-0000-0000-000000000002', false, true, true, true, false)
 on conflict (project_id) do nothing;

@@ -47,7 +47,7 @@ create table projects (
 
 create table project_settings (
   project_id uuid primary key references projects(id) on delete cascade,
-  whatsapp_first boolean not null default true,
+  whatsapp_first boolean not null default false,
   email_fallback boolean not null default true,
   rsvp_required boolean not null default false,
   budget_editing_mode text not null default 'owners_only' check (budget_editing_mode in ('owners_only','chair_can_propose','chair_can_edit')),
@@ -111,7 +111,7 @@ create table vendors (
 
 create table notification_preferences (
   project_id uuid primary key references projects(id) on delete cascade,
-  whatsapp_enabled boolean not null default true,
+  whatsapp_enabled boolean not null default false,
   email_fallback_enabled boolean not null default true,
   meeting_updates boolean not null default true,
   invite_updates boolean not null default true,
@@ -124,8 +124,8 @@ create table notifications (
   project_id uuid not null references projects(id) on delete cascade,
   recipient_user_id uuid references users(id),
   recipient_contact text,
-  channel text not null default 'whatsapp' check (channel in ('whatsapp','email')),
-  provider text not null default 'manual_whatsapp',
+  channel text not null default 'email' check (channel in ('whatsapp','email')),
+  provider text not null default 'resend',
   subject text,
   body text not null,
   status text not null default 'prepared' check (status in ('prepared','sent','failed','retry_scheduled')),
@@ -146,7 +146,7 @@ create table invites (
   role_assigned text not null check (role_assigned in ('OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER','FAMILY_VIEWER','GUEST_VIEWER')),
   token text unique not null,
   status text not null default 'pending' check (status in ('pending','accepted','expired','cancelled')),
-  delivery_channel text not null default 'whatsapp' check (delivery_channel in ('whatsapp','email')),
+  delivery_channel text not null default 'email' check (delivery_channel in ('whatsapp','email')),
   sent_count integer not null default 1,
   opened_count integer not null default 0,
   accepted_user_id uuid references users(id),
@@ -262,3 +262,107 @@ create index idx_budget_line_items_project on budget_line_items(project_id);
 create index idx_budget_proposals_project on budget_proposals(project_id);
 create index idx_contributions_project on contributions(project_id);
 create index idx_testimonials_project on testimonials(project_id);
+
+comment on table public.users is 'Application profile table mapped to Supabase Auth. Password hashes live only in auth.users, never in public.users.';
+
+create or replace function public.sync_auth_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.users (id, name, phone, email)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data ->> 'name', new.raw_user_meta_data ->> 'full_name'),
+    new.phone,
+    new.email
+  )
+  on conflict (id) do update
+  set
+    name = coalesce(public.users.name, excluded.name),
+    phone = coalesce(public.users.phone, excluded.phone),
+    email = coalesce(public.users.email, excluded.email);
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert or update on auth.users
+  for each row execute function public.sync_auth_user_profile();
+
+create or replace function public.write_audit_log(
+  actor_user_id uuid,
+  project_id uuid,
+  action text,
+  metadata jsonb default '{}'::jsonb
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  audit_id uuid;
+begin
+  insert into public.audit_logs (actor_user_id, project_id, action, metadata)
+  values (actor_user_id, project_id, action, coalesce(metadata, '{}'::jsonb))
+  returning id into audit_id;
+
+  return audit_id;
+end;
+$$;
+
+create or replace function public.create_notification(
+  project_id uuid,
+  recipient_user_id uuid,
+  recipient_contact text,
+  channel text,
+  provider text,
+  subject text,
+  body text,
+  provider_payload jsonb,
+  max_attempts integer default 3
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  notification_id uuid;
+begin
+  if not public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) then
+    raise insufficient_privilege using message = 'Insufficient project permissions to create notifications';
+  end if;
+
+  insert into public.notifications (
+    project_id,
+    recipient_user_id,
+    recipient_contact,
+    channel,
+    provider,
+    subject,
+    body,
+    provider_payload,
+    max_attempts
+  )
+  values (
+    project_id,
+    recipient_user_id,
+    recipient_contact,
+    channel,
+    provider,
+    subject,
+    body,
+    coalesce(provider_payload, '{}'::jsonb),
+    coalesce(max_attempts, 3)
+  )
+  returning id into notification_id;
+
+  return notification_id;
+end;
+$$;

@@ -5,7 +5,7 @@ Next.js App Router frontend for Ellenor Events Coordination System.
 ## Responsibilities
 
 - Client portal shell and dashboard.
-- Login screen for passwordless auth.
+- Login screen for Supabase email/password auth.
 - Meeting, budget, committee, vendor, invite, and staff portal screens.
 - API helper and local session persistence.
 - Smoke checks for route and wiring assumptions.
@@ -45,8 +45,6 @@ npm run build
 - `components/`: reusable portal components.
 - `lib/api.ts`: bearer-aware API helpers.
 - `lib/session.ts`: browser session persistence.
-- `lib/demo-data.ts`: client portal demo data.
-- `lib/staff-demo.ts`: staff dashboard demo data.
 - `scripts/smoke-test.mjs`: route/app-shell smoke checks.
 - `vercel.json`: Vercel deployment config.
 

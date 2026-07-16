@@ -4,7 +4,7 @@ Production-ready MVP scaffold for a multi-tenant event coordination platform for
 
 ## Core Principles
 
-- Phone-first authentication through OTP or email magic links; no passwords.
+- Email/password authentication through Supabase Auth for the MVP, with email-based notifications by default.
 - Roles are project-scoped in `project_members`, never on `users`.
 - Participants are not users; guests, family members, and vendors can exist without accounts.
 - Every tenant query is scoped by `project_id`.
@@ -73,7 +73,7 @@ psql "$DATABASE_URL" -f supabase/seed.sql
 
 ## Authentication Strategy
 
-Phase 2 standardizes on Supabase Auth as the production provider. The backend accepts verified bearer tokens, maps token subjects to global `users`, and keeps a development OTP flow using `DEVELOPMENT_OTP_CODE` only when `ENVIRONMENT=development`.
+Authentication uses Supabase Auth. The backend accepts verified Supabase bearer tokens, maps token subjects to global `users`, and validates project membership before returning private data.
 
 Do not rely on `X-User-Id` in production. It is disabled by default and only available if `ALLOW_DEV_AUTH_HEADERS=true` for local debugging.
 
@@ -94,5 +94,6 @@ Deployment is configured for Supabase + Render + Vercel. See `docs/deployment-gu
 - Frontend setup/testing: `frontend/README.md`
 - Supabase migrations/seed data: `supabase/README.md`
 - Full QA and deployment runbook: `docs/qa-deployment-runbook.md`
+- Remote Supabase configuration: `docs/remote-supabase.md`
 - Deployment checklist: `docs/deployment-guide.md`
 - Security checklist: `docs/security-checklist.md`

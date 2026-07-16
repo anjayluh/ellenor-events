@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import Depends, Header, HTTPException, Security, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
@@ -20,6 +21,14 @@ class CurrentUser:
         self.name = user.name
         self.phone = user.phone
         self.email = user.email
+
+
+def apply_supabase_rls_context(db: Session, user_id: UUID) -> None:
+    if not settings.uses_remote_supabase_auth:
+        return
+    db.execute(text("set role authenticated"))
+    db.execute(text("select set_config('request.jwt.claim.sub', :user_id, false)"), {"user_id": str(user_id)})
+    db.execute(text("select set_config('request.jwt.claim.role', 'authenticated', false)"))
 
 
 def get_current_user(
@@ -42,6 +51,8 @@ def get_current_user(
 
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Bearer token is required")
+
+    apply_supabase_rls_context(db, user_id)
 
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
