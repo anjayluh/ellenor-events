@@ -88,6 +88,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tokenNote { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
 
 .ghostButton { background: transparent; border: 1px solid var(--border); border-radius: 999px; color: var(--purple); cursor: pointer; font-weight: 800; min-height: 44px; padding: 12px 16px; }
+.ghostButton.danger { border-color: rgba(179, 38, 30, 0.35); color: var(--error); }
 
 .fourColumns { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1100px) { .fourColumns { grid-template-columns: repeat(2, 1fr); } }
@@ -97,6 +98,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .eventCard.clickableCard:hover { border-color: rgba(214, 169, 59, 0.75); transform: translateY(-2px); }
 .tabNav { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0; }
 .tabNav a { background: rgba(255, 255, 255, 0.8); border: 1px solid var(--border); border-radius: 999px; color: var(--purple); font-weight: 800; padding: 10px 14px; }
+.eventSwitcher { margin-top: 24px; }
 .stateBlock { margin-top: 24px; }
 .authPanel { margin-top: 24px; max-width: 720px; }
 .authPanel label { color: var(--purple); display: grid; font-weight: 800; gap: 8px; }

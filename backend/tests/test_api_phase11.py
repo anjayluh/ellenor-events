@@ -163,6 +163,60 @@ def test_invite_create_open_accept_and_reuse_protection(client, db_session: Sess
     assert reused.status_code == 409
 
 
+def test_project_invite_list_is_scoped_to_admin_members(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    outsider = create_user(db_session, name="Outsider")
+    viewer = create_user(db_session, name="Viewer")
+    project = create_project_with_member(db_session, owner, title="Invite List Wedding")
+    other_project = create_project_with_member(db_session, outsider, title="Other Wedding")
+    db_session.add(
+        ProjectMember(
+            project_id=project.id,
+            user_id=viewer.id,
+            role="FAMILY_VIEWER",
+            budget_visibility_mode="CONTRIBUTION_ONLY",
+        )
+    )
+    db_session.commit()
+
+    created = client.post(
+        "/invites",
+        headers=auth_headers(owner),
+        json={
+            "project_id": str(project.id),
+            "contact": "committee.member@example.com",
+            "role_assigned": "COMMITTEE_MEMBER",
+            "delivery_channel": "email",
+        },
+    )
+    assert created.status_code == 200
+    db_session.add(
+        Invite(
+            project_id=other_project.id,
+            contact="hidden@example.com",
+            role_assigned="COMMITTEE_MEMBER",
+            token=generate_invite_token(),
+            status="pending",
+            delivery_channel="email",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=7),
+        )
+    )
+    db_session.commit()
+
+    listed = client.get(f"/invites/projects/{project.id}", headers=auth_headers(owner))
+    assert listed.status_code == 200
+    invites = listed.json()
+    assert len(invites) == 1
+    assert invites[0]["contact"] == "committee.member@example.com"
+    assert invites[0]["project_id"] == str(project.id)
+
+    viewer_response = client.get(f"/invites/projects/{project.id}", headers=auth_headers(viewer))
+    outsider_response = client.get(f"/invites/projects/{project.id}", headers=auth_headers(outsider))
+
+    assert viewer_response.status_code == 403
+    assert outsider_response.status_code == 403
+
+
 def test_expired_invite_cannot_be_accepted(client, db_session: Session):
     owner = create_user(db_session, name="Owner")
     project = create_project_with_member(db_session, owner, title="Expired Invite Wedding")

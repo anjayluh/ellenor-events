@@ -8,12 +8,14 @@ export function getActiveProjectId(): string | null {
 
 export function setActiveProjectId(projectId: string) {
   if (typeof window === "undefined") return;
+  if (window.localStorage.getItem(ACTIVE_PROJECT_KEY) === projectId) return;
   window.localStorage.setItem(ACTIVE_PROJECT_KEY, projectId);
   window.dispatchEvent(new Event(ACTIVE_PROJECT_EVENT));
 }
 
 export function clearActiveProjectId() {
   if (typeof window === "undefined") return;
+  if (!window.localStorage.getItem(ACTIVE_PROJECT_KEY)) return;
   window.localStorage.removeItem(ACTIVE_PROJECT_KEY);
   window.dispatchEvent(new Event(ACTIVE_PROJECT_EVENT));
 }

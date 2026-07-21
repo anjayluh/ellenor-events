@@ -105,6 +105,18 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
     return serialize_invite(invite)
 
 
+@router.get("/projects/{project_id}", response_model=list[InviteRead])
+def list_project_invites(project_id: UUID, current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
+    require_invite_permission(project_id, current_user, db)
+    invites = (
+        db.query(Invite)
+        .filter(Invite.project_id == project_id)
+        .order_by(Invite.created_at.desc())
+        .all()
+    )
+    return [serialize_invite(invite) for invite in invites]
+
+
 @router.get("/{token}", response_model=InviteRead)
 def get_invite(token: str, db: Session = Depends(get_db)):
     invite = find_invite_by_token(db, token)

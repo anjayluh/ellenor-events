@@ -1,7 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "./api";
 import { getActiveProjectId, setActiveProjectId, subscribeToActiveProjectChanges } from "./active-project";
 import { getAccessToken, subscribeToAuthChanges } from "./session";
@@ -9,15 +8,18 @@ import type { Project } from "./types";
 
 type ActiveProjectState = "anonymous" | "loading" | "ready" | "empty" | "error";
 
+function getQueryProjectId() {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("project");
+}
+
 export function useActiveProject() {
-  const searchParams = useSearchParams();
-  const queryProjectId = searchParams.get("project");
   const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [state, setState] = useState<ActiveProjectState>("loading");
   const [message, setMessage] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
       setProjects([]);
@@ -32,7 +34,7 @@ export function useActiveProject() {
       setProjects(nextProjects);
 
       const storedProjectId = getActiveProjectId();
-      const preferredProjectId = queryProjectId || storedProjectId;
+      const preferredProjectId = getQueryProjectId() || storedProjectId;
       const selectedProject = nextProjects.find((item) => item.id === preferredProjectId) ?? nextProjects[0] ?? null;
 
       if (selectedProject) {
@@ -47,7 +49,7 @@ export function useActiveProject() {
       setMessage(error instanceof Error ? error.message : "Could not load your project membership.");
       setState("error");
     }
-  }
+  }, []);
 
   function selectProject(projectId: string) {
     const selectedProject = projects.find((item) => item.id === projectId) ?? null;
@@ -64,7 +66,7 @@ export function useActiveProject() {
       unsubscribeAuth();
       unsubscribeProject();
     };
-  }, [queryProjectId]);
+  }, [load]);
 
   return { projects, project, state, message, selectProject, reload: load };
 }

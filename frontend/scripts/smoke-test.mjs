@@ -11,6 +11,7 @@ const requiredRoutes = [
   'app/budget/page.tsx',
   'app/committee/page.tsx',
   'app/vendors/page.tsx',
+  'app/invites/page.tsx',
   'app/staff/page.tsx',
   'app/invite/[token]/page.tsx',
 ];
@@ -28,6 +29,14 @@ assert.match(api, /API_BASE_URL/, 'API client should use the configured API base
 
 const session = readFileSync(join(root, 'lib/session.ts'), 'utf8');
 assert.match(session, /localStorage/, 'Session helpers should persist browser auth state');
+assert.match(session, /clearActiveProjectId/, 'Logout should clear the selected event workspace');
+
+const activeProjectHook = readFileSync(join(root, 'lib/useActiveProject.ts'), 'utf8');
+assert.match(activeProjectHook, /eecs_active_project_id|getActiveProjectId/, 'Feature pages should use the active event workspace instead of the first project');
+
+const protectedPages = readFileSync(join(root, 'components/ProtectedPages.tsx'), 'utf8');
+assert.match(protectedPages, /InvitesClientPage/, 'Authenticated users should have an invite management screen');
+assert.match(protectedPages, /delivery_channel: "email"/, 'Invite creation should default to email delivery');
 
 console.log('Frontend smoke test passed');
 

@@ -24,12 +24,15 @@ This matrix translates the current product scope into user journeys for review.
 | Flow | Primary users | Business value | Status |
 | --- | --- | --- | --- |
 | Create first event workspace | Couple, planner, family lead | Solves empty account dead end and creates tenancy | Covered |
+| Manage multiple event workspaces | Couples, planners, family leads | Supports coordinating more than one wedding, introduction, or linked ceremony at the same time | Covered |
+| Switch active event for feature pages | Multi-event users | Keeps budgets, meetings, committees, vendors, and invites scoped to the selected event | Covered |
 | View event dashboard and role | Owner, partner | Understand event context and access level | Covered |
 | Update budget totals | Owner, partner | Track financial plan and spend | Covered |
 | Add meetings | Owner, partner | Coordinate planning touchpoints | Covered |
 | Add committee tasks | Owner, partner | Assign and track work | Covered |
 | Add vendor options | Owner, partner | Build shortlist for service providers | Covered |
-| Invite members by role | Owner, partner, committee chair | Onboard collaborators | Backend covered |
+| Invite members by email and role | Owner, partner, committee chair | Onboard collaborators into the correct event workspace | Covered |
+| Resend or cancel pending invites | Owner, partner, committee chair | Manage invite mistakes and reminders safely | Covered |
 | Archive or restore event | Owner, partner | Close inactive events without deleting history | Backend covered |
 | Manage project settings | Owner, partner, committee chair | Configure RSVP, vendor, and notification behavior | Backend covered |
 
@@ -75,9 +78,10 @@ This matrix translates the current product scope into user journeys for review.
 
 ## Priority Gaps To Confirm
 
-1. Frontend invite management: create, resend, cancel, analytics.
+1. Frontend invite analytics.
 2. Frontend member management: add, update, remove roles with last-owner protection.
 3. Budget line items, contributions, and proposal screens.
 4. Staff support actions beyond dashboard visibility.
 5. Real outbound email worker/provider integration.
 6. RSVP summaries and meeting attendance reporting.
+7. Vendor-specific login and work acceptance flow.

@@ -8,7 +8,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "budget", label: "Budget" },
     { href: "committee", label: "Committee" },
     { href: "vendors", label: "Vendors" },
-    { href: "timeline", label: "Timeline" }
+    { href: "invites", label: "Invites" }
   ],
   PARTNER: [
     { href: "overview", label: "Overview" },
@@ -16,14 +16,15 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "budget", label: "Budget" },
     { href: "committee", label: "Committee" },
     { href: "vendors", label: "Vendors" },
-    { href: "timeline", label: "Timeline" }
+    { href: "invites", label: "Invites" }
   ],
   COMMITTEE_CHAIR: [
     { href: "overview", label: "Overview" },
     { href: "meetings", label: "Meetings" },
     { href: "budget", label: "Budget Summary" },
     { href: "committee", label: "Committee" },
-    { href: "vendors", label: "Vendors" }
+    { href: "vendors", label: "Vendors" },
+    { href: "invites", label: "Invites" }
   ],
   COMMITTEE_MEMBER: [
     { href: "overview", label: "Overview" },
@@ -43,10 +44,12 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
 };
 
 export function RoleAwareNav({ role, projectId }: { role: ProjectRole; projectId: string }) {
+  const hrefFor = (href: string) => href === "overview" ? `/events/${projectId}` : `/${href}?project=${projectId}`;
+
   return (
     <nav className="tabNav" aria-label="Event dashboard sections">
       {roleLinks[role].map((link) => (
-        <Link href={`/events/${projectId}#${link.href}`} key={link.href}>{link.label}</Link>
+        <Link href={hrefFor(link.href)} key={link.href}>{link.label}</Link>
       ))}
     </nav>
   );

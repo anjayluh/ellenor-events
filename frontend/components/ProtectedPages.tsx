@@ -12,10 +12,12 @@ import { StateBlock } from "./StateBlock";
 type Meeting = { id: string; type: string; title: string; agenda?: string | null; scheduled_time: string; status: string };
 type Task = { id: string; title: string; status: string; due_date?: string | null };
 type Vendor = { id: string; name: string; category: string; status: string; contact?: string | null };
+type Invite = { id: string; project_id: string; contact: string; role_assigned: ProjectRole; status: string; invite_link: string; delivery_channel: string; expires_at: string; sent_count: number; opened_count: number };
 type StaffDashboard = { active_projects: number; archived_projects: number; risk_alerts: Array<{ title: string; severity: string; message: string }>; project_health: Array<{ title: string; risk_level: string; pending_task_count: number; overdue_task_count: number; meeting_count: number; budget_variance: number }> };
 
 const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR", "COMMITTEE_MEMBER"];
 const BUDGET_EDITOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
+const PROJECT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 
 function canCoordinate(role?: ProjectRole | null) {
   return Boolean(role && COORDINATOR_ROLES.includes(role));
@@ -23,6 +25,10 @@ function canCoordinate(role?: ProjectRole | null) {
 
 function canEditBudget(role?: ProjectRole | null) {
   return Boolean(role && BUDGET_EDITOR_ROLES.includes(role));
+}
+
+function canManageInvites(role?: ProjectRole | null) {
+  return Boolean(role && PROJECT_ADMIN_ROLES.includes(role));
 }
 
 function Guard({ state, message, onCreated }: { state: string; message?: string; onCreated?: () => void }) {
@@ -130,7 +136,7 @@ export function MeetingsClientPage() {
             <label className="formField">
               Agenda
               <input value={agenda} onChange={(event) => setAgenda(event.target.value)} placeholder="Confirm decor, seating, and contribution updates" />
-              <span className="helperText">Optional, but useful for keeping cross-family meetings focused.</span>
+              <span className="helperText">Optional, but useful for keeping meetings focused.</span>
             </label>
             <button className="primaryButton" disabled={!canSubmitMeeting || processing === "meeting-create"} type="submit">{processing === "meeting-create" ? "Creating..." : "Create meeting"}</button>
           </form>
@@ -415,6 +421,126 @@ export function VendorsClientPage() {
         {vendors.length ? vendors.map((vendor) => <article className="panel" key={vendor.id}><p className="eyebrow">{vendor.category}</p><h2>{vendor.name}</h2><p>Status: {vendor.status}</p><p>Contact: {vendor.contact ?? "Not set"}</p></article>) : <StateBlock title="No vendors yet" message={canCoordinate(project?.role) ? "Add the first vendor option." : "Vendor directory records will appear here once created."} />}
       </section>
     </section>
+    </>
+  );
+}
+
+export function InvitesClientPage() {
+  const { projects, project, state, message, selectProject, reload } = useActiveProject();
+  const [invites, setInvites] = useState<Invite[]>([]);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<ProjectRole>("COMMITTEE_MEMBER");
+  const [formMessage, setFormMessage] = useState("Invite collaborators by email to the selected event.");
+  const [processing, setProcessing] = useState<string | null>(null);
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  async function loadInvites(activeProject: Project) {
+    setInvites(await apiGet<Invite[]>(`/invites/projects/${activeProject.id}`));
+  }
+
+  useEffect(() => {
+    if (!project || !canManageInvites(project.role)) {
+      setInvites([]);
+      return;
+    }
+    void loadInvites(project).catch(() => setInvites([]));
+  }, [project]);
+
+  const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address." : "";
+  const canSubmitInvite = Boolean(project && canManageInvites(project.role) && email && !emailError);
+
+  async function createInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!project || !canSubmitInvite || processing) return;
+
+    setProcessing("invite-create");
+    setFormMessage("Preparing email invite...");
+    try {
+      await apiPost<Invite, { project_id: string; contact: string; role_assigned: ProjectRole; delivery_channel: "email" }>("/invites", {
+        project_id: project.id,
+        contact: email.trim().toLowerCase(),
+        role_assigned: role,
+        delivery_channel: "email"
+      });
+      setEmail("");
+      setFormMessage("Email invite prepared. Share the invite link if provider delivery is not enabled yet.");
+      await loadInvites(project);
+    } catch (error) {
+      setFormMessage(error instanceof Error ? error.message : "Could not create invite.");
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function runInviteAction(inviteId: string, action: "resend" | "cancel") {
+    if (!project || processing) return;
+    setProcessing(`${action}-${inviteId}`);
+    try {
+      await apiPost<Invite, Record<string, never>>(`/invites/${inviteId}/${action}`, {});
+      setFormMessage(action === "resend" ? "Invite resent." : "Invite cancelled.");
+      await loadInvites(project);
+    } catch (error) {
+      setFormMessage(error instanceof Error ? error.message : `Could not ${action} invite.`);
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  if (state !== "ready") return guard;
+
+  return (
+    <>
+      <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
+      <section className="grid twoColumns">
+        <article className="panel actionPanel">
+          <p className="eyebrow">Email Invites</p>
+          <h2>Add people to this event</h2>
+          {canManageInvites(project?.role) ? (
+            <form className="stack" onSubmit={createInvite}>
+              <label className="formField">
+                Recipient email
+                <input value={email} onBlur={() => setTouched((current) => ({ ...current, email: true }))} onChange={(event) => setEmail(event.target.value)} placeholder="committee.member@example.com" type="email" aria-invalid={Boolean(emailError)} />
+                <span className="helperText">Required. The invite is scoped only to {project?.title}.</span>
+                {touched.email && emailError ? <span className="errorText">{emailError}</span> : null}
+              </label>
+              <label className="formField">
+                Event role
+                <select value={role} onChange={(event) => setRole(event.target.value as ProjectRole)}>
+                  <option value="PARTNER">Partner</option>
+                  <option value="COMMITTEE_CHAIR">Committee chair</option>
+                  <option value="COMMITTEE_MEMBER">Committee member</option>
+                  <option value="FAMILY_VIEWER">Family viewer</option>
+                  <option value="GUEST_VIEWER">Guest viewer</option>
+                </select>
+                <span className="helperText">Roles control budget visibility, meetings, committee work, and vendor permissions.</span>
+              </label>
+              <button className="primaryButton" disabled={!canSubmitInvite || processing === "invite-create"} type="submit">{processing === "invite-create" ? "Preparing..." : "Send email invite"}</button>
+            </form>
+          ) : <p>Your role can participate in this event, but cannot invite members.</p>}
+          <p>{formMessage}</p>
+        </article>
+
+        <section className="stack">
+          {canManageInvites(project?.role) && invites.length ? invites.map((invite) => (
+            <article className="panel" key={invite.id}>
+              <p className="eyebrow">{invite.status} · {invite.delivery_channel}</p>
+              <h2>{invite.contact}</h2>
+              <p>Role: {invite.role_assigned.replaceAll("_", " ")}</p>
+              <p>Sent {invite.sent_count} time(s), opened {invite.opened_count} time(s).</p>
+              <p className="tokenNote">{invite.invite_link}</p>
+              <div className="buttonRow">
+                <button className="ghostButton" disabled={invite.status === "accepted" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "resend")}>
+                  {processing === `resend-${invite.id}` ? "Resending..." : "Resend"}
+                </button>
+                <button className="ghostButton danger" disabled={invite.status === "accepted" || invite.status === "cancelled" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "cancel")}>
+                  {processing === `cancel-${invite.id}` ? "Cancelling..." : "Cancel"}
+                </button>
+              </div>
+            </article>
+          )) : <StateBlock title="No invites yet" message={canManageInvites(project?.role) ? "Invite a partner, committee chair, family viewer, guest, or vendor contact by email." : "Invite tracking is available to owners, partners, and committee chairs."} />}
+        </section>
+      </section>
     </>
   );
 }

@@ -30,6 +30,7 @@ export function AuthNav() {
       <Link href="/budget">Budget</Link>
       <Link href="/committee">Committee</Link>
       <Link href="/vendors">Vendors</Link>
+      <Link href="/invites">Invites</Link>
       <button className="navButton" type="button" onClick={clearSession}>Logout</button>
     </nav>
   );
