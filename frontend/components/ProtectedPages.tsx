@@ -31,7 +31,19 @@ function canManageInvites(role?: ProjectRole | null) {
   return Boolean(role && PROJECT_ADMIN_ROLES.includes(role));
 }
 
-function Guard({ state, message, onCreated }: { state: string; message?: string; onCreated?: () => void }) {
+function Guard({
+  state,
+  message,
+  onCreated,
+  projects = [],
+  onSelect
+}: {
+  state: string;
+  message?: string;
+  onCreated?: () => void;
+  projects?: Project[];
+  onSelect?: (projectId: string) => void;
+}) {
   if (state === "anonymous") return <StateBlock title="Login required" message="Sign in before viewing private event data." />;
   if (state === "loading") return <StateBlock title="Loading" message="Fetching live data from the backend." />;
   if (state === "empty") {
@@ -39,6 +51,23 @@ function Guard({ state, message, onCreated }: { state: string; message?: string;
       <section className="grid twoColumns">
         <StateBlock title="Create your first event" message="You are signed in, but you are not a member of any event yet. Start one now or accept an invite." />
         <ProjectOnboardingForm onCreated={onCreated} />
+      </section>
+    );
+  }
+  if (state === "selection_required") {
+    return (
+      <section className="panel actionPanel eventSelectionPanel">
+        <p className="eyebrow">Choose Event</p>
+        <h2>This page needs an event workspace.</h2>
+        <p>{message || "Select the event whose meetings, budget, committee, vendors, or invites you want to manage."}</p>
+        <div className="stack">
+          {projects.map((project) => (
+            <button className="ghostButton eventChoiceButton" key={project.id} type="button" onClick={() => onSelect?.(project.id)}>
+              <span>{project.title}</span>
+              <small>{(project.role ?? "Member").replaceAll("_", " ")}</small>
+            </button>
+          ))}
+        </div>
       </section>
     );
   }
@@ -104,7 +133,7 @@ export function MeetingsClientPage() {
     }
   }
 
-  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
 
   return (
@@ -211,7 +240,7 @@ export function BudgetClientPage() {
     }
   }
 
-  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
   if (!budget) return <StateBlock title="Budget unavailable" message="Your role may not have budget access for this event." />;
 
@@ -300,7 +329,7 @@ export function CommitteeClientPage() {
     }
   }
 
-  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
 
   return (
@@ -383,7 +412,7 @@ export function VendorsClientPage() {
     }
   }
 
-  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
 
   return (
@@ -486,7 +515,7 @@ export function InvitesClientPage() {
     }
   }
 
-  const guard = <Guard state={state} message={message} onCreated={() => void reload()} />;
+  const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
 
   return (

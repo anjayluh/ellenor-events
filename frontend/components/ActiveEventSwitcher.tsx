@@ -11,13 +11,11 @@ export function ActiveEventSwitcher({
   activeProjectId?: string;
   onChange: (projectId: string) => void;
 }) {
-  if (projects.length <= 1) return null;
-
   return (
     <section className="panel eventSwitcher" aria-label="Active event selector">
       <label className="formField">
         Active event workspace
-        <select value={activeProjectId ?? ""} onChange={(event) => onChange(event.target.value)}>
+        <select value={activeProjectId ?? ""} disabled={projects.length <= 1} onChange={(event) => onChange(event.target.value)}>
           {projects.map((project) => (
             <option key={project.id} value={project.id}>
               {project.title} · {(project.role ?? "Member").replaceAll("_", " ")}

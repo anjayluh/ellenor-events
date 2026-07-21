@@ -44,8 +44,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   top: 0;
   z-index: 10;
 }
-.brand { align-items: center; color: var(--purple); display: inline-flex; font-weight: 900; gap: 10px; letter-spacing: -0.03em; }
-.brand::before { background: conic-gradient(from 180deg, var(--purple), var(--gold), var(--purple-soft), var(--purple)); border-radius: 14px; content: ""; height: 28px; width: 28px; box-shadow: var(--shadow-1); }
+.brand { align-items: center; color: var(--purple); display: inline-flex; font-weight: 900; gap: 12px; letter-spacing: -0.03em; }
+.brandLogo { background: white; border: 1px solid rgba(214, 169, 59, 0.28); border-radius: 14px; box-shadow: var(--shadow-1); height: 44px; object-fit: cover; width: 44px; }
 .nav { display: flex; gap: 18px; color: var(--muted); font-weight: 600; }
 .main { padding: 48px 7vw; }
 .hero {
@@ -99,6 +99,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .tabNav { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0; }
 .tabNav a { background: rgba(255, 255, 255, 0.8); border: 1px solid var(--border); border-radius: 999px; color: var(--purple); font-weight: 800; padding: 10px 14px; }
 .eventSwitcher { margin-top: 24px; }
+.eventSelectionPanel { margin-top: 24px; max-width: 760px; }
+.eventChoiceButton { align-items: center; display: flex; justify-content: space-between; text-align: left; width: 100%; }
+.eventChoiceButton small { color: var(--muted); font-weight: 800; text-transform: capitalize; }
 .stateBlock { margin-top: 24px; }
 .authPanel { margin-top: 24px; max-width: 720px; }
 .authPanel label { color: var(--purple); display: grid; font-weight: 800; gap: 8px; }

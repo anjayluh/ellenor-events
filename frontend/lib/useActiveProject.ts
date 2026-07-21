@@ -6,7 +6,7 @@ import { getActiveProjectId, setActiveProjectId, subscribeToActiveProjectChanges
 import { getAccessToken, subscribeToAuthChanges } from "./session";
 import type { Project } from "./types";
 
-type ActiveProjectState = "anonymous" | "loading" | "ready" | "empty" | "error";
+type ActiveProjectState = "anonymous" | "loading" | "ready" | "empty" | "selection_required" | "error";
 
 function getQueryProjectId() {
   if (typeof window === "undefined") return null;
@@ -35,14 +35,25 @@ export function useActiveProject() {
 
       const storedProjectId = getActiveProjectId();
       const preferredProjectId = getQueryProjectId() || storedProjectId;
-      const selectedProject = nextProjects.find((item) => item.id === preferredProjectId) ?? nextProjects[0] ?? null;
+      const selectedProject = preferredProjectId ? nextProjects.find((item) => item.id === preferredProjectId) ?? null : null;
 
       if (selectedProject) {
         setActiveProjectId(selectedProject.id);
         setProject(selectedProject);
+        setMessage("");
         setState("ready");
+      } else if (nextProjects.length === 1 && !preferredProjectId) {
+        setActiveProjectId(nextProjects[0].id);
+        setProject(nextProjects[0]);
+        setMessage("");
+        setState("ready");
+      } else if (nextProjects.length > 0) {
+        setProject(null);
+        setMessage(preferredProjectId ? "That event is not available to this account. Choose an event you belong to." : "Choose the event workspace for this action.");
+        setState("selection_required");
       } else {
         setProject(null);
+        setMessage("");
         setState("empty");
       }
     } catch (error) {
@@ -56,6 +67,8 @@ export function useActiveProject() {
     if (!selectedProject) return;
     setActiveProjectId(projectId);
     setProject(selectedProject);
+    setMessage("");
+    setState("ready");
   }
 
   useEffect(() => {
