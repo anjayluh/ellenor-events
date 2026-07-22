@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { EventDashboard } from "../../../components/EventDashboard";
 import { PortalShell } from "../../../components/PortalShell";
 import { StateBlock } from "../../../components/StateBlock";
-import { apiGet } from "../../../lib/api";
+import { ApiError, apiGet } from "../../../lib/api";
 import { getAccessToken } from "../../../lib/session";
 import type { Project } from "../../../lib/types";
 
@@ -19,7 +19,7 @@ export default function EventPage() {
     if (!token) { setState("anonymous"); return; }
     void apiGet<Project>(`/projects/${params.projectId}`, token)
       .then((data) => { setProject(data); setState("ready"); })
-      .catch(() => setState("error"));
+      .catch((error) => setState(error instanceof ApiError && error.status === 401 ? "anonymous" : "error"));
   }, [params.projectId]);
 
   return (

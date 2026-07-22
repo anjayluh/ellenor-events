@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "./api";
+import { ApiError, apiGet } from "./api";
 import { getActiveProjectId, setActiveProjectId, subscribeToActiveProjectChanges } from "./active-project";
 import { getAccessToken, subscribeToAuthChanges } from "./session";
 import type { Project } from "./types";
@@ -57,6 +57,13 @@ export function useActiveProject() {
         setState("empty");
       }
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setProjects([]);
+        setProject(null);
+        setMessage(error.message);
+        setState("anonymous");
+        return;
+      }
       setMessage(error instanceof Error ? error.message : "Could not load your project membership.");
       setState("error");
     }

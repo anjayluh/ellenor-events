@@ -40,19 +40,31 @@ assert.doesNotMatch(authNav, /href="\/meetings"|href="\/budget"|href="\/committe
 const api = readFileSync(join(root, 'lib/api.ts'), 'utf8');
 assert.match(api, /Authorization/, 'API client should support bearer authorization');
 assert.match(api, /API_BASE_URL/, 'API client should use the configured API base URL');
+assert.match(api, /expireSession/, 'API client should expire local sessions when authenticated requests return 401');
+assert.match(api, /isPublicPath/, 'API client should not attach stale bearer tokens to public auth and invite endpoints');
+assert.match(api, /apiDelete/, 'API client should support resource deletion endpoints');
 
 const session = readFileSync(join(root, 'lib/session.ts'), 'utf8');
 assert.match(session, /localStorage/, 'Session helpers should persist browser auth state');
 assert.match(session, /clearActiveProjectId/, 'Logout should clear the selected event workspace');
+assert.match(session, /getAccessToken\(\)/, 'Session user lookup should require an access token');
+assert.match(session, /consumeSessionNotice/, 'Expired sessions should produce a user-facing notice');
 
 const activeProjectHook = readFileSync(join(root, 'lib/useActiveProject.ts'), 'utf8');
 assert.match(activeProjectHook, /eecs_active_project_id|getActiveProjectId/, 'Feature pages should use the active event workspace instead of the first project');
 assert.match(activeProjectHook, /selection_required/, 'Feature pages should require an event selection when no event is active');
+assert.match(activeProjectHook, /status === 401/, 'Event workspace loading should treat 401 responses as signed-out state');
 
 const protectedPages = readFileSync(join(root, 'components/ProtectedPages.tsx'), 'utf8');
 assert.match(protectedPages, /InvitesClientPage/, 'Authenticated users should have an invite management screen');
 assert.match(protectedPages, /delivery_channel: "email"/, 'Invite creation should default to email delivery');
 assert.match(protectedPages, /ActiveEventSwitcher/, 'Event-scoped pages should visibly show the selected event context');
+assert.match(protectedPages, /Decision stage/, 'Vendor status should be shown as user-facing decision stage language');
+assert.match(protectedPages, /apiDelete/, 'Meetings, tasks, and vendors should expose backend delete actions in the UI');
+
+const eventDashboard = readFileSync(join(root, 'components/EventDashboard.tsx'), 'utf8');
+assert.match(eventDashboard, /Save event/, 'Event dashboard should allow permitted users to edit event details');
+assert.match(eventDashboard, /Archive event/, 'Event dashboard should expose safe event archival instead of silent deletion');
 
 console.log('Frontend smoke test passed');
 

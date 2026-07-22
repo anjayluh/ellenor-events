@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiGet } from "../lib/api";
+import { ApiError, apiGet } from "../lib/api";
 import { setActiveProjectId } from "../lib/active-project";
 import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
 import type { Project } from "../lib/types";
@@ -27,6 +27,12 @@ export function MyEventsPanel() {
       setProjects(await apiGet<Project[]>("/projects", token));
       setStatus("ready");
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setProjects([]);
+        setMessage(error.message);
+        setStatus("anonymous");
+        return;
+      }
       setMessage(error instanceof Error ? error.message : "Could not load projects.");
       setStatus("error");
     }
