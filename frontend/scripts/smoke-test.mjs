@@ -62,6 +62,10 @@ assert.match(protectedPages, /ActiveEventSwitcher/, 'Event-scoped pages should v
 assert.match(protectedPages, /Decision stage/, 'Vendor status should be shown as user-facing decision stage language');
 assert.match(protectedPages, /apiDelete/, 'Meetings, tasks, and vendors should expose backend delete actions in the UI');
 
+const activeEventSwitcher = readFileSync(join(root, 'components/ActiveEventSwitcher.tsx'), 'utf8');
+assert.match(activeEventSwitcher, /Back to event details/, 'Event-scoped pages should provide a direct path back to the selected event dashboard');
+assert.match(activeEventSwitcher, /href=\{`\/events\/\$\{activeProjectId\}`\}/, 'Back-to-event link should target the active event dashboard');
+
 const eventDashboard = readFileSync(join(root, 'components/EventDashboard.tsx'), 'utf8');
 assert.match(eventDashboard, /Save event/, 'Event dashboard should allow permitted users to edit event details');
 assert.match(eventDashboard, /Archive event/, 'Event dashboard should expose safe event archival instead of silent deletion');
