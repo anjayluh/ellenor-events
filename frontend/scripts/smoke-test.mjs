@@ -65,10 +65,16 @@ assert.match(protectedPages, /apiDelete/, 'Meetings, tasks, and vendors should e
 const activeEventSwitcher = readFileSync(join(root, 'components/ActiveEventSwitcher.tsx'), 'utf8');
 assert.match(activeEventSwitcher, /Back to event details/, 'Event-scoped pages should provide a direct path back to the selected event dashboard');
 assert.match(activeEventSwitcher, /href=\{`\/events\/\$\{activeProjectId\}`\}/, 'Back-to-event link should target the active event dashboard');
+assert.match(activeEventSwitcher, /data-icon="←"/, 'Back-to-event link should include a directional icon for scanability');
 
 const eventDashboard = readFileSync(join(root, 'components/EventDashboard.tsx'), 'utf8');
 assert.match(eventDashboard, /Save event/, 'Event dashboard should allow permitted users to edit event details');
 assert.match(eventDashboard, /Archive event/, 'Event dashboard should expose safe event archival instead of silent deletion');
+assert.match(eventDashboard, /resourceCard/, 'Event dashboard cards should opt into shared card alignment');
+
+const styles = readFileSync(join(root, 'app/styles.css'), 'utf8');
+assert.match(styles, /resourceCard/, 'Styles should provide shared resource card alignment');
+assert.match(styles, /data-icon/, 'Styles should align icon-enhanced action buttons consistently');
 
 console.log('Frontend smoke test passed');
 

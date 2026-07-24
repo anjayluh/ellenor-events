@@ -76,14 +76,14 @@ export function EventDashboard({ project }: { project: Project }) {
       <RoleAwareNav role={role} projectId={currentProject.id} />
 
       <section className="grid twoColumns" id="overview">
-        <article className="panel">
+        <article className="panel resourceCard">
           <p className="eyebrow">Overview</p>
           <h2>Coordination Snapshot</h2>
           <p>Status: {currentProject.status === "archived" ? "Archived — hidden from active planning" : "Active planning"}</p>
           <p>Use the tabs above to view live meetings, committee tasks, vendors, and budget areas allowed for your role.</p>
         </article>
         <BudgetPreview visibility={visibility} />
-        <article className="panel actionPanel">
+        <article className="panel actionPanel resourceCard">
           <p className="eyebrow">Event details</p>
           <h2>Edit this event</h2>
           {canEditEvent ? (
@@ -100,9 +100,9 @@ export function EventDashboard({ project }: { project: Project }) {
                 <span className="helperText">Optional. Leave blank if the ceremony date is not confirmed.</span>
               </label>
               <div className="buttonRow">
-                <button className="primaryButton" disabled={!canSave || processing === "event-update"} type="submit">{processing === "event-update" ? "Saving..." : "Save event"}</button>
+                <button className="primaryButton" data-icon="✓" disabled={!canSave || processing === "event-update"} type="submit">{processing === "event-update" ? "Saving..." : "Save event"}</button>
                 {canArchiveEvent ? (
-                  <button className="ghostButton danger" disabled={Boolean(processing)} type="button" onClick={() => void archiveOrRestoreEvent(currentProject.status === "archived" ? "restore" : "archive")}>
+                  <button className="ghostButton danger" data-icon={currentProject.status === "archived" ? "↻" : "↓"} disabled={Boolean(processing)} type="button" onClick={() => void archiveOrRestoreEvent(currentProject.status === "archived" ? "restore" : "archive")}>
                     {processing === "event-archive" ? "Archiving..." : processing === "event-restore" ? "Restoring..." : currentProject.status === "archived" ? "Restore event" : "Archive event"}
                   </button>
                 ) : null}

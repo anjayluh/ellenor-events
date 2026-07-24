@@ -85,7 +85,7 @@ function Guard({
         <p>{message || "Select the event whose meetings, budget, committee, vendors, or invites you want to manage."}</p>
         <div className="stack">
           {projects.map((project) => (
-            <button className="ghostButton eventChoiceButton" key={project.id} type="button" onClick={() => onSelect?.(project.id)}>
+            <button className="ghostButton eventChoiceButton" data-icon="→" key={project.id} type="button" onClick={() => onSelect?.(project.id)}>
               <span>{project.title}</span>
               <small>{(project.role ?? "Member").replaceAll("_", " ")}</small>
             </button>
@@ -238,7 +238,7 @@ export function MeetingsClientPage() {
               <input value={agenda} onChange={(event) => setAgenda(event.target.value)} placeholder="Confirm decor, seating, and contribution updates" />
               <span className="helperText">Optional, but useful for keeping meetings focused.</span>
             </label>
-            <button className="primaryButton" disabled={!canSubmitMeeting || processing === "meeting-create"} type="submit">{processing === "meeting-create" ? "Creating..." : "Create meeting"}</button>
+            <button className="primaryButton" data-icon="+" disabled={!canSubmitMeeting || processing === "meeting-create"} type="submit">{processing === "meeting-create" ? "Creating..." : "Create meeting"}</button>
           </form>
         ) : <p>Your role can view and RSVP to meetings, but cannot create them.</p>}
         <p>{formMessage}</p>
@@ -246,7 +246,7 @@ export function MeetingsClientPage() {
 
       <section className="stack">
         {meetings.length ? meetings.map((meeting) => (
-          <article className="panel" key={meeting.id}>
+          <article className="panel resourceCard" key={meeting.id}>
             {editingMeetingId === meeting.id ? (
               <div className="stack">
                 <p className="eyebrow">Edit meeting</p>
@@ -255,8 +255,8 @@ export function MeetingsClientPage() {
                 <label className="formField">Scheduled time<input type="datetime-local" value={editMeeting.scheduledTime} onChange={(event) => setEditMeeting((current) => ({ ...current, scheduledTime: event.target.value }))} /></label>
                 <label className="formField">Agenda<input value={editMeeting.agenda} onChange={(event) => setEditMeeting((current) => ({ ...current, agenda: event.target.value }))} /></label>
                 <div className="buttonRow">
-                  <button className="primaryButton" disabled={!editMeeting.title.trim() || !editMeeting.type.trim() || !editMeeting.scheduledTime || Boolean(processing)} type="button" onClick={() => void updateMeeting(meeting.id)}>{processing === `meeting-update-${meeting.id}` ? "Saving..." : "Save changes"}</button>
-                  <button className="ghostButton" disabled={Boolean(processing)} type="button" onClick={() => setEditingMeetingId(null)}>Cancel</button>
+                  <button className="primaryButton" data-icon="✓" disabled={!editMeeting.title.trim() || !editMeeting.type.trim() || !editMeeting.scheduledTime || Boolean(processing)} type="button" onClick={() => void updateMeeting(meeting.id)}>{processing === `meeting-update-${meeting.id}` ? "Saving..." : "Save changes"}</button>
+                  <button className="ghostButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => setEditingMeetingId(null)}>Cancel</button>
                 </div>
               </div>
             ) : (
@@ -271,8 +271,8 @@ export function MeetingsClientPage() {
                       {processing === `${meeting.id}-${status}` ? "Saving..." : status}
                     </button>
                   ))}
-                  {canCoordinate(project?.role) ? <button className="ghostButton" disabled={Boolean(processing)} type="button" onClick={() => startMeetingEdit(meeting)}>Edit</button> : null}
-                  {canManageInvites(project?.role) ? <button className="ghostButton danger" disabled={Boolean(processing)} type="button" onClick={() => void deleteMeeting(meeting.id)}>{processing === `meeting-delete-${meeting.id}` ? "Deleting..." : "Delete"}</button> : null}
+                  {canCoordinate(project?.role) ? <button className="ghostButton" data-icon="✎" disabled={Boolean(processing)} type="button" onClick={() => startMeetingEdit(meeting)}>Edit</button> : null}
+                  {canManageInvites(project?.role) ? <button className="ghostButton danger" data-icon="−" disabled={Boolean(processing)} type="button" onClick={() => void deleteMeeting(meeting.id)}>{processing === `meeting-delete-${meeting.id}` ? "Deleting..." : "Delete"}</button> : null}
                 </div>
               </>
             )}
@@ -376,8 +376,8 @@ export function BudgetClientPage() {
               {spentError || overspendError ? <span className="errorText">{spentError || overspendError}</span> : null}
             </label>
             <div className="buttonRow">
-              <button className="primaryButton" disabled={!canSubmitBudget || isSubmitting} type="submit">{isSubmitting ? "Saving..." : "Save budget"}</button>
-              <button className="ghostButton danger" disabled={isSubmitting || (Number(budget.total ?? 0) === 0 && Number(budget.spent ?? 0) === 0)} type="button" onClick={() => void resetBudget()}>Reset budget</button>
+              <button className="primaryButton" data-icon="✓" disabled={!canSubmitBudget || isSubmitting} type="submit">{isSubmitting ? "Saving..." : "Save budget"}</button>
+              <button className="ghostButton danger" data-icon="↺" disabled={isSubmitting || (Number(budget.total ?? 0) === 0 && Number(budget.spent ?? 0) === 0)} type="button" onClick={() => void resetBudget()}>Reset budget</button>
             </div>
           </form>
         ) : <p>Your role can view the shaped budget summary allowed by the backend, but cannot edit totals.</p>}
@@ -502,14 +502,14 @@ export function CommitteeClientPage() {
               <input value={dueDate} onChange={(event) => setDueDate(event.target.value)} type="date" />
               <span className="helperText">Optional. Use it for time-sensitive wedding and introduction tasks.</span>
             </label>
-            <button className="primaryButton" disabled={!canSubmitTask || isSubmitting} type="submit">{isSubmitting ? "Creating..." : "Create task"}</button>
+            <button className="primaryButton" data-icon="+" disabled={!canSubmitTask || isSubmitting} type="submit">{isSubmitting ? "Creating..." : "Create task"}</button>
           </form>
         ) : <p>Your role can view committee progress but cannot create tasks.</p>}
         <p>{formMessage}</p>
       </article>
       <section className="grid twoColumns">
         {tasks.length ? tasks.map((task) => (
-          <article className="panel" key={task.id}>
+          <article className="panel resourceCard" key={task.id}>
             {editingTaskId === task.id ? (
               <div className="stack">
                 <p className="eyebrow">Edit task</p>
@@ -517,8 +517,8 @@ export function CommitteeClientPage() {
                 <label className="formField">Status<select value={editTask.status} onChange={(event) => setEditTask((current) => ({ ...current, status: event.target.value }))}><option value="todo">To do</option><option value="in_progress">In progress</option><option value="done">Done</option></select></label>
                 <label className="formField">Due date<input type="date" value={editTask.dueDate} onChange={(event) => setEditTask((current) => ({ ...current, dueDate: event.target.value }))} /></label>
                 <div className="buttonRow">
-                  <button className="primaryButton" disabled={!editTask.title.trim() || Boolean(taskProcessing)} type="button" onClick={() => void updateTask(task.id)}>{taskProcessing === `task-update-${task.id}` ? "Saving..." : "Save changes"}</button>
-                  <button className="ghostButton" disabled={Boolean(taskProcessing)} type="button" onClick={() => setEditingTaskId(null)}>Cancel</button>
+                  <button className="primaryButton" data-icon="✓" disabled={!editTask.title.trim() || Boolean(taskProcessing)} type="button" onClick={() => void updateTask(task.id)}>{taskProcessing === `task-update-${task.id}` ? "Saving..." : "Save changes"}</button>
+                  <button className="ghostButton" data-icon="×" disabled={Boolean(taskProcessing)} type="button" onClick={() => setEditingTaskId(null)}>Cancel</button>
                 </div>
               </div>
             ) : (
@@ -528,8 +528,8 @@ export function CommitteeClientPage() {
                 <p>Due: {task.due_date ?? "Not set"}</p>
                 {canCoordinate(project?.role) ? (
                   <div className="buttonRow">
-                    <button className="ghostButton" disabled={Boolean(taskProcessing)} type="button" onClick={() => startTaskEdit(task)}>Edit</button>
-                    <button className="ghostButton danger" disabled={Boolean(taskProcessing)} type="button" onClick={() => void deleteTask(task.id)}>{taskProcessing === `task-delete-${task.id}` ? "Deleting..." : "Delete"}</button>
+                    <button className="ghostButton" data-icon="✎" disabled={Boolean(taskProcessing)} type="button" onClick={() => startTaskEdit(task)}>Edit</button>
+                    <button className="ghostButton danger" data-icon="−" disabled={Boolean(taskProcessing)} type="button" onClick={() => void deleteTask(task.id)}>{taskProcessing === `task-delete-${task.id}` ? "Deleting..." : "Delete"}</button>
                   </div>
                 ) : null}
               </>
@@ -667,7 +667,7 @@ export function VendorsClientPage() {
               <input value={contact} onChange={(event) => setContact(event.target.value)} placeholder="+256..." />
               <span className="helperText">Optional phone, email, or link.</span>
             </label>
-            <button className="primaryButton" disabled={!canSubmitVendor || isSubmitting} type="submit">{isSubmitting ? "Adding..." : "Add vendor"}</button>
+            <button className="primaryButton" data-icon="+" disabled={!canSubmitVendor || isSubmitting} type="submit">{isSubmitting ? "Adding..." : "Add vendor"}</button>
           </form>
         ) : <p>Your role can view vendor options but cannot add vendors.</p>}
         <p>{formMessage}</p>
@@ -676,7 +676,7 @@ export function VendorsClientPage() {
         {vendors.length ? vendors.map((vendor) => {
           const stage = vendorStage(vendor.status);
           return (
-            <article className="panel" key={vendor.id}>
+            <article className="panel resourceCard" key={vendor.id}>
               {editingVendorId === vendor.id ? (
                 <div className="stack">
                   <p className="eyebrow">Edit vendor</p>
@@ -685,8 +685,8 @@ export function VendorsClientPage() {
                   <label className="formField">Contact<input value={editVendor.contact} onChange={(event) => setEditVendor((current) => ({ ...current, contact: event.target.value }))} /></label>
                   <label className="formField">Decision stage<select value={editVendor.status} onChange={(event) => setEditVendor((current) => ({ ...current, status: event.target.value }))}><option value="shortlisted">Considering</option><option value="quote_requested">Waiting for quote</option><option value="preferred">Preferred option</option><option value="booked">Booked</option><option value="rejected">Not selected</option></select></label>
                   <div className="buttonRow">
-                    <button className="primaryButton" disabled={!editVendor.name.trim() || !editVendor.category.trim() || Boolean(vendorProcessing)} type="button" onClick={() => void updateVendor(vendor.id)}>{vendorProcessing === `vendor-update-${vendor.id}` ? "Saving..." : "Save changes"}</button>
-                    <button className="ghostButton" disabled={Boolean(vendorProcessing)} type="button" onClick={() => setEditingVendorId(null)}>Cancel</button>
+                    <button className="primaryButton" data-icon="✓" disabled={!editVendor.name.trim() || !editVendor.category.trim() || Boolean(vendorProcessing)} type="button" onClick={() => void updateVendor(vendor.id)}>{vendorProcessing === `vendor-update-${vendor.id}` ? "Saving..." : "Save changes"}</button>
+                    <button className="ghostButton" data-icon="×" disabled={Boolean(vendorProcessing)} type="button" onClick={() => setEditingVendorId(null)}>Cancel</button>
                   </div>
                 </div>
               ) : (
@@ -698,8 +698,8 @@ export function VendorsClientPage() {
                   <p>Contact: {vendor.contact ?? "Not set"}</p>
                   {canCoordinate(project?.role) ? (
                     <div className="buttonRow">
-                      <button className="ghostButton" disabled={Boolean(vendorProcessing)} type="button" onClick={() => startVendorEdit(vendor)}>Edit</button>
-                      <button className="ghostButton danger" disabled={Boolean(vendorProcessing)} type="button" onClick={() => void deleteVendor(vendor.id)}>{vendorProcessing === `vendor-delete-${vendor.id}` ? "Deleting..." : "Delete"}</button>
+                      <button className="ghostButton" data-icon="✎" disabled={Boolean(vendorProcessing)} type="button" onClick={() => startVendorEdit(vendor)}>Edit</button>
+                      <button className="ghostButton danger" data-icon="−" disabled={Boolean(vendorProcessing)} type="button" onClick={() => void deleteVendor(vendor.id)}>{vendorProcessing === `vendor-delete-${vendor.id}` ? "Deleting..." : "Delete"}</button>
                     </div>
                   ) : null}
                 </>
@@ -803,7 +803,7 @@ export function InvitesClientPage() {
                 </select>
                 <span className="helperText">Roles control budget visibility, meetings, committee work, and vendor permissions.</span>
               </label>
-              <button className="primaryButton" disabled={!canSubmitInvite || processing === "invite-create"} type="submit">{processing === "invite-create" ? "Preparing..." : "Send email invite"}</button>
+              <button className="primaryButton" data-icon="+" disabled={!canSubmitInvite || processing === "invite-create"} type="submit">{processing === "invite-create" ? "Preparing..." : "Send email invite"}</button>
             </form>
           ) : <p>Your role can participate in this event, but cannot invite members.</p>}
           <p>{formMessage}</p>
@@ -811,7 +811,7 @@ export function InvitesClientPage() {
 
         <section className="stack">
           {canManageInvites(project?.role) && invites.length ? invites.map((invite) => (
-            <article className="panel" key={invite.id}>
+            <article className="panel resourceCard" key={invite.id}>
               <p className="eyebrow">{invite.status} · {invite.delivery_channel}</p>
               <h2>{invite.contact}</h2>
               <p>Role: {invite.role_assigned.replaceAll("_", " ")}</p>
@@ -819,10 +819,10 @@ export function InvitesClientPage() {
               <p className="helperText">Pending invites can be cancelled. Accepted invites become event memberships and should be managed from member roles.</p>
               <p className="tokenNote">{invite.invite_link}</p>
               <div className="buttonRow">
-                <button className="ghostButton" disabled={invite.status === "accepted" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "resend")}>
+                <button className="ghostButton" data-icon="↻" disabled={invite.status === "accepted" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "resend")}>
                   {processing === `resend-${invite.id}` ? "Resending..." : "Resend"}
                 </button>
-                <button className="ghostButton danger" disabled={invite.status === "accepted" || invite.status === "cancelled" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "cancel")}>
+                <button className="ghostButton danger" data-icon="−" disabled={invite.status === "accepted" || invite.status === "cancelled" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "cancel")}>
                   {processing === `cancel-${invite.id}` ? "Cancelling..." : "Cancel invite"}
                 </button>
               </div>

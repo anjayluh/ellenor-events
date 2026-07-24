@@ -26,7 +26,7 @@ export function ActiveEventSwitcher({
           </select>
           <span className="helperText">Every budget, meeting, committee task, vendor, and invite below belongs to the selected event only.</span>
         </label>
-        {activeProjectId ? <Link className="ghostButton eventDetailsLink" href={`/events/${activeProjectId}`}>Back to event details</Link> : null}
+        {activeProjectId ? <Link className="ghostButton eventDetailsLink" data-icon="←" href={`/events/${activeProjectId}`}>Back to event details</Link> : null}
       </div>
     </section>
   );

@@ -61,19 +61,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero h1 { font-size: clamp(2.2rem, 5vw, 5rem); line-height: 0.96; margin: 0 0 20px; max-width: 980px; }
 .hero p { color: rgba(255, 255, 255, 0.78); font-size: 1.08rem; max-width: 760px; }
 .eyebrow { color: var(--gold) !important; font-size: 0.78rem !important; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; }
-.grid { display: grid; gap: 22px; margin-top: 24px; }
+.grid { align-items: stretch; display: grid; gap: 22px; margin-top: 24px; }
 .twoColumns { grid-template-columns: 1.2fr 0.8fr; }
 .threeColumns { grid-template-columns: repeat(3, 1fr); }
 .panel, .metric {
   background: rgba(255, 251, 255, 0.88);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
   padding: 26px;
   box-shadow: var(--shadow-1);
 }
 .actionPanel { box-shadow: var(--shadow-2); }
 .stack { display: grid; gap: 14px; }
 .eventCard { border: 1px solid var(--border); border-radius: 22px; padding: 18px; background: var(--card); box-shadow: var(--shadow-1); }
+.resourceCard { gap: 12px; min-height: 100%; }
+.resourceCard h2, .panel h2 { margin-top: 0; }
+.resourceCard .buttonRow { margin-top: auto; padding-top: 8px; }
 .eventCard h3 { margin: 0 0 12px; }
 .meta { color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.9rem; }
 .badge { background: rgba(214, 169, 59, 0.16); color: #805d00; border-radius: 999px; padding: 5px 10px; font-weight: 700; }
@@ -85,12 +90,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .metric strong { color: var(--purple); display: block; font-size: 3rem; margin-top: 8px; }
 @media (max-width: 860px) { .twoColumns, .threeColumns { grid-template-columns: 1fr; } .hero { padding: 34px; } .nav { display: none; } .sessionNotice { display: none; } }
 
-.buttonRow { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.buttonRow { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-top: 24px; }
 .secondaryButton { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; color: white; cursor: pointer; font-weight: 800; min-height: 48px; padding: 14px 20px; }
 .tokenNote { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
 
 .ghostButton { background: transparent; border: 1px solid var(--border); border-radius: 999px; color: var(--purple); cursor: pointer; font-weight: 800; min-height: 44px; padding: 12px 16px; }
 .ghostButton.danger { border-color: rgba(179, 38, 30, 0.35); color: var(--error); }
+.primaryButton, .secondaryButton, .ghostButton, .navButton { align-items: center; display: inline-flex; gap: 8px; justify-content: center; line-height: 1.1; }
+.primaryButton[data-icon]::before, .secondaryButton[data-icon]::before, .ghostButton[data-icon]::before, .navButton[data-icon]::before { content: attr(data-icon); font-size: 1rem; font-weight: 900; line-height: 1; }
 
 .fourColumns { grid-template-columns: repeat(4, 1fr); }
 @media (max-width: 1100px) { .fourColumns { grid-template-columns: repeat(2, 1fr); } }
@@ -111,7 +118,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .authPanel label { color: var(--purple); display: grid; font-weight: 800; gap: 8px; }
 .authChallenge { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px; }
 .secondaryButton.light { color: white; background: var(--purple-soft); }
-@media (max-width: 620px) { .main { padding: 28px 4vw; } .hero h1 { font-size: 2.25rem; } .buttonRow { flex-direction: column; } .buttonRow a, .buttonRow button { text-align: center; width: 100%; } }
+@media (max-width: 620px) { .main { padding: 28px 4vw; } .hero h1 { font-size: 2.25rem; } .buttonRow { align-items: stretch; flex-direction: column; } .buttonRow a, .buttonRow button { text-align: center; width: 100%; } }
 @media (max-width: 620px) { .eventSwitcherHeader { align-items: stretch; grid-template-columns: 1fr; } .eventDetailsLink { width: 100%; } }
 
 .navButton { background: transparent; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-weight: 700; padding: 0; }
