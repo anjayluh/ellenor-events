@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.invite import Invite
 from app.models.project_member import ProjectMember
+from app.core.permissions import normalize_permissions
 from app.models.user import User
 from app.schemas.invite import InviteAccept
 
@@ -85,6 +86,8 @@ def create_membership_from_invite(db: Session, invite: Invite, user_id: UUID) ->
     )
     if membership:
         membership.role = invite.role_assigned
+        membership.budget_visibility_mode = invite.budget_visibility_mode
+        membership.permissions_json = {"permissions": sorted(normalize_permissions(getattr(invite, "permissions_json", None)))}
         return membership
 
     membership = ProjectMember(
@@ -92,7 +95,8 @@ def create_membership_from_invite(db: Session, invite: Invite, user_id: UUID) ->
         user_id=user_id,
         role=invite.role_assigned,
         permissions_level="invited",
-        budget_visibility_mode="NO_ACCESS",
+        permissions_json={"permissions": sorted(normalize_permissions(getattr(invite, "permissions_json", None)))},
+        budget_visibility_mode=invite.budget_visibility_mode,
     )
     db.add(membership)
     db.flush()

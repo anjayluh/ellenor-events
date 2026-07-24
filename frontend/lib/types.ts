@@ -20,6 +20,7 @@ export type Project = {
   status: string;
   role?: ProjectRole;
   budget_visibility_mode?: BudgetVisibility;
+  permissions?: string[];
 };
 
 export type AuthUser = {
@@ -35,6 +36,33 @@ export type AuthToken = {
   user: AuthUser;
 };
 
+export type BudgetLineItem = {
+  id: string;
+  project_id: string;
+  category: string;
+  description: string;
+  item_name?: string | null;
+  unit_cost: number;
+  quantity: number;
+  total_cost: number;
+  deposited_amount: number;
+  balance: number;
+  next_deposit_date?: string | null;
+  payment_details?: string | null;
+  estimated_amount: number;
+  actual_amount: number;
+  status: string;
+};
+
+export type Contribution = {
+  id: string;
+  project_id: string;
+  contributor: string;
+  pledged: number;
+  paid: number;
+  status: string;
+};
+
 export type BudgetResponse = {
   visibility: BudgetVisibility;
   total?: number | null;
@@ -42,4 +70,18 @@ export type BudgetResponse = {
   remaining?: number | null;
   contribution_progress?: number | null;
   pledged_total?: number | null;
+  line_item_total_cost?: number | null;
+  line_item_deposited_total?: number | null;
+  line_item_balance_total?: number | null;
+  line_items?: BudgetLineItem[] | null;
+  contributions?: Contribution[] | null;
 };
+
+export type EventPermission =
+  | "event.manage"
+  | "budget.edit"
+  | "committee.manage"
+  | "guest_invites.manage"
+  | "vendors.manage"
+  | "meetings.manage"
+  | "tasks.manage";

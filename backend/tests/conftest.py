@@ -20,6 +20,7 @@ from app.models import (
     BudgetLineItem,
     BudgetProposal,
     Contribution,
+    GuestInvite,
     Invite,
     Meeting,
     MeetingRsvp,
@@ -35,6 +36,10 @@ from app.models import (
     Testimonial,
     User,
     Vendor,
+    VendorBooking,
+    VendorPayment,
+    VendorPortfolioItem,
+    VendorProfile,
 )
 
 

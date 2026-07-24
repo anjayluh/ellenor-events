@@ -12,7 +12,7 @@ import { StateBlock } from "./StateBlock";
 type Meeting = { id: string; type: string; title: string; agenda?: string | null; scheduled_time: string; status: string };
 type Task = { id: string; title: string; status: string; due_date?: string | null };
 type Vendor = { id: string; name: string; category: string; status: string; contact?: string | null };
-type Invite = { id: string; project_id: string; contact: string; role_assigned: ProjectRole; status: string; invite_link: string; delivery_channel: string; expires_at: string; sent_count: number; opened_count: number };
+type Invite = { id: string; project_id: string; contact: string; role_assigned: ProjectRole; status: string; invite_link: string; delivery_channel: string; expires_at: string; sent_count: number; opened_count: number; budget_visibility_mode?: string; permissions?: string[] };
 type StaffDashboard = { active_projects: number; archived_projects: number; risk_alerts: Array<{ title: string; severity: string; message: string }>; project_health: Array<{ title: string; risk_level: string; pending_task_count: number; overdue_task_count: number; meeting_count: number; budget_variance: number }> };
 
 const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR", "COMMITTEE_MEMBER"];
@@ -50,8 +50,8 @@ function canEditBudget(role?: ProjectRole | null) {
   return Boolean(role && BUDGET_EDITOR_ROLES.includes(role));
 }
 
-function canManageInvites(role?: ProjectRole | null) {
-  return Boolean(role && PROJECT_ADMIN_ROLES.includes(role));
+function canManageInvites(role?: ProjectRole | null, permissions: string[] = []) {
+  return Boolean((role && PROJECT_ADMIN_ROLES.includes(role)) || permissions.includes("guest_invites.manage") || permissions.includes("committee.manage"));
 }
 
 function Guard({
@@ -718,6 +718,8 @@ export function InvitesClientPage() {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<ProjectRole>("COMMITTEE_MEMBER");
+  const [budgetVisibility, setBudgetVisibility] = useState("NO_ACCESS");
+  const [teamPermissions, setTeamPermissions] = useState<string[]>(["tasks.manage", "meetings.manage"]);
   const [formMessage, setFormMessage] = useState("Invite collaborators by email to the selected event.");
   const [processing, setProcessing] = useState<string | null>(null);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -727,7 +729,7 @@ export function InvitesClientPage() {
   }
 
   useEffect(() => {
-    if (!project || !canManageInvites(project.role)) {
+    if (!project || !canManageInvites(project.role, project.permissions)) {
       setInvites([]);
       return;
     }
@@ -735,7 +737,7 @@ export function InvitesClientPage() {
   }, [project]);
 
   const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address." : "";
-  const canSubmitInvite = Boolean(project && canManageInvites(project.role) && email && !emailError);
+  const canSubmitInvite = Boolean(project && canManageInvites(project.role, project.permissions) && email && !emailError);
 
   async function createInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -744,14 +746,16 @@ export function InvitesClientPage() {
     setProcessing("invite-create");
     setFormMessage("Preparing email invite...");
     try {
-      await apiPost<Invite, { project_id: string; contact: string; role_assigned: ProjectRole; delivery_channel: "email" }>("/invites", {
+      await apiPost<Invite, { project_id: string; contact: string; role_assigned: ProjectRole; delivery_channel: "email"; budget_visibility_mode: string; permissions: string[] }>("/invites", {
         project_id: project.id,
         contact: email.trim().toLowerCase(),
         role_assigned: role,
-        delivery_channel: "email"
+        delivery_channel: "email",
+        budget_visibility_mode: budgetVisibility,
+        permissions: teamPermissions
       });
       setEmail("");
-      setFormMessage("Email invite prepared. Share the invite link if provider delivery is not enabled yet.");
+      setFormMessage("Team access invite prepared with the selected event permissions.");
       await loadInvites(project);
     } catch (error) {
       setFormMessage(error instanceof Error ? error.message : "Could not create invite.");
@@ -782,14 +786,14 @@ export function InvitesClientPage() {
       <ActiveEventSwitcher projects={projects} activeProjectId={project?.id} onChange={selectProject} />
       <section className="grid twoColumns">
         <article className="panel actionPanel">
-          <p className="eyebrow">Email Invites</p>
-          <h2>Add people to this event</h2>
-          {canManageInvites(project?.role) ? (
+          <p className="eyebrow">Team Access</p>
+          <h2>Add committee and event collaborators</h2>
+          {canManageInvites(project?.role, project?.permissions) ? (
             <form className="stack" onSubmit={createInvite}>
               <label className="formField">
                 Recipient email
                 <input value={email} onBlur={() => setTouched((current) => ({ ...current, email: true }))} onChange={(event) => setEmail(event.target.value)} placeholder="committee.member@example.com" type="email" aria-invalid={Boolean(emailError)} />
-                <span className="helperText">Required. The invite is scoped only to {project?.title}.</span>
+                <span className="helperText">Required. This creates login access scoped only to {project?.title}; guests use Guest RSVPs instead.</span>
                 {touched.email && emailError ? <span className="errorText">{emailError}</span> : null}
               </label>
               <label className="formField">
@@ -801,8 +805,23 @@ export function InvitesClientPage() {
                   <option value="FAMILY_VIEWER">Family viewer</option>
                   <option value="GUEST_VIEWER">Guest viewer</option>
                 </select>
-                <span className="helperText">Roles control budget visibility, meetings, committee work, and vendor permissions.</span>
+                <span className="helperText">Roles set a safe baseline. Specific permissions below decide what they can manage.</span>
               </label>
+              <label className="formField">
+                Budget visibility
+                <select value={budgetVisibility} onChange={(event) => setBudgetVisibility(event.target.value)}>
+                  <option value="NO_ACCESS">No budget access</option>
+                  <option value="CONTRIBUTION_ONLY">Contribution only</option>
+                  <option value="SUMMARY_ACCESS">Summary access</option>
+                  <option value="FULL_ACCESS">Full access</option>
+                </select>
+                <span className="helperText">Use Full access only for trusted budget committee members.</span>
+              </label>
+              <div className="permissionGrid">
+                {["meetings.manage", "tasks.manage", "committee.manage", "vendors.manage", "guest_invites.manage", "budget.edit"].map((permission) => (
+                  <label key={permission}><input checked={teamPermissions.includes(permission)} onChange={() => setTeamPermissions((current) => current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission].sort())} type="checkbox" />{permission}</label>
+                ))}
+              </div>
               <button className="primaryButton" data-icon="+" disabled={!canSubmitInvite || processing === "invite-create"} type="submit">{processing === "invite-create" ? "Preparing..." : "Send email invite"}</button>
             </form>
           ) : <p>Your role can participate in this event, but cannot invite members.</p>}
@@ -810,11 +829,12 @@ export function InvitesClientPage() {
         </article>
 
         <section className="stack">
-          {canManageInvites(project?.role) && invites.length ? invites.map((invite) => (
+          {canManageInvites(project?.role, project?.permissions) && invites.length ? invites.map((invite) => (
             <article className="panel resourceCard" key={invite.id}>
               <p className="eyebrow">{invite.status} · {invite.delivery_channel}</p>
               <h2>{invite.contact}</h2>
-              <p>Role: {invite.role_assigned.replaceAll("_", " ")}</p>
+              <p>Role: {invite.role_assigned.replaceAll("_", " ")} · Budget: {(invite.budget_visibility_mode ?? "NO_ACCESS").replaceAll("_", " ")}</p>
+              <p>Permissions: {invite.permissions?.join(", ") || "Baseline role permissions"}</p>
               <p>Sent {invite.sent_count} time(s), opened {invite.opened_count} time(s).</p>
               <p className="helperText">Pending invites can be cancelled. Accepted invites become event memberships and should be managed from member roles.</p>
               <p className="tokenNote">{invite.invite_link}</p>
@@ -827,7 +847,7 @@ export function InvitesClientPage() {
                 </button>
               </div>
             </article>
-          )) : <StateBlock title="No invites yet" message={canManageInvites(project?.role) ? "Invite a partner, committee chair, family viewer, guest, or vendor contact by email." : "Invite tracking is available to owners, partners, and committee chairs."} />}
+          )) : <StateBlock title="No team invites yet" message={canManageInvites(project?.role, project?.permissions) ? "Invite a partner, committee chair, or committee member by email. Event guests belong in Guest RSVPs." : "Team access is available to event admins and committee members with invite permissions."} />}
         </section>
       </section>
     </>

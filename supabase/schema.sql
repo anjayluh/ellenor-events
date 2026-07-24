@@ -12,7 +12,8 @@ create table users (
 create table staff_members (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
-  role text not null default 'SUPPORT_AGENT' check (role in ('PLATFORM_ADMIN','OPERATIONS_MANAGER','SUPPORT_AGENT','STAFF_VIEWER')),
+  role text not null default 'SUPPORT_AGENT' check (role in ('SUPER_ADMIN','PLATFORM_ADMIN','OPERATIONS_MANAGER','SUPPORT_AGENT','STAFF_VIEWER')),
+  permissions jsonb not null default '{"permissions": []}'::jsonb,
   status text not null default 'active' check (status in ('active','inactive')),
   created_at timestamptz default now(),
   unique(user_id)
@@ -70,6 +71,7 @@ create table project_members (
   user_id uuid not null references users(id) on delete cascade,
   role text not null check (role in ('OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER','FAMILY_VIEWER','GUEST_VIEWER')),
   permissions_level text,
+  permissions jsonb not null default '{"permissions": []}'::jsonb,
   budget_visibility_mode text not null default 'NO_ACCESS' check (budget_visibility_mode in ('FULL_ACCESS','SUMMARY_ACCESS','CONTRIBUTION_ONLY','NO_ACCESS')),
   created_at timestamptz default now(),
   unique(project_id, user_id)
@@ -103,7 +105,7 @@ create table vendors (
   name text not null,
   category text not null,
   contact text,
-  status text not null default 'shortlisted' check (status in ('shortlisted','contacted','confirmed','declined','completed')),
+  status text not null default 'shortlisted' check (status in ('shortlisted','quote_requested','preferred','booked','rejected','contacted','confirmed','declined','completed')),
   notes text,
   external_url text,
   created_at timestamptz default now()
@@ -144,6 +146,8 @@ create table invites (
   project_id uuid not null references projects(id) on delete cascade,
   contact text not null,
   role_assigned text not null check (role_assigned in ('OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER','FAMILY_VIEWER','GUEST_VIEWER')),
+  permissions jsonb not null default '{"permissions": []}'::jsonb,
+  budget_visibility_mode text not null default 'NO_ACCESS' check (budget_visibility_mode in ('FULL_ACCESS','SUMMARY_ACCESS','CONTRIBUTION_ONLY','NO_ACCESS')),
   token text unique not null,
   status text not null default 'pending' check (status in ('pending','accepted','expired','cancelled')),
   delivery_channel text not null default 'email' check (delivery_channel in ('whatsapp','email')),
@@ -156,6 +160,74 @@ create table invites (
   accepted_at timestamptz,
   cancelled_at timestamptz,
   created_at timestamptz default now()
+);
+
+create table guest_invites (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  guest_name text not null,
+  email text,
+  phone text,
+  invitation_card_url text,
+  token text unique not null,
+  status text not null default 'draft' check (status in ('draft','sent','responded','cancelled')),
+  attendance_status text not null default 'pending' check (attendance_status in ('pending','accepted','declined','cancelled','confirmed','rejected')),
+  sent_count integer not null default 0,
+  last_sent_at timestamptz,
+  responded_at timestamptz,
+  notes text,
+  created_at timestamptz default now(),
+  check (email is not null or phone is not null)
+);
+
+create table vendor_profiles (
+  user_id uuid primary key references users(id) on delete cascade,
+  business_name text not null,
+  category text not null,
+  contact_email text,
+  contact_phone text,
+  location text,
+  bio text,
+  payment_details text,
+  status text not null default 'active' check (status in ('active','hidden','suspended')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table vendor_portfolio_items (
+  id uuid primary key default gen_random_uuid(),
+  vendor_user_id uuid not null references vendor_profiles(user_id) on delete cascade,
+  title text not null,
+  image_url text not null,
+  description text,
+  created_at timestamptz default now()
+);
+
+create table vendor_bookings (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  vendor_user_id uuid not null references vendor_profiles(user_id) on delete cascade,
+  requested_by uuid not null references users(id),
+  status text not null default 'requested' check (status in ('requested','meeting_requested','meeting_scheduled','booked','declined','completed','cancelled')),
+  meeting_requested_at timestamptz,
+  meeting_notes text,
+  quoted_amount numeric(12, 2) not null default 0,
+  agreed_amount numeric(12, 2) not null default 0,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(project_id, vendor_user_id)
+);
+
+create table vendor_payments (
+  id uuid primary key default gen_random_uuid(),
+  booking_id uuid not null references vendor_bookings(id) on delete cascade,
+  amount numeric(12, 2) not null default 0,
+  received_at date,
+  payment_method text,
+  payment_reference text,
+  notes text,
+  created_at timestamptz default now(),
+  check (amount >= 0)
 );
 
 create table meetings (
@@ -204,11 +276,19 @@ create table budget_line_items (
   project_id uuid not null references projects(id) on delete cascade,
   category text not null,
   description text not null,
+  item_name text,
+  unit_cost numeric(12, 2) not null default 0,
+  quantity numeric(12, 2) not null default 1,
+  total_cost numeric(12, 2) not null default 0,
+  deposited_amount numeric(12, 2) not null default 0,
+  balance numeric(12, 2) not null default 0,
+  next_deposit_date date,
+  payment_details text,
   estimated_amount numeric(12, 2) not null default 0,
   actual_amount numeric(12, 2) not null default 0,
   status text not null default 'planned' check (status in ('planned','approved','paid','cancelled')),
   created_at timestamptz default now(),
-  check (estimated_amount >= 0 and actual_amount >= 0)
+  check (estimated_amount >= 0 and actual_amount >= 0 and unit_cost >= 0 and quantity >= 0 and total_cost >= 0 and deposited_amount >= 0 and balance >= 0)
 );
 
 create table budget_proposals (
@@ -256,6 +336,14 @@ create index idx_vendors_project on vendors(project_id);
 create index idx_notifications_project_status on notifications(project_id, status);
 create index idx_notifications_next_retry on notifications(next_retry_at) where next_retry_at is not null;
 create index idx_invites_project on invites(project_id);
+create index idx_guest_invites_project on guest_invites(project_id);
+create index idx_guest_invites_token on guest_invites(token);
+create index idx_guest_invites_attendance on guest_invites(project_id, attendance_status);
+create index idx_vendor_profiles_category_status on vendor_profiles(category, status);
+create index idx_vendor_portfolio_vendor on vendor_portfolio_items(vendor_user_id);
+create index idx_vendor_bookings_project on vendor_bookings(project_id);
+create index idx_vendor_bookings_vendor on vendor_bookings(vendor_user_id);
+create index idx_vendor_payments_booking on vendor_payments(booking_id);
 create index idx_meetings_project_time on meetings(project_id, scheduled_time);
 create index idx_tasks_project on tasks(project_id);
 create index idx_budget_line_items_project on budget_line_items(project_id);
@@ -293,6 +381,26 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert or update on auth.users
   for each row execute function public.sync_auth_user_profile();
+
+create or replace function public.is_platform_admin(required_permission text default null)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1
+    from public.staff_members sm
+    where sm.user_id = auth.uid()
+      and sm.status = 'active'
+      and (
+        sm.role = 'SUPER_ADMIN'
+        or required_permission is null
+        or (sm.permissions -> 'permissions') ? required_permission
+      )
+  );
+$$;
 
 create or replace function public.write_audit_log(
   actor_user_id uuid,
@@ -399,3 +507,26 @@ begin
   return project_id;
 end;
 $$;
+
+
+create or replace function public.grant_configured_super_admin()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if lower(coalesce(new.email, '')) = 'anjayluh.wakabi@gmail.com' then
+    insert into public.staff_members (user_id, role, status, permissions)
+    values (new.id, 'SUPER_ADMIN', 'active', '{"permissions": []}'::jsonb)
+    on conflict (user_id) do update
+    set role = 'SUPER_ADMIN', status = 'active';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists grant_configured_super_admin_on_user on public.users;
+create trigger grant_configured_super_admin_on_user
+  after insert or update of email on public.users
+  for each row execute function public.grant_configured_super_admin();

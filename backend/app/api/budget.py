@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user, get_project_membership, membership_budget_visibility, membership_role
-from app.core.permissions import BUDGET_WRITE_ROLES, PROJECT_ADMIN_ROLES, BudgetVisibilityMode, ProjectRole, require_budget_read, require_role
+from app.core.permissions import BUDGET_EDIT_PERMISSION, BUDGET_WRITE_ROLES, PROJECT_ADMIN_ROLES, BudgetVisibilityMode, ProjectRole, has_permission, require_budget_read, require_permission, require_role
 from app.db.session import get_db
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
 from app.schemas.budget import (
@@ -73,7 +73,7 @@ def get_budget(project_id: UUID, membership=Depends(get_project_membership), db:
 
 @router.patch("", response_model=BudgetRead)
 def update_budget(project_id: UUID, payload: BudgetUpdate, current_user: CurrentUser = Depends(get_current_user), membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     budget = get_budget_record(db, project_id)
     budget.total = payload.total
     budget.spent = payload.spent
@@ -84,14 +84,14 @@ def update_budget(project_id: UUID, payload: BudgetUpdate, current_user: Current
 
 @router.get("/line-items", response_model=list[BudgetLineItemRead])
 def list_line_items(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    if membership_budget_visibility(membership) != BudgetVisibilityMode.FULL_ACCESS:
+    if membership_budget_visibility(membership) != BudgetVisibilityMode.FULL_ACCESS and not has_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_EDIT_PERMISSION):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Full budget access required")
     return db.query(BudgetLineItem).filter(BudgetLineItem.project_id == project_id).all()
 
 
 @router.post("/line-items", response_model=BudgetLineItemRead)
 def create_line_item(project_id: UUID, payload: BudgetLineItemCreate, current_user: CurrentUser = Depends(get_current_user), membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     item = BudgetLineItem(project_id=project_id, **payload.model_dump())
     db.add(item)
     write_audit_log(db, "budget.line_item_created", actor_user_id=current_user.id, project_id=project_id)
@@ -102,7 +102,7 @@ def create_line_item(project_id: UUID, payload: BudgetLineItemCreate, current_us
 
 @router.patch("/line-items/{item_id}", response_model=BudgetLineItemRead)
 def update_line_item(project_id: UUID, item_id: UUID, payload: BudgetLineItemUpdate, current_user: CurrentUser = Depends(get_current_user), membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     item = get_line_item_or_404(db, project_id, item_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(item, field, value)
@@ -114,7 +114,7 @@ def update_line_item(project_id: UUID, item_id: UUID, payload: BudgetLineItemUpd
 
 @router.delete("/line-items/{item_id}")
 def delete_line_item(project_id: UUID, item_id: UUID, current_user: CurrentUser = Depends(get_current_user), membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     item = get_line_item_or_404(db, project_id, item_id)
     db.delete(item)
     write_audit_log(db, "budget.line_item_deleted", actor_user_id=current_user.id, project_id=project_id, metadata={"item_id": str(item_id)})
@@ -180,7 +180,7 @@ def create_proposal(project_id: UUID, payload: BudgetProposalCreate, current_use
 
 @router.patch("/proposals/{proposal_id}/review", response_model=BudgetProposalRead)
 def review_proposal(project_id: UUID, proposal_id: UUID, payload: BudgetProposalReview, current_user: CurrentUser = Depends(get_current_user), membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     proposal = get_proposal_or_404(db, project_id, proposal_id)
     proposal.status = payload.status
     proposal.reviewed_by = current_user.id
@@ -193,7 +193,7 @@ def review_proposal(project_id: UUID, proposal_id: UUID, payload: BudgetProposal
 
 @router.get("/export", response_model=BudgetExport)
 def export_budget(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), BUDGET_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), BUDGET_WRITE_ROLES, BUDGET_EDIT_PERMISSION)
     budget = get_budget_record(db, project_id)
     contributions = db.query(Contribution).filter(Contribution.project_id == project_id).all()
     line_items = db.query(BudgetLineItem).filter(BudgetLineItem.project_id == project_id).all()

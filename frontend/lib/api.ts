@@ -9,7 +9,7 @@ export class ApiError extends Error {
 }
 
 function isPublicPath(path: string) {
-  return path.startsWith("/auth/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path);
+  return path.startsWith("/auth/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path);
 }
 
 function resolveAccessToken(path: string, token?: string): string | null {
@@ -50,6 +50,19 @@ export async function apiPost<TResponse, TPayload>(path: string, payload: TPaylo
   const accessToken = resolveAccessToken(path, token);
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+    },
+    body: JSON.stringify(payload)
+  });
+  return parseResponse<TResponse>(response, Boolean(accessToken));
+}
+
+export async function apiPut<TResponse, TPayload>(path: string, payload: TPayload, token?: string): Promise<TResponse> {
+  const accessToken = resolveAccessToken(path, token);
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "PUT",
     headers: {
       "Content-Type": "application/json",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})

@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +16,8 @@ class Invite(Base):
     project_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
     contact: Mapped[str] = mapped_column(String, index=True)
     role_assigned: Mapped[str] = mapped_column(String)
+    permissions_json: Mapped[dict] = mapped_column("permissions", JSONB, default=dict)
+    budget_visibility_mode: Mapped[str] = mapped_column(String, default="NO_ACCESS")
     token: Mapped[str] = mapped_column(String, unique=True, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
     delivery_channel: Mapped[str] = mapped_column(String, default="email")

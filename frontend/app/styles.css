@@ -143,3 +143,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .sectionHeader h2 { margin: 0; }
 .inlineDisclosure { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px; }
 .inlineDisclosure summary { color: var(--purple); cursor: pointer; font-weight: 900; }
+
+.compactGrid { margin-top: 0; }
+.tablePanel { min-width: 0; }
+.tableScroller { overflow-x: auto; width: 100%; }
+.dataTable { border-collapse: collapse; min-width: 860px; width: 100%; }
+.dataTable th { color: var(--purple); font-size: 0.78rem; letter-spacing: 0.08em; text-align: left; text-transform: uppercase; }
+.dataTable th, .dataTable td { border-bottom: 1px solid var(--border); padding: 13px 10px; vertical-align: top; }
+.dataTable td small { color: var(--muted); display: block; font-size: 0.8rem; margin-top: 4px; }
+.tableActions { margin-top: 0; }
+.permissionGrid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.permissionGrid label { align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; display: flex; flex-direction: row; gap: 8px; padding: 10px; }
+.permissionGrid input { min-height: auto; }
+.portfolioGrid { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 12px; }
+.portfolioGrid figure { margin: 0; }
+.portfolioThumb, .portfolioImage, .inviteCardPreview { border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-1); width: 100%; }
+.imagePreview { background-position: center; background-repeat: no-repeat; background-size: cover; }
+.imagePreview.contain { background-size: contain; }
+.portfolioThumb, .portfolioImage { aspect-ratio: 4 / 3; }
+.inviteCardPreview { aspect-ratio: 4 / 5; max-height: 620px; }
+@media (max-width: 720px) { .permissionGrid, .portfolioGrid { grid-template-columns: 1fr; } }

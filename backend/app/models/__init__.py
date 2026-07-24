@@ -1,6 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.auth_challenge import AuthChallenge
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
+from app.models.guest_invite import GuestInvite
 from app.models.invite import Invite
 from app.models.meeting import Meeting, MeetingRsvp
 from app.models.notification import Notification, NotificationPreference
@@ -14,6 +15,7 @@ from app.models.task import Task
 from app.models.testimonial import Testimonial
 from app.models.user import User
 from app.models.vendor import Vendor
+from app.models.vendor_portal import VendorBooking, VendorPayment, VendorPortfolioItem, VendorProfile
 
 __all__ = [
     "AuditLog",
@@ -22,6 +24,7 @@ __all__ = [
     "BudgetLineItem",
     "BudgetProposal",
     "Contribution",
+    "GuestInvite",
     "Invite",
     "Meeting",
     "MeetingRsvp",
@@ -37,4 +40,8 @@ __all__ = [
     "Testimonial",
     "User",
     "Vendor",
+    "VendorBooking",
+    "VendorPayment",
+    "VendorPortfolioItem",
+    "VendorProfile",
 ]

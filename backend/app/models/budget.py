@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -23,6 +23,14 @@ class BudgetLineItem(Base):
     project_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("projects.id"), index=True)
     category: Mapped[str] = mapped_column(String)
     description: Mapped[str] = mapped_column(Text)
+    item_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    unit_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    quantity: Mapped[float] = mapped_column(Numeric(12, 2), default=1)
+    total_cost: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    deposited_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    balance: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
+    next_deposit_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    payment_details: Mapped[str | None] = mapped_column(Text, nullable=True)
     estimated_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     actual_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     status: Mapped[str] = mapped_column(String, default="planned")

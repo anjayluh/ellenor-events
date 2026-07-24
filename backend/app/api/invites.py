@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user
-from app.core.permissions import PROJECT_ADMIN_ROLES, ProjectRole, require_role
+from app.core.permissions import GUEST_INVITES_MANAGE_PERMISSION, PROJECT_ADMIN_ROLES, ProjectRole, normalize_permissions, require_permission
 from app.db.session import get_db
 from app.models.invite import Invite
 from app.models.project_member import ProjectMember
@@ -40,7 +40,7 @@ def require_invite_permission(project_id: UUID, current_user: CurrentUser, db: S
     )
     if not membership:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this project")
-    require_role(ProjectRole(membership.role), PROJECT_ADMIN_ROLES)
+    require_permission(ProjectRole(membership.role), getattr(membership, "permissions_json", None), PROJECT_ADMIN_ROLES, GUEST_INVITES_MANAGE_PERMISSION)
     return membership
 
 
@@ -59,6 +59,8 @@ def serialize_invite(invite: Invite) -> InviteRead:
         expires_at=invite.expires_at,
         sent_count=invite.sent_count or 0,
         opened_count=invite.opened_count or 0,
+        budget_visibility_mode=invite.budget_visibility_mode,
+        permissions=sorted(normalize_permissions(getattr(invite, "permissions_json", None))),
     )
 
 
@@ -72,6 +74,8 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         role_assigned=payload.role_assigned.value,
         token=token,
         delivery_channel=payload.delivery_channel,
+        permissions_json={"permissions": sorted(normalize_permissions(payload.permissions))},
+        budget_visibility_mode=payload.budget_visibility_mode.value,
         sent_count=1,
         last_sent_at=datetime.now(timezone.utc),
         expires_at=default_invite_expiry(),

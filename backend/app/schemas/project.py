@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.common import EventType
 
@@ -25,6 +25,7 @@ class ProjectRead(ProjectCreate):
     status: str
     role: str | None = None
     budget_visibility_mode: str | None = None
+    permissions: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -4,14 +4,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_project_membership, membership_role
-from app.core.permissions import ProjectRole, require_role
+from app.core.permissions import PROJECT_ADMIN_ROLES, VENDORS_MANAGE_PERMISSION, ProjectRole, require_permission
 from app.db.session import get_db
 from app.models.vendor import Vendor
 from app.schemas.vendor import VendorCreate, VendorRead, VendorUpdate
 from app.services.audit_service import write_audit_log
 
 router = APIRouter()
-VENDOR_WRITE_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER, ProjectRole.COMMITTEE_CHAIR, ProjectRole.COMMITTEE_MEMBER}
+VENDOR_WRITE_ROLES = PROJECT_ADMIN_ROLES
 
 
 def get_vendor_or_404(db: Session, project_id: UUID, vendor_id: UUID) -> Vendor:
@@ -31,7 +31,7 @@ def list_vendors(project_id: UUID, category: str | None = None, membership=Depen
 
 @router.post("", response_model=VendorRead)
 def create_vendor(project_id: UUID, payload: VendorCreate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), VENDOR_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), VENDOR_WRITE_ROLES, VENDORS_MANAGE_PERMISSION)
     vendor = Vendor(project_id=project_id, **payload.model_dump())
     db.add(vendor)
     write_audit_log(db, "vendor.created", actor_user_id=membership.user_id, project_id=project_id)
@@ -42,7 +42,7 @@ def create_vendor(project_id: UUID, payload: VendorCreate, membership=Depends(ge
 
 @router.patch("/{vendor_id}", response_model=VendorRead)
 def update_vendor(project_id: UUID, vendor_id: UUID, payload: VendorUpdate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), VENDOR_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), VENDOR_WRITE_ROLES, VENDORS_MANAGE_PERMISSION)
     vendor = get_vendor_or_404(db, project_id, vendor_id)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(vendor, field, value)
@@ -54,7 +54,7 @@ def update_vendor(project_id: UUID, vendor_id: UUID, payload: VendorUpdate, memb
 
 @router.delete("/{vendor_id}")
 def delete_vendor(project_id: UUID, vendor_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), VENDOR_WRITE_ROLES)
+    require_permission(membership_role(membership), getattr(membership, "permissions_json", None), VENDOR_WRITE_ROLES, VENDORS_MANAGE_PERMISSION)
     vendor = get_vendor_or_404(db, project_id, vendor_id)
     db.delete(vendor)
     write_audit_log(db, "vendor.deleted", actor_user_id=membership.user_id, project_id=project_id, metadata={"vendor_id": str(vendor_id)})

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, budget, invites, meetings, members, notifications, participants, projects, staff, tasks, testimonials, vendors
+from app.api import admin, auth, budget, guest_invites, invites, meetings, members, notifications, participants, projects, staff, tasks, testimonials, vendor_portal, vendors
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,9 +19,12 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(admin.router, prefix="/admin", tags=["admin"])
 app.include_router(projects.router, prefix="/projects", tags=["projects"])
 app.include_router(members.router, prefix="/projects/{project_id}/members", tags=["members"])
 app.include_router(participants.router, prefix="/projects/{project_id}/participants", tags=["participants"])
+app.include_router(guest_invites.router, prefix="/projects/{project_id}/guest-invites", tags=["guest-invites"])
+app.include_router(guest_invites.public_router, prefix="/guest-invites", tags=["guest-invites"])
 app.include_router(tasks.router, prefix="/projects/{project_id}/tasks", tags=["tasks"])
 app.include_router(vendors.router, prefix="/projects/{project_id}/vendors", tags=["vendors"])
 app.include_router(testimonials.router, prefix="/projects/{project_id}/testimonials", tags=["testimonials"])
@@ -29,6 +32,7 @@ app.include_router(meetings.router, prefix="/projects/{project_id}/meetings", ta
 app.include_router(notifications.router, prefix="/projects/{project_id}/notifications", tags=["notifications"])
 app.include_router(budget.router, prefix="/projects/{project_id}/budget", tags=["budget"])
 app.include_router(invites.router, prefix="/invites", tags=["invites"])
+app.include_router(vendor_portal.router, prefix="/vendors", tags=["vendor-portal"])
 app.include_router(staff.router, prefix="/staff", tags=["staff"])
 
 

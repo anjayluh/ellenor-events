@@ -1,5 +1,5 @@
 import { PortalShell } from "../../components/PortalShell";
-import { BudgetClientPage } from "../../components/ProtectedPages";
+import { BudgetTableClientPage } from "../../components/BudgetTableClientPage";
 
 export default function BudgetPage() {
   return (
@@ -9,7 +9,7 @@ export default function BudgetPage() {
         <h1>Financial clarity, without leaking sensitive details.</h1>
         <p>Backend-shaped visibility controls what each role can see before data reaches the interface.</p>
       </section>
-      <BudgetClientPage />
+      <BudgetTableClientPage />
     </PortalShell>
   );
 }

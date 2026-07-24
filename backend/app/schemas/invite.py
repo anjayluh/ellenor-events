@@ -1,9 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
-from app.core.permissions import ProjectRole
+from app.core.permissions import BudgetVisibilityMode, ProjectRole
 
 
 class InviteCreate(BaseModel):
@@ -11,6 +11,8 @@ class InviteCreate(BaseModel):
     contact: str
     role_assigned: ProjectRole
     delivery_channel: str = "email"
+    budget_visibility_mode: BudgetVisibilityMode = BudgetVisibilityMode.NO_ACCESS
+    permissions: list[str] = Field(default_factory=list)
 
 
 class InviteRead(BaseModel):
@@ -25,6 +27,8 @@ class InviteRead(BaseModel):
     expires_at: datetime
     sent_count: int = 0
     opened_count: int = 0
+    budget_visibility_mode: BudgetVisibilityMode = BudgetVisibilityMode.NO_ACCESS
+    permissions: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

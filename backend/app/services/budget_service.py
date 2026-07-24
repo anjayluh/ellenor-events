@@ -23,6 +23,13 @@ def shape_budget_response(
     spent = money(budget.spent if budget else 0)
     paid_total = sum(money(item.paid) for item in contributions)
     pledged_total = sum(money(item.pledged) for item in contributions)
+    visible_line_items = line_items or []
+    line_item_total_cost = sum(money(getattr(item, "total_cost", None)) or money(item.estimated_amount) for item in visible_line_items)
+    line_item_deposited_total = sum(money(getattr(item, "deposited_amount", None)) or money(item.actual_amount) for item in visible_line_items)
+    line_item_balance_total = sum(
+        money(getattr(item, "balance", None)) or max((money(getattr(item, "total_cost", None)) or money(item.estimated_amount)) - (money(getattr(item, "deposited_amount", None)) or money(item.actual_amount)), 0)
+        for item in visible_line_items
+    )
 
     if visibility == BudgetVisibilityMode.FULL_ACCESS:
         return BudgetRead(
@@ -32,7 +39,10 @@ def shape_budget_response(
             remaining=max(total - spent, 0),
             contribution_progress=paid_total,
             pledged_total=pledged_total,
-            line_items=line_items or [],
+            line_item_total_cost=line_item_total_cost,
+            line_item_deposited_total=line_item_deposited_total,
+            line_item_balance_total=line_item_balance_total,
+            line_items=visible_line_items,
             contributions=contributions,
         )
 

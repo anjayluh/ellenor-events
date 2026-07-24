@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user, get_project_membership, membership_role
 from app.core.config import settings
-from app.core.permissions import PROJECT_ADMIN_ROLES, PROJECT_OWNER_ROLES, require_role
+from app.core.permissions import PROJECT_ADMIN_ROLES, PROJECT_OWNER_ROLES, normalize_permissions, require_role
 from app.db.session import get_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
@@ -45,6 +45,7 @@ def serialize_project(project: Project, membership: ProjectMember | None = None)
         status=project.status,
         role=membership.role if membership else None,
         budget_visibility_mode=membership.budget_visibility_mode if membership else None,
+        permissions=sorted(normalize_permissions(getattr(membership, "permissions_json", None))) if membership else [],
     )
 
 

@@ -81,3 +81,10 @@ def membership_role(membership: ProjectMember) -> ProjectRole:
 
 def membership_budget_visibility(membership: ProjectMember) -> BudgetVisibilityMode:
     return BudgetVisibilityMode(membership.budget_visibility_mode)
+
+
+
+def membership_permissions(membership: ProjectMember) -> set[str]:
+    from app.core.permissions import effective_permissions
+
+    return effective_permissions(ProjectRole(membership.role), getattr(membership, "permissions_json", None))
