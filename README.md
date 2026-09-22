@@ -80,10 +80,11 @@ Do not rely on `X-User-Id` in production. It is disabled by default and only ava
 
 ## Deployment
 
-Deployment is configured for Supabase + Render + Vercel. See `docs/deployment-guide.md` for the full production checklist.
+Deployment is configured for Supabase plus Vercel Services from this single repository. See `docs/deployment-guide.md` for the full production checklist.
 
-- Backend: `render.yaml` + `backend/Dockerfile`
-- Frontend: `frontend/vercel.json`
+- Frontend service: `frontend/` Next.js application
+- Backend service: `backend/` FastAPI application using `app.main:app`
+- Vercel config: root `vercel.json`
 - Monitoring: `.github/workflows/uptime.yml` with `PRODUCTION_API_HEALTH_URL` repository variable
 
 

@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.venv/
+backend/__pycache__/
+backend/.pytest_cache/
+frontend/.env
+frontend/.env.*
+frontend/.next/
+frontend/node_modules/
+.node/
+.pytest_cache/
+coverage/
+*.log

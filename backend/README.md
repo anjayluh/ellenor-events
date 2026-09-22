@@ -60,4 +60,4 @@ Run the service and open:
 
 ## Deployment
 
-The backend deploys from `backend/Dockerfile` through the root `render.yaml` Blueprint. See `docs/deployment-guide.md` and `docs/qa-deployment-runbook.md`.
+The backend deploys as the `backend` Vercel Service from `backend/` with FastAPI entrypoint `app.main:app`. See `docs/deployment-guide.md` and `docs/qa-deployment-runbook.md`.

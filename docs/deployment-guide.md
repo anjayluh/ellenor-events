@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide deploys Ellenor Events Coordination System with free-tier-friendly services: Supabase for Postgres/Auth, Render for the FastAPI backend, and Vercel for the Next.js frontend. For end-to-end QA, account setup, sample inputs, and phase-by-phase checks, see `docs/qa-deployment-runbook.md`.
+This guide prepares Ellenor Events Coordination System for Supabase plus Vercel Services. The repository contains two deployable services in one GitHub repository: `frontend/` for Next.js and `backend/` for FastAPI. For end-to-end QA, account setup, sample inputs, and phase-by-phase checks, see `docs/qa-deployment-runbook.md`.
 
 ## 1. Supabase
 
@@ -22,67 +22,79 @@ psql "$DATABASE_URL" -f supabase/seed.sql
 
 5. Confirm RLS is enabled and policies exist for project-owned tables before exposing real data.
 
-## 2. Backend on Render
+## 2. Vercel Services
 
-The root `render.yaml` defines the backend web service from `backend/Dockerfile`. Connect the GitHub repo in Render and create a Blueprint from `render.yaml`.
+The root `vercel.json` defines two Vercel Services:
 
-Required environment variables:
+| Service | Root | Framework | Entrypoint |
+| --- | --- | --- | --- |
+| `frontend` | `frontend/` | Next.js | Detected from `frontend/package.json` |
+| `backend` | `backend/` | FastAPI | `app.main:app` |
 
-| Key | Notes |
-| --- | --- |
-| `DATABASE_URL` | Supabase Postgres URL using `postgresql+psycopg://` |
-| `JWT_SECRET` | Supabase JWT secret or platform-issued signing secret |
-| `ENVIRONMENT` | `production` |
-| `FRONTEND_URL` | Canonical Vercel app URL |
-| `CORS_ORIGINS` | Comma-separated production and preview frontend URLs |
-| `RESEND_API_KEY` | Required when email fallback is enabled |
-| `RESEND_FROM_EMAIL` | Verified sender identity |
-| `WHATSAPP_CLOUD_API_TOKEN` | Optional until Cloud API sending is enabled |
-| `WHATSAPP_PHONE_NUMBER_ID` | Optional until Cloud API sending is enabled |
+Top-level rewrites route backend API paths to the `backend` service and all other paths to the `frontend` service. Browser API calls are same-origin by default in production, so `NEXT_PUBLIC_API_BASE_URL` should be left unset unless intentionally pointing at a separate backend.
 
-Health check path: `/health`.
+## 3. Vercel Dashboard Settings
 
-## 3. Frontend on Vercel
+1. Import the GitHub repository once as a Vercel project.
+2. Set the Framework Preset to `Services`.
+3. Keep the project root at the repository root. Do not set the Root Directory to `frontend/` or `backend/`.
+4. Use Node.js `20.19.0` or another compatible Node 20 runtime for the frontend service.
+5. Add the environment variables below to Production and Preview unless noted otherwise.
+6. Deploy after the environment variables are present.
 
-1. Import the GitHub repository in Vercel.
-2. Set the project root directory to `frontend`.
-3. Keep Node.js at `20.19.0` or newer compatible Node 20.
-4. Set environment variables:
+## 4. Required Vercel Environment Variables
 
-| Key | Notes |
-| --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | Render backend URL, for example `https://ellenor-events-api.onrender.com` |
+| Key | Environments | Purpose |
+| --- | --- | --- |
+| `ENVIRONMENT` | Production, Preview | Set to `production` for production and `preview` or `staging` for previews. |
+| `DATABASE_POOLER_URL` | Production, Preview | Preferred Supabase pooled Postgres URL for serverless connections. |
+| `DATABASE_URL` | Production, Preview | Supabase direct Postgres URL fallback if the pooler URL is unavailable. |
+| `AUTH_PROVIDER` | Production, Preview | Use `supabase`. |
+| `SUPABASE_URL` | Production, Preview | Supabase project URL used for Auth and JWT verification. |
+| `SUPABASE_ANON_KEY` | Production, Preview | Supabase public anon key used by backend auth flows. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production, Preview | Server-only Supabase service key for admin auth operations such as password reset confirmation. |
+| `SUPABASE_JWT_SECRET` | Production, Preview | Supabase JWT secret for HS256 token verification fallback. |
+| `JWT_SECRET` | Production, Preview | Local signing fallback; use the Supabase JWT secret or another strong secret. |
+| `JWT_ALGORITHM` | Production, Preview | Use `HS256` unless the auth strategy changes. |
+| `FRONTEND_URL` | Production, Preview | Canonical Vercel deployment URL for links and CORS allow-listing. |
+| `CORS_ORIGINS` | Production, Preview | Comma-separated production and preview frontend origins, if cross-origin access is needed. |
+| `EMAIL_PROVIDER` | Production, Preview | Use `resend` when email notifications are enabled. |
+| `RESEND_API_KEY` | Production, Preview | Required only when sending email through Resend. |
+| `RESEND_FROM_EMAIL` | Production, Preview | Verified sender identity, for example `Ellenor Events <noreply@your-domain.com>`. |
+| `WHATSAPP_MODE` | Production, Preview | Use `manual_links` unless WhatsApp Cloud API sending is enabled. |
+| `WHATSAPP_CLOUD_API_TOKEN` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |
+| `WHATSAPP_PHONE_NUMBER_ID` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |
+| `NOTIFICATION_MAX_ATTEMPTS` | Production, Preview | Notification retry limit. |
+| `NEXT_PUBLIC_API_BASE_URL` | Usually unset | Leave unset for Vercel Services same-origin routing. Set only if intentionally calling a separate backend origin. |
 
-5. Deploy and confirm the frontend can call `GET /health` on the backend.
+Do not add `.env.local`, `backend/.env`, or any local secret files to Git.
 
-## 4. CORS
+## 5. CORS
 
-The backend reads `FRONTEND_URL` plus optional comma-separated `CORS_ORIGINS`. Use this for production plus Vercel preview URLs when needed. Example:
+With Vercel Services, frontend requests use the same deployment origin and are routed internally to the backend service. Keep `FRONTEND_URL` set to the canonical app URL and use `CORS_ORIGINS` for any additional preview/custom domains that need direct browser access to backend routes.
 
-```env
-FRONTEND_URL=https://ellenor-events.vercel.app
-CORS_ORIGINS=https://ellenor-events.vercel.app,https://ellenor-events-git-main.vercel.app
-```
+Local development still uses `http://localhost:3000` for the frontend and `http://127.0.0.1:8000` for the backend.
 
-## 5. Operations
+## 6. Operations
 
 - GitHub Actions `CI` runs backend tests and frontend lint/typecheck/smoke/build.
 - GitHub Actions `Uptime` pings the production health endpoint every 30 minutes when repository variable `PRODUCTION_API_HEALTH_URL` is configured.
 - Use Supabase logs as the MVP audit/operations fallback before adding a dedicated analytics product.
-- Keep `.env` files local only; production secrets live in Supabase, Render, Vercel, or GitHub repository variables/secrets.
+- Keep production secrets in Vercel environment variables and Supabase settings only.
 
-## 6. Release Smoke Test
+## 7. Release Smoke Test
 
 Run these checks after each production deploy:
 
 ```bash
-curl --fail "$PRODUCTION_API_BASE_URL/health"
+curl --fail "$PRODUCTION_APP_URL/health"
 cd frontend && npm run smoke
 ```
 
 Then manually verify:
 
-- Passwordless login challenge starts successfully.
+- Email/password login succeeds for a confirmed Supabase user.
 - Project list loads for an authenticated user.
+- Admin navigation appears only for Ellenor Events admin users.
 - Invite link opens and accepted invites cannot be reused.
 - Budget visibility differs correctly for full, summary, contribution-only, and no-access members.

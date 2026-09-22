@@ -1,0 +1,27 @@
+{
+  "services": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "nextjs",
+      "installCommand": "npm ci",
+      "buildCommand": "npm run build"
+    },
+    "backend": {
+      "root": "backend",
+      "framework": "fastapi",
+      "entrypoint": "app.main:app"
+    }
+  },
+  "rewrites": [
+    { "source": "/health", "destination": { "service": "backend" } },
+    { "source": "/auth/(.*)", "destination": { "service": "backend" } },
+    { "source": "/projects", "destination": { "service": "backend" } },
+    { "source": "/projects/(.*)", "destination": { "service": "backend" } },
+    { "source": "/invites/(.*)", "destination": { "service": "backend" } },
+    { "source": "/guest-invites/(.*)", "destination": { "service": "backend" } },
+    { "source": "/vendors/(.*)", "destination": { "service": "backend" } },
+    { "source": "/staff/(.*)", "destination": { "service": "backend" } },
+    { "source": "/admin/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}

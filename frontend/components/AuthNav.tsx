@@ -11,7 +11,6 @@ export function AuthNav() {
   const [notice, setNotice] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isReady, setIsReady] = useState(false);
-  const [adminChecked, setAdminChecked] = useState(false);
 
   useEffect(() => {
     const sync = (detail?: { message?: string }) => {
@@ -19,16 +18,13 @@ export function AuthNav() {
       setUser(nextUser);
       setIsReady(true);
       setNotice(nextUser ? "" : detail?.message || consumeSessionNotice());
+      setIsAdmin(false);
       if (!nextUser) {
-        setIsAdmin(false);
-        setAdminChecked(true);
         return;
       }
-      setAdminChecked(false);
       void apiGet("/admin/me")
         .then(() => setIsAdmin(true))
-        .catch(() => setIsAdmin(false))
-        .finally(() => setAdminChecked(true));
+        .catch(() => setIsAdmin(false));
     };
     sync();
     return subscribeToAuthChanges(sync);
@@ -60,7 +56,6 @@ export function AuthNav() {
       <Link href="/vendor-marketplace">Vendor Marketplace</Link>
       <Link href="/vendor-portal">Vendor Portal</Link>
       {isAdmin ? <Link href="/admin">Admin</Link> : null}
-      {!adminChecked ? <span className="navPlaceholder">Admin</span> : null}
       <button className="navButton" type="button" onClick={() => clearSession()}>Logout</button>
     </nav>
   );

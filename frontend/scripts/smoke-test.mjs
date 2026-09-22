@@ -36,6 +36,7 @@ assert.match(shell, /ellenor-events-logo-64\.png/, 'Portal shell should render t
 
 const authNav = readFileSync(join(root, 'components/AuthNav.tsx'), 'utf8');
 assert.doesNotMatch(authNav, /href="\/meetings"|href="\/budget"|href="\/committee"|href="\/vendors"|href="\/invites"/, 'Global nav should not expose event-scoped sections without an event context');
+assert.doesNotMatch(authNav, /navPlaceholder/, 'Admin navigation should not render unless admin access is confirmed');
 
 const api = readFileSync(join(root, 'lib/api.ts'), 'utf8');
 assert.match(api, /Authorization/, 'API client should support bearer authorization');
@@ -43,6 +44,13 @@ assert.match(api, /API_BASE_URL/, 'API client should use the configured API base
 assert.match(api, /expireSession/, 'API client should expire local sessions when authenticated requests return 401');
 assert.match(api, /isPublicPath/, 'API client should not attach stale bearer tokens to public auth and invite endpoints');
 assert.match(api, /apiDelete/, 'API client should support resource deletion endpoints');
+
+const vercelConfig = JSON.parse(readFileSync(join(root, '..', 'vercel.json'), 'utf8'));
+assert.equal(vercelConfig.services.frontend.root, 'frontend', 'Vercel frontend service should build from frontend/');
+assert.equal(vercelConfig.services.backend.root, 'backend', 'Vercel backend service should build from backend/');
+assert.equal(vercelConfig.services.backend.entrypoint, 'app.main:app', 'Vercel backend service should use the actual FastAPI entrypoint');
+assert.ok(vercelConfig.rewrites.some((rewrite) => rewrite.source === '/projects' && rewrite.destination.service === 'backend'), 'Vercel rewrites should expose backend collection routes');
+assert.ok(vercelConfig.rewrites.at(-1)?.destination.service === 'frontend', 'Vercel catch-all rewrite should route to the frontend service');
 
 const session = readFileSync(join(root, 'lib/session.ts'), 'utf8');
 assert.match(session, /localStorage/, 'Session helpers should persist browser auth state');

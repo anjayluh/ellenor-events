@@ -22,13 +22,13 @@ Open http://localhost:3000.
 
 ## Environment
 
-Create `.env.local` when calling a real backend:
+Local development defaults to `http://127.0.0.1:8000` when `NEXT_PUBLIC_API_BASE_URL` is not set. Create `.env.local` only when overriding the backend URL:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000
 ```
 
-Production value should be the Render backend base URL.
+For Vercel Services, leave `NEXT_PUBLIC_API_BASE_URL` unset so browser requests use same-origin paths such as `/projects` and `/auth/login`.
 
 ## Checks
 
@@ -46,8 +46,8 @@ npm run build
 - `lib/api.ts`: bearer-aware API helpers.
 - `lib/session.ts`: browser session persistence.
 - `scripts/smoke-test.mjs`: route/app-shell smoke checks.
-- `vercel.json`: Vercel deployment config.
+- Root `../vercel.json`: Vercel Services deployment config.
 
 ## Deployment
 
-Import the repo in Vercel with root directory `frontend`, set `NEXT_PUBLIC_API_BASE_URL`, and deploy. See `docs/deployment-guide.md`.
+Deploy from the repository root using Vercel Services. See `docs/deployment-guide.md`.

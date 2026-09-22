@@ -1,6 +1,18 @@
 import { expireSession, getAccessToken } from "./session";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+function defaultApiBaseUrl() {
+  if (typeof window !== "undefined" && ["localhost", "127.0.0.1"].includes(window.location.hostname)) {
+    return "http://127.0.0.1:8000";
+  }
+  return "";
+}
+
+function apiUrl(path: string) {
+  const baseUrl = API_BASE_URL ?? defaultApiBaseUrl();
+  return `${baseUrl}${path}`;
+}
 
 export class ApiError extends Error {
   constructor(public status: number, message: string, public sessionExpired = false) {
@@ -39,7 +51,7 @@ async function parseResponse<T>(response: Response, hadAuth: boolean): Promise<T
 
 export async function apiGet<T>(path: string, token?: string): Promise<T> {
   const accessToken = resolveAccessToken(path, token);
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
     cache: "no-store"
   });
@@ -48,7 +60,7 @@ export async function apiGet<T>(path: string, token?: string): Promise<T> {
 
 export async function apiPost<TResponse, TPayload>(path: string, payload: TPayload, token?: string): Promise<TResponse> {
   const accessToken = resolveAccessToken(path, token);
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -61,7 +73,7 @@ export async function apiPost<TResponse, TPayload>(path: string, payload: TPaylo
 
 export async function apiPut<TResponse, TPayload>(path: string, payload: TPayload, token?: string): Promise<TResponse> {
   const accessToken = resolveAccessToken(path, token);
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -74,7 +86,7 @@ export async function apiPut<TResponse, TPayload>(path: string, payload: TPayloa
 
 export async function apiPatch<TResponse, TPayload>(path: string, payload: TPayload, token?: string): Promise<TResponse> {
   const accessToken = resolveAccessToken(path, token);
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -87,7 +99,7 @@ export async function apiPatch<TResponse, TPayload>(path: string, payload: TPayl
 
 export async function apiDelete<TResponse>(path: string, token?: string): Promise<TResponse> {
   const accessToken = resolveAccessToken(path, token);
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(apiUrl(path), {
     method: "DELETE",
     headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {}
   });
