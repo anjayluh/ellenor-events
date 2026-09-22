@@ -12,6 +12,15 @@ class RegisterRequest(LoginRequest):
     name: str | None = None
 
 
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    access_token: str = Field(min_length=10)
+    password: str = Field(min_length=8)
+
+
 class AuthUser(BaseModel):
     id: UUID
     name: str | None = None

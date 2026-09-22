@@ -7,7 +7,7 @@ export default function CommitteePage() {
       <section className="hero compact">
         <p className="eyebrow">Committee</p>
         <h1>Tasks, ownership, and decisions in one place.</h1>
-        <p>Authenticated members can view live project-scoped committee work.</p>
+        <p>Keep event responsibilities clear for family, committee leads, and planning teams.</p>
       </section>
       <CommitteeClientPage />
     </PortalShell>

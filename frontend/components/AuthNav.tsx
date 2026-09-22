@@ -10,18 +10,37 @@ export function AuthNav() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [notice, setNotice] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isReady, setIsReady] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
 
   useEffect(() => {
     const sync = (detail?: { message?: string }) => {
       const nextUser = getSessionUser();
       setUser(nextUser);
+      setIsReady(true);
       setNotice(nextUser ? "" : detail?.message || consumeSessionNotice());
-      setIsAdmin(false);
-      if (nextUser) void apiGet("/admin/me").then(() => setIsAdmin(true)).catch(() => setIsAdmin(false));
+      if (!nextUser) {
+        setIsAdmin(false);
+        setAdminChecked(true);
+        return;
+      }
+      setAdminChecked(false);
+      void apiGet("/admin/me")
+        .then(() => setIsAdmin(true))
+        .catch(() => setIsAdmin(false))
+        .finally(() => setAdminChecked(true));
     };
     sync();
     return subscribeToAuthChanges(sync);
   }, []);
+
+  if (!isReady) {
+    return (
+      <nav className="nav stableNav" aria-label="Checking session">
+        <span>Checking session…</span>
+      </nav>
+    );
+  }
 
   if (!user) {
     return (
@@ -36,11 +55,12 @@ export function AuthNav() {
   }
 
   return (
-    <nav className="nav" aria-label="Authenticated navigation">
+    <nav className="nav" aria-label="Account navigation">
       <Link href="/">My Events</Link>
       <Link href="/vendor-marketplace">Vendor Marketplace</Link>
       <Link href="/vendor-portal">Vendor Portal</Link>
       {isAdmin ? <Link href="/admin">Admin</Link> : null}
+      {!adminChecked ? <span className="navPlaceholder">Admin</span> : null}
       <button className="navButton" type="button" onClick={() => clearSession()}>Logout</button>
     </nav>
   );

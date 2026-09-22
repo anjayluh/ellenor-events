@@ -32,6 +32,15 @@ const TASK_STATUS_LABELS: Record<string, string> = {
   done: "Done"
 };
 
+const EVENT_PERMISSION_LABELS: Record<string, string> = {
+  "meetings.manage": "Manage meetings",
+  "tasks.manage": "Manage committee tasks",
+  "committee.manage": "Invite committee members",
+  "vendors.manage": "Manage vendors",
+  "guest_invites.manage": "Manage guest RSVPs",
+  "budget.edit": "Edit budget"
+};
+
 function toDateTimeLocal(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
@@ -67,8 +76,8 @@ function Guard({
   projects?: Project[];
   onSelect?: (projectId: string) => void;
 }) {
-  if (state === "anonymous") return <StateBlock title="Login required" message="Sign in before viewing private event data." />;
-  if (state === "loading") return <StateBlock title="Loading" message="Fetching live data from the backend." />;
+  if (state === "anonymous") return <StateBlock title="Sign in required" message="Sign in to continue to this Ellenor Events workspace." />;
+  if (state === "loading") return <StateBlock title="Loading" message="Preparing the latest event details." />;
   if (state === "empty") {
     return (
       <section className="grid twoColumns">
@@ -82,7 +91,7 @@ function Guard({
       <section className="panel actionPanel eventSelectionPanel">
         <p className="eyebrow">Choose Event</p>
         <h2>This page needs an event workspace.</h2>
-        <p>{message || "Select the event whose meetings, budget, committee, vendors, or invites you want to manage."}</p>
+        <p>{message || "Select the event you want to work on."}</p>
         <div className="stack">
           {projects.map((project) => (
             <button className="ghostButton eventChoiceButton" data-icon="→" key={project.id} type="button" onClick={() => onSelect?.(project.id)}>
@@ -240,7 +249,7 @@ export function MeetingsClientPage() {
             </label>
             <button className="primaryButton" data-icon="+" disabled={!canSubmitMeeting || processing === "meeting-create"} type="submit">{processing === "meeting-create" ? "Creating..." : "Create meeting"}</button>
           </form>
-        ) : <p>Your role can view and RSVP to meetings, but cannot create them.</p>}
+        ) : <p>You can view and RSVP to meetings, but creating meetings is not enabled for your account.</p>}
         <p>{formMessage}</p>
       </article>
 
@@ -346,7 +355,7 @@ export function BudgetClientPage() {
 
   const guard = <Guard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
   if (state !== "ready") return guard;
-  if (!budget) return <StateBlock title="Budget unavailable" message="Your role may not have budget access for this event." />;
+  if (!budget) return <StateBlock title="Budget unavailable" message="Budget details are not available for your account on this event." />;
 
   return (
     <>
@@ -380,7 +389,7 @@ export function BudgetClientPage() {
               <button className="ghostButton danger" data-icon="↺" disabled={isSubmitting || (Number(budget.total ?? 0) === 0 && Number(budget.spent ?? 0) === 0)} type="button" onClick={() => void resetBudget()}>Reset budget</button>
             </div>
           </form>
-        ) : <p>Your role can view the shaped budget summary allowed by the backend, but cannot edit totals.</p>}
+        ) : <p>Your account can view this budget summary, but cannot edit totals.</p>}
         <p>{formMessage}</p>
       </article>
       <article className="panel">
@@ -504,7 +513,7 @@ export function CommitteeClientPage() {
             </label>
             <button className="primaryButton" data-icon="+" disabled={!canSubmitTask || isSubmitting} type="submit">{isSubmitting ? "Creating..." : "Create task"}</button>
           </form>
-        ) : <p>Your role can view committee progress but cannot create tasks.</p>}
+        ) : <p>You can view committee progress, but creating tasks is not enabled for your account.</p>}
         <p>{formMessage}</p>
       </article>
       <section className="grid twoColumns">
@@ -669,7 +678,7 @@ export function VendorsClientPage() {
             </label>
             <button className="primaryButton" data-icon="+" disabled={!canSubmitVendor || isSubmitting} type="submit">{isSubmitting ? "Adding..." : "Add vendor"}</button>
           </form>
-        ) : <p>Your role can view vendor options but cannot add vendors.</p>}
+        ) : <p>You can view vendor options, but adding vendors is not enabled for your account.</p>}
         <p>{formMessage}</p>
       </article>
       <section className="grid twoColumns">
@@ -805,7 +814,7 @@ export function InvitesClientPage() {
                   <option value="FAMILY_VIEWER">Family viewer</option>
                   <option value="GUEST_VIEWER">Guest viewer</option>
                 </select>
-                <span className="helperText">Roles set a safe baseline. Specific permissions below decide what they can manage.</span>
+                <span className="helperText">Choose a role first, then select the areas this person can help manage.</span>
               </label>
               <label className="formField">
                 Budget visibility
@@ -819,12 +828,12 @@ export function InvitesClientPage() {
               </label>
               <div className="permissionGrid">
                 {["meetings.manage", "tasks.manage", "committee.manage", "vendors.manage", "guest_invites.manage", "budget.edit"].map((permission) => (
-                  <label key={permission}><input checked={teamPermissions.includes(permission)} onChange={() => setTeamPermissions((current) => current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission].sort())} type="checkbox" />{permission}</label>
+                  <label key={permission}><input checked={teamPermissions.includes(permission)} onChange={() => setTeamPermissions((current) => current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission].sort())} type="checkbox" />{EVENT_PERMISSION_LABELS[permission]}</label>
                 ))}
               </div>
               <button className="primaryButton" data-icon="+" disabled={!canSubmitInvite || processing === "invite-create"} type="submit">{processing === "invite-create" ? "Preparing..." : "Send email invite"}</button>
             </form>
-          ) : <p>Your role can participate in this event, but cannot invite members.</p>}
+          ) : <p>You can participate in this event, but inviting members is not enabled for your account.</p>}
           <p>{formMessage}</p>
         </article>
 
@@ -834,9 +843,9 @@ export function InvitesClientPage() {
               <p className="eyebrow">{invite.status} · {invite.delivery_channel}</p>
               <h2>{invite.contact}</h2>
               <p>Role: {invite.role_assigned.replaceAll("_", " ")} · Budget: {(invite.budget_visibility_mode ?? "NO_ACCESS").replaceAll("_", " ")}</p>
-              <p>Permissions: {invite.permissions?.join(", ") || "Baseline role permissions"}</p>
+              <p>Access: {invite.permissions?.map((permission) => EVENT_PERMISSION_LABELS[permission] ?? permission).join(", ") || "Role default"}</p>
               <p>Sent {invite.sent_count} time(s), opened {invite.opened_count} time(s).</p>
-              <p className="helperText">Pending invites can be cancelled. Accepted invites become event memberships and should be managed from member roles.</p>
+              <p className="helperText">Pending invites can be cancelled. Accepted invites become event collaborators for this workspace.</p>
               <p className="tokenNote">{invite.invite_link}</p>
               <div className="buttonRow">
                 <button className="ghostButton" data-icon="↻" disabled={invite.status === "accepted" || Boolean(processing)} type="button" onClick={() => void runInviteAction(invite.id, "resend")}>
@@ -847,7 +856,7 @@ export function InvitesClientPage() {
                 </button>
               </div>
             </article>
-          )) : <StateBlock title="No team invites yet" message={canManageInvites(project?.role, project?.permissions) ? "Invite a partner, committee chair, or committee member by email. Event guests belong in Guest RSVPs." : "Team access is available to event admins and committee members with invite permissions."} />}
+          )) : <StateBlock title="No team invites yet" message={canManageInvites(project?.role, project?.permissions) ? "Invite a partner, committee chair, or committee member by email. Event guests belong in Guest RSVPs." : "Team invites are available to event owners, partners, and approved committee leads."} />}
         </section>
       </section>
     </>
@@ -872,10 +881,10 @@ export function StaffClientPage() {
       });
   }, []);
 
-  if (state === "anonymous") return <StateBlock title="Staff login required" message="Staff tools are internal-only and are not shown in public navigation." />;
-  if (state === "loading") return <StateBlock title="Loading staff dashboard" message="Checking staff authorization." />;
-  if (state === "denied") return <StateBlock title="Staff access required" message="Your account is not authorized for the staff portal." />;
-  if (state === "error" || !dashboard) return <StateBlock title="Could not load staff dashboard" message="Please try again or contact an administrator." />;
+  if (state === "anonymous") return <StateBlock title="Team sign-in required" message="Sign in with an Ellenor Events team account to continue." />;
+  if (state === "loading") return <StateBlock title="Loading team dashboard" message="Checking your team access." />;
+  if (state === "denied") return <StateBlock title="Team access required" message="This dashboard is only available to Ellenor Events team members." />;
+  if (state === "error" || !dashboard) return <StateBlock title="Could not load team dashboard" message="Please try again or contact an administrator." />;
 
   return (
     <>

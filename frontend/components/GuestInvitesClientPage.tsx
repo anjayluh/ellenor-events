@@ -137,7 +137,7 @@ export function GuestInvitesClientPage() {
               <label className="formField">Notes<input value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Bride family VIP table" /></label>
               <button className="primaryButton" data-icon="+" disabled={!canSubmit} type="submit">{processing === "create" ? "Creating..." : "Create guest invite"}</button>
             </form>
-          ) : <p>Your role can view the event but cannot manage guest invitations.</p>}
+          ) : <p>You can view this event, but managing guest invitations is not enabled for your account.</p>}
           <p>{notice}</p>
         </article>
         <section className="stack">
@@ -161,7 +161,7 @@ export function GuestInvitesClientPage() {
                 </select>
               </div>
             </article>
-          )) : <article className="panel"><h2>No guest invites yet</h2><p>{canManage(project) ? "Create the first guest invite and attach the invitation card link." : "Guest RSVP management is limited to event admins."}</p></article>}
+          )) : <article className="panel"><h2>No guest invites yet</h2><p>{canManage(project) ? "Create the first guest invite and attach the invitation card link." : "Guest RSVP management is available to event owners and approved planning leads."}</p></article>}
         </section>
       </section>
     </>

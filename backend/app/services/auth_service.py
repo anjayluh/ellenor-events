@@ -1,5 +1,6 @@
 from hashlib import sha256
 from hmac import new as hmac_new
+from urllib.parse import quote
 from uuid import UUID
 
 import httpx
@@ -8,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.models.user import User
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import AuthUser, LoginRequest, PasswordResetConfirm, PasswordResetRequest, RegisterRequest
 from app.services.audit_service import write_audit_log
 
 
@@ -54,6 +55,10 @@ def supabase_auth_url(path: str) -> str:
     return f"{settings.supabase_url.rstrip('/')}/auth/v1/{path.lstrip('/')}"
 
 
+def password_reset_redirect_url() -> str:
+    return f"{settings.frontend_url.rstrip('/')}/reset-password"
+
+
 def upsert_public_user_from_supabase_auth(db: Session, auth_user: dict, name: str | None = None) -> User:
     user_id = UUID(auth_user["id"])
     metadata = auth_user.get("user_metadata") or {}
@@ -76,6 +81,16 @@ def upsert_public_user_from_supabase_auth(db: Session, auth_user: dict, name: st
     db.flush()
     write_audit_log(db, "auth.supabase_user_synced", actor_user_id=user.id)
     return user
+
+
+def serialize_supabase_auth_user(auth_user: dict) -> AuthUser:
+    metadata = auth_user.get("user_metadata") or {}
+    return AuthUser(
+        id=UUID(auth_user["id"]),
+        name=metadata.get("name") or metadata.get("full_name"),
+        phone=auth_user.get("phone"),
+        email=normalize_email(auth_user["email"]) if auth_user.get("email") else None,
+    )
 
 
 def register_with_supabase_password(db: Session, payload: RegisterRequest) -> tuple[str, User]:
@@ -105,7 +120,7 @@ def register_with_supabase_password(db: Session, payload: RegisterRequest) -> tu
     return access_token, user
 
 
-def login_with_supabase_password(db: Session, payload: LoginRequest) -> tuple[str, User]:
+def login_with_supabase_password(db: Session, payload: LoginRequest) -> tuple[str, AuthUser]:
     request_payload = {"email": normalize_email(str(payload.email)), "password": payload.password}
     try:
         response = httpx.post(
@@ -133,6 +148,39 @@ def login_with_supabase_password(db: Session, payload: LoginRequest) -> tuple[st
     if not auth_user or not access_token:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Supabase Auth response was incomplete")
 
-    user = upsert_public_user_from_supabase_auth(db, auth_user)
-    write_audit_log(db, "auth.supabase_password_login", actor_user_id=user.id)
-    return access_token, user
+    return access_token, serialize_supabase_auth_user(auth_user)
+
+
+def request_supabase_password_reset(payload: PasswordResetRequest) -> None:
+    redirect_to = quote(password_reset_redirect_url(), safe="")
+    try:
+        response = httpx.post(
+            f"{supabase_auth_url('recover')}?redirect_to={redirect_to}",
+            headers=supabase_auth_headers(),
+            json={"email": normalize_email(str(payload.email))},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many reset emails. Please wait before trying again.") from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Password reset email could not be sent.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Supabase Auth is unavailable") from exc
+
+
+def confirm_supabase_password_reset(payload: PasswordResetConfirm) -> None:
+    try:
+        response = httpx.put(
+            supabase_auth_url("user"),
+            headers={**supabase_auth_headers(), "Authorization": f"Bearer {payload.access_token}"},
+            json={"password": payload.password},
+            timeout=10,
+        )
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN}:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Reset link is invalid or expired. Request a new password reset email.") from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Password could not be updated.") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Supabase Auth is unavailable") from exc

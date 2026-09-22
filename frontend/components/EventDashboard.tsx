@@ -79,8 +79,8 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="panel resourceCard">
           <p className="eyebrow">Overview</p>
           <h2>Coordination Snapshot</h2>
-          <p>Status: {currentProject.status === "archived" ? "Archived — hidden from active planning" : "Active planning"}</p>
-          <p>Use the tabs above to view live meetings, committee tasks, vendors, and budget areas allowed for your role.</p>
+          <p>Status: {currentProject.status === "archived" ? "Archived — no longer in active planning" : "Active planning"}</p>
+          <p>Use the tabs above to open the planning areas shared with your account.</p>
         </article>
         <BudgetPreview visibility={visibility} />
         <article className="panel actionPanel resourceCard">
@@ -108,7 +108,7 @@ export function EventDashboard({ project }: { project: Project }) {
                 ) : null}
               </div>
             </form>
-          ) : <p>Your role can view this event, but cannot edit event details.</p>}
+          ) : <p>You can view this event, but editing event details is not enabled for your account.</p>}
           <p>{message}</p>
         </article>
       </section>

@@ -1,7 +1,6 @@
 from collections.abc import Generator
 
 from sqlalchemy import create_engine
-from sqlalchemy import text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
@@ -15,13 +14,12 @@ def get_db() -> Generator[Session, None, None]:
     try:
         yield db
     finally:
-        if settings.uses_remote_supabase_auth:
+        if settings.uses_remote_supabase_auth and db.info.get("supabase_rls_applied"):
             try:
+                if db.get_bind().dialect.name != "postgresql":
+                    db.close()
+                    return
                 db.rollback()
-                db.execute(text("reset role"))
-                db.execute(text("select set_config('request.jwt.claim.sub', '', false)"))
-                db.execute(text("select set_config('request.jwt.claim.role', '', false)"))
-                db.commit()
             except Exception:
                 db.rollback()
         db.close()

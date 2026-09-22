@@ -5,9 +5,9 @@ export default function StaffPage() {
   return (
     <PortalShell>
       <section className="hero compact">
-        <p className="eyebrow">Staff Portal</p>
-        <h1>Project health, risk alerts, and RSVP movement.</h1>
-        <p>Internal-only oversight uses staff roles, separate from client project roles.</p>
+        <p className="eyebrow">Ellenor Events Team</p>
+        <h1>Operational oversight for active events.</h1>
+        <p>Team members can review event health, risk alerts, and follow-up activity in one place.</p>
       </section>
       <StaffClientPage />
     </PortalShell>

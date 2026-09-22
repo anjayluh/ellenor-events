@@ -48,6 +48,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .brandLogo { background: white; border: 1px solid rgba(214, 169, 59, 0.28); border-radius: 14px; box-shadow: var(--shadow-1); height: 44px; object-fit: cover; width: 44px; }
 .navCluster { align-items: center; display: flex; gap: 14px; }
 .nav { display: flex; gap: 18px; color: var(--muted); font-weight: 600; }
+.stableNav { min-width: 360px; justify-content: flex-end; }
+.navPlaceholder { visibility: hidden; }
 .sessionNotice { background: rgba(179, 38, 30, 0.08); border: 1px solid rgba(179, 38, 30, 0.22); border-radius: 999px; color: var(--error); font-size: 0.86rem; font-weight: 800; padding: 8px 12px; }
 .main { padding: 48px 7vw; }
 .hero {
@@ -91,6 +93,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 @media (max-width: 860px) { .twoColumns, .threeColumns { grid-template-columns: 1fr; } .hero { padding: 34px; } .nav { display: none; } .sessionNotice { display: none; } }
 
 .buttonRow { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-top: 24px; }
+.compactButtons { margin-top: 12px; }
 .secondaryButton { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; color: white; cursor: pointer; font-weight: 800; min-height: 48px; padding: 14px 20px; }
 .tokenNote { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; }
 

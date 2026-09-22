@@ -129,7 +129,7 @@ export function BudgetTableClientPage() {
   }
 
   if (state !== "ready") return <EventWorkspaceGuard state={state} message={message} projects={projects} onSelect={selectProject} onCreated={() => void reload()} />;
-  if (!budget) return <StateBlock title="Budget unavailable" message="Your role may not have budget access for this event." />;
+  if (!budget) return <StateBlock title="Budget unavailable" message="Budget details are not available for your account on this event." />;
 
   return (
     <>
@@ -159,7 +159,7 @@ export function BudgetTableClientPage() {
                 {editingId ? <button className="ghostButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancel</button> : null}
               </div>
             </form>
-          ) : <p>Your role can view this budget but cannot edit it unless the event admin grants budget edit permission.</p>}
+          ) : <p>You can view this budget, but editing is not enabled for your account.</p>}
           <p>{notice}</p>
         </article>
         <article className="panel tablePanel">

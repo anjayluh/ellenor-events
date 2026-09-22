@@ -7,7 +7,7 @@ export default function BudgetPage() {
       <section className="hero compact">
         <p className="eyebrow">Budget</p>
         <h1>Financial clarity, without leaking sensitive details.</h1>
-        <p>Backend-shaped visibility controls what each role can see before data reaches the interface.</p>
+        <p>Open an event workspace to review budget totals, deposits, balances, and upcoming payment dates.</p>
       </section>
       <BudgetTableClientPage />
     </PortalShell>

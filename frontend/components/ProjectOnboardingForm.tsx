@@ -14,7 +14,7 @@ export function ProjectOnboardingForm({ onCreated }: { onCreated?: (project: Pro
   const [type, setType] = useState<EventType>("wedding");
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
-  const [message, setMessage] = useState("Create your first private event workspace.");
+  const [message, setMessage] = useState("Create your first Ellenor Events workspace.");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 

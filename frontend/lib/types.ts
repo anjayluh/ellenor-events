@@ -36,6 +36,11 @@ export type AuthToken = {
   user: AuthUser;
 };
 
+export type AuthMessage = {
+  status: string;
+  message: string;
+};
+
 export type BudgetLineItem = {
   id: string;
   project_id: string;

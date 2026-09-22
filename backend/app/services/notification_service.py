@@ -53,7 +53,8 @@ def create_notification(
     metadata: dict | None = None,
 ) -> Notification | PreparedNotification:
     provider, provider_payload = build_provider_payload(channel, recipient_contact, subject, body)
-    if settings.uses_remote_supabase_auth:
+    bind = db.get_bind() if hasattr(db, "get_bind") else None
+    if settings.uses_remote_supabase_auth and bind is not None and bind.dialect.name == "postgresql":
         notification_id = db.execute(
             text(
                 """

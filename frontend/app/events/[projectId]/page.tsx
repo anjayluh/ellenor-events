@@ -24,8 +24,8 @@ export default function EventPage() {
 
   return (
     <PortalShell>
-      {state === "anonymous" ? <StateBlock title="Login required" message="Sign in before viewing this event dashboard." /> : null}
-      {state === "loading" ? <StateBlock title="Loading event" message="Fetching live project data from the API." /> : null}
+      {state === "anonymous" ? <StateBlock title="Sign in required" message="Sign in to continue to this event workspace." /> : null}
+      {state === "loading" ? <StateBlock title="Loading event" message="Preparing the latest event details." /> : null}
       {state === "error" ? <StateBlock title="Event not found" message="The event could not be loaded for your account." /> : null}
       {state === "ready" && project ? <EventDashboard project={project} /> : null}
     </PortalShell>

@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <PortalShell>
       <section className="hero">
-        <p className="eyebrow">Ellenor Events Coordination System</p>
+        <p className="eyebrow">Ellenor Events</p>
         <h1>A calm command center for ceremonies with many moving parts.</h1>
         <p>
           Coordinate weddings, introductions, committees, meetings, RSVP flows, contributions,
@@ -16,9 +16,9 @@ export default function Home() {
       <section className="grid twoColumns">
         <MyEventsPanel />
         <aside className="panel">
-          <p className="eyebrow">Private by default</p>
-          <h2>No personal event data is shown before login.</h2>
-          <p>Guests see only public product information until Supabase Auth verifies their account and backend RBAC confirms project membership.</p>
+          <p className="eyebrow">Event Workspaces</p>
+          <h2>Every event stays organized in its own workspace.</h2>
+          <p>Open an event to see the planning tools and details that have been shared with your account.</p>
         </aside>
       </section>
     </PortalShell>

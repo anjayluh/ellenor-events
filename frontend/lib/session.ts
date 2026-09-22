@@ -1,5 +1,6 @@
 import type { AuthToken, AuthUser } from "./types";
 import { clearActiveProjectId } from "./active-project";
+import { clearCachedProjects } from "./project-cache";
 
 const TOKEN_KEY = "eecs_access_token";
 const USER_KEY = "eecs_user";
@@ -32,6 +33,7 @@ export function getSessionUser(): AuthUser | null {
   if (!getAccessToken()) {
     window.localStorage.removeItem(USER_KEY);
     clearActiveProjectId();
+    clearCachedProjects();
     return null;
   }
   const raw = window.localStorage.getItem(USER_KEY);
@@ -55,6 +57,7 @@ export function clearSession(reason: SessionClearReason = "manual", message?: st
     window.sessionStorage.removeItem(SESSION_NOTICE_KEY);
   }
   clearActiveProjectId();
+  clearCachedProjects();
   emitAuthChange({ reason, message });
 }
 

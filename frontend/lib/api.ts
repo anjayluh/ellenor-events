@@ -19,7 +19,7 @@ function resolveAccessToken(path: string, token?: string): string | null {
 
 async function parseResponse<T>(response: Response, hadAuth: boolean): Promise<T> {
   if (!response.ok) {
-    let message = `API request failed: ${response.status}`;
+    let message = response.status === 401 ? "Please sign in again to continue." : `We could not complete that request (${response.status}).`;
     try {
       const payload = await response.json();
       message = typeof payload.detail === "string" ? payload.detail : message;

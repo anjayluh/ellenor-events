@@ -19,6 +19,17 @@ const permissions = [
   "admin.vendors.manage"
 ];
 
+const permissionLabels: Record<string, string> = {
+  "admin.users.view": "View users",
+  "admin.users.manage": "Manage users",
+  "admin.logs.view": "View activity logs",
+  "admin.permissions.manage": "Manage admin access",
+  "admin.projects.view": "View events",
+  "admin.projects.manage": "Manage events",
+  "admin.vendors.view": "View vendors",
+  "admin.vendors.manage": "Manage vendors"
+};
+
 export function AdminClientPage() {
   const [me, setMe] = useState<Staff | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -27,7 +38,7 @@ export function AdminClientPage() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("SUPPORT_AGENT");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(["admin.users.view"]);
-  const [notice, setNotice] = useState("Admins can manage platform users, staff permissions, and audit logs.");
+  const [notice, setNotice] = useState("Ellenor Events admins can manage users, team access, and activity logs.");
   const [processing, setProcessing] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -88,7 +99,7 @@ export function AdminClientPage() {
     }
   }
 
-  if (!loaded) return <StateBlock title="Loading admin" message="Checking platform permissions." />;
+  if (!loaded) return <StateBlock title="Loading admin" message="Checking your Ellenor Events admin access." />;
   if (!me) return <StateBlock title="Admin access required" message={notice} />;
 
   return (
@@ -103,10 +114,10 @@ export function AdminClientPage() {
           <p className="eyebrow">Permissions</p>
           <h2>Add or update admin</h2>
           <form className="stack" onSubmit={grantStaff}>
-            <label className="formField">Admin email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="ops@example.com" aria-invalid={Boolean(emailError)} /><span className="helperText">Required. This user gets platform-level access only.</span>{emailError ? <span className="errorText">{emailError}</span> : null}</label>
+            <label className="formField">Admin email<input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="ops@example.com" aria-invalid={Boolean(emailError)} /><span className="helperText">Required. This user gets Ellenor Events admin access only.</span>{emailError ? <span className="errorText">{emailError}</span> : null}</label>
             <label className="formField">Role<select value={role} onChange={(event) => setRole(event.target.value)}><option value="PLATFORM_ADMIN">Platform admin</option><option value="OPERATIONS_MANAGER">Operations manager</option><option value="SUPPORT_AGENT">Support agent</option><option value="STAFF_VIEWER">Staff viewer</option></select></label>
             <div className="permissionGrid">
-              {permissions.map((permission) => <label key={permission}><input checked={selectedPermissions.includes(permission)} onChange={() => togglePermission(permission)} type="checkbox" />{permission}</label>)}
+              {permissions.map((permission) => <label key={permission}><input checked={selectedPermissions.includes(permission)} onChange={() => togglePermission(permission)} type="checkbox" />{permissionLabels[permission]}</label>)}
             </div>
             <button className="primaryButton" data-icon="✓" disabled={!canSubmit} type="submit">{processing === "grant" ? "Saving..." : "Save admin permissions"}</button>
           </form>
@@ -115,7 +126,7 @@ export function AdminClientPage() {
         <article className="panel tablePanel">
           <p className="eyebrow">Staff</p>
           <h2>Platform admins</h2>
-          <div className="tableScroller"><table className="dataTable"><thead><tr><th>User</th><th>Role</th><th>Permissions</th><th>Actions</th></tr></thead><tbody>{staff.map((member) => <tr key={member.id}><td><strong>{member.email ?? member.user_id}</strong><small>{member.status}</small></td><td>{member.role}</td><td>{member.permissions.join(", ") || "All for super admin"}</td><td><button className="ghostButton danger" data-icon="−" disabled={member.role === "SUPER_ADMIN" || Boolean(processing)} type="button" onClick={() => void revoke(member.user_id)}>{processing === `revoke-${member.user_id}` ? "Removing..." : "Remove"}</button></td></tr>)}</tbody></table></div>
+          <div className="tableScroller"><table className="dataTable"><thead><tr><th>User</th><th>Role</th><th>Permissions</th><th>Actions</th></tr></thead><tbody>{staff.map((member) => <tr key={member.id}><td><strong>{member.email ?? member.user_id}</strong><small>{member.status}</small></td><td>{member.role}</td><td>{member.permissions.map((permission) => permissionLabels[permission] ?? permission).join(", ") || "Full super admin access"}</td><td><button className="ghostButton danger" data-icon="−" disabled={member.role === "SUPER_ADMIN" || Boolean(processing)} type="button" onClick={() => void revoke(member.user_id)}>{processing === `revoke-${member.user_id}` ? "Removing..." : "Remove"}</button></td></tr>)}</tbody></table></div>
         </article>
       </section>
       <section className="grid twoColumns">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiGet } from "./api";
 import { getActiveProjectId, setActiveProjectId, subscribeToActiveProjectChanges } from "./active-project";
+import { cacheProjects, getCachedProjects } from "./project-cache";
 import { getAccessToken, subscribeToAuthChanges } from "./session";
 import type { Project } from "./types";
 
@@ -14,9 +15,19 @@ function getQueryProjectId() {
 }
 
 export function useActiveProject() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [project, setProject] = useState<Project | null>(null);
-  const [state, setState] = useState<ActiveProjectState>("loading");
+  const [projects, setProjects] = useState<Project[]>(() => getCachedProjects());
+  const [project, setProject] = useState<Project | null>(() => {
+    const cachedProjects = getCachedProjects();
+    const preferredProjectId = getQueryProjectId() || getActiveProjectId();
+    return preferredProjectId ? cachedProjects.find((item) => item.id === preferredProjectId) ?? null : null;
+  });
+  const [state, setState] = useState<ActiveProjectState>(() => {
+    const cachedProjects = getCachedProjects();
+    if (cachedProjects.length === 0) return "loading";
+    const preferredProjectId = getQueryProjectId() || getActiveProjectId();
+    if (!preferredProjectId && cachedProjects.length === 1) return "ready";
+    return preferredProjectId && cachedProjects.some((item) => item.id === preferredProjectId) ? "ready" : "selection_required";
+  });
   const [message, setMessage] = useState("");
 
   const load = useCallback(async () => {
@@ -32,6 +43,7 @@ export function useActiveProject() {
     try {
       const nextProjects = await apiGet<Project[]>("/projects", token);
       setProjects(nextProjects);
+      cacheProjects(nextProjects);
 
       const storedProjectId = getActiveProjectId();
       const preferredProjectId = getQueryProjectId() || storedProjectId;
@@ -64,7 +76,7 @@ export function useActiveProject() {
         setState("anonymous");
         return;
       }
-      setMessage(error instanceof Error ? error.message : "Could not load your project membership.");
+      setMessage(error instanceof Error ? error.message : "Could not load your event access.");
       setState("error");
     }
   }, []);

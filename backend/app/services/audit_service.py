@@ -16,7 +16,8 @@ def write_audit_log(
     metadata: dict | None = None,
 ) -> AuditLog | UUID:
     metadata_json = metadata or {}
-    if settings.uses_remote_supabase_auth:
+    bind = db.get_bind() if hasattr(db, "get_bind") else None
+    if settings.uses_remote_supabase_auth and bind is not None and bind.dialect.name == "postgresql":
         return db.execute(
             text(
                 """

@@ -18,12 +18,12 @@ export function EventWorkspaceGuard({
   onSelect: (projectId: string) => void;
   onCreated: () => void;
 }) {
-  if (state === "anonymous") return <StateBlock title="Login required" message="Sign in before viewing private event data." />;
-  if (state === "loading") return <StateBlock title="Loading" message="Fetching live event data." />;
+  if (state === "anonymous") return <StateBlock title="Sign in required" message="Sign in to continue to this Ellenor Events workspace." />;
+  if (state === "loading") return <StateBlock title="Loading" message="Preparing the latest event details." />;
   if (state === "empty") {
     return (
       <section className="grid twoColumns">
-        <StateBlock title="Create your first event" message="Start an event before managing budget, committee, vendors, or guest RSVPs." />
+        <StateBlock title="Create your first event" message="Start an event to unlock the planning tools for that workspace." />
         <ProjectOnboardingForm onCreated={onCreated} />
       </section>
     );

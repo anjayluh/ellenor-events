@@ -62,7 +62,7 @@ def list_projects(current_user: CurrentUser = Depends(get_current_user), db: Ses
 
 @router.post("", response_model=ProjectRead)
 def create_project(payload: ProjectCreate, current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
-    if settings.uses_remote_supabase_auth:
+    if settings.uses_remote_supabase_auth and db.get_bind().dialect.name == "postgresql":
         project_id = db.execute(
             text(
                 """

@@ -4,7 +4,7 @@ const visibilityCopy: Record<BudgetVisibility, string> = {
   FULL_ACCESS: "You can view totals, spend, remaining balance, line items, and contribution records.",
   SUMMARY_ACCESS: "You can view totals and contribution progress without sensitive spend details.",
   CONTRIBUTION_ONLY: "You can view contribution progress only.",
-  NO_ACCESS: "Budget details are hidden for this role."
+  NO_ACCESS: "Budget details are not available for this role."
 };
 
 export function BudgetPreview({ visibility }: { visibility: BudgetVisibility }) {

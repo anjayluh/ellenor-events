@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiGet } from "../lib/api";
 import { setActiveProjectId } from "../lib/active-project";
+import { cacheProjects, getCachedProjects } from "../lib/project-cache";
 import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
 import type { Project } from "../lib/types";
 import { EventCard } from "./EventCard";
@@ -10,11 +11,11 @@ import { ProjectOnboardingForm } from "./ProjectOnboardingForm";
 import { StateBlock } from "./StateBlock";
 
 export function MyEventsPanel() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [status, setStatus] = useState<"anonymous" | "loading" | "ready" | "error">("loading");
+  const [projects, setProjects] = useState<Project[]>(() => getCachedProjects());
+  const [status, setStatus] = useState<"anonymous" | "loading" | "ready" | "error">(() => getCachedProjects().length > 0 ? "ready" : "loading");
   const [message, setMessage] = useState("");
 
-  async function loadProjects() {
+  const loadProjects = useCallback(async () => {
     const token = getAccessToken();
     if (!token) {
       setProjects([]);
@@ -22,9 +23,11 @@ export function MyEventsPanel() {
       return;
     }
 
-    setStatus("loading");
+    if (projects.length === 0) setStatus("loading");
     try {
-      setProjects(await apiGet<Project[]>("/projects", token));
+      const nextProjects = await apiGet<Project[]>("/projects", token);
+      setProjects(nextProjects);
+      cacheProjects(nextProjects);
       setStatus("ready");
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -33,27 +36,27 @@ export function MyEventsPanel() {
         setStatus("anonymous");
         return;
       }
-      setMessage(error instanceof Error ? error.message : "Could not load projects.");
+      setMessage(error instanceof Error ? error.message : "Could not load your events.");
       setStatus("error");
     }
-  }
+  }, [projects.length]);
 
   useEffect(() => {
     void loadProjects();
     return subscribeToAuthChanges(() => void loadProjects());
-  }, []);
+  }, [loadProjects]);
 
   if (status === "anonymous") {
     return (
       <StateBlock
         title="Sign in to view your events"
-        message="Personal events, budgets, vendors, meetings, and staff tools stay hidden until you authenticate."
+        message="Sign in to see the events connected to your Ellenor Events account."
       />
     );
   }
 
   if (status === "loading") {
-    return <StateBlock title="Loading your events" message="Fetching live project data from the API." />;
+    return <StateBlock title="Loading your events" message="Preparing your latest event workspaces." />;
   }
 
   if (status === "error") {
@@ -73,7 +76,7 @@ export function MyEventsPanel() {
     <section className="panel actionPanel">
       <div className="sectionHeader">
         <div>
-          <p className="eyebrow">Workspace</p>
+          <p className="eyebrow">My Workspaces</p>
           <h2>Your Events</h2>
         </div>
         <span className="badge">{projects.length} active</span>
