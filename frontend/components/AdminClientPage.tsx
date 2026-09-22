@@ -2,11 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
+import type { CatalogPackage, CustomerSubscription, PaymentTransaction } from "../lib/types";
 import { StateBlock } from "./StateBlock";
 
 type AdminUser = { id: string; name?: string | null; email?: string | null; phone?: string | null; created_at: string };
 type Staff = { id: string; user_id: string; email?: string | null; name?: string | null; role: string; permissions: string[]; status: string };
 type AuditLog = { id: string; actor_user_id?: string | null; project_id?: string | null; action: string; metadata: Record<string, unknown>; created_at: string };
+type AdminCustomerAccount = { id: string; name: string; status: string; owner_email?: string | null; owner_user_id?: string | null; project_count: number; entitlement_count: number; created_at: string };
+type MarketingAccessToken = { id: string; code: string; duration_days: number; status: string; redemption_count: number; max_redemptions?: number | null; expires_at?: string | null };
 
 const permissions = [
   "admin.users.view",
@@ -16,7 +19,11 @@ const permissions = [
   "admin.projects.view",
   "admin.projects.manage",
   "admin.vendors.view",
-  "admin.vendors.manage"
+  "admin.vendors.manage",
+  "admin.catalog.view",
+  "admin.catalog.manage",
+  "admin.billing.view",
+  "admin.billing.manage"
 ];
 
 const permissionLabels: Record<string, string> = {
@@ -27,7 +34,11 @@ const permissionLabels: Record<string, string> = {
   "admin.projects.view": "View events",
   "admin.projects.manage": "Manage events",
   "admin.vendors.view": "View vendors",
-  "admin.vendors.manage": "Manage vendors"
+  "admin.vendors.manage": "Manage vendors",
+  "admin.catalog.view": "View packages",
+  "admin.catalog.manage": "Manage packages",
+  "admin.billing.view": "View billing",
+  "admin.billing.manage": "Manage billing"
 };
 
 export function AdminClientPage() {
@@ -35,6 +46,11 @@ export function AdminClientPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [customerAccounts, setCustomerAccounts] = useState<AdminCustomerAccount[]>([]);
+  const [packages, setPackages] = useState<CatalogPackage[]>([]);
+  const [subscriptions, setSubscriptions] = useState<CustomerSubscription[]>([]);
+  const [payments, setPayments] = useState<PaymentTransaction[]>([]);
+  const [accessTokens, setAccessTokens] = useState<MarketingAccessToken[]>([]);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("SUPPORT_AGENT");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>(["admin.users.view"]);
@@ -49,6 +65,13 @@ export function AdminClientPage() {
     if (current.permissions.includes("admin.users.view")) requests.push(apiGet<AdminUser[]>("/admin/users").then(setUsers));
     if (current.permissions.includes("admin.permissions.manage")) requests.push(apiGet<Staff[]>("/admin/staff").then(setStaff));
     if (current.permissions.includes("admin.logs.view")) requests.push(apiGet<AuditLog[]>("/admin/logs").then(setLogs));
+    if (current.permissions.includes("admin.projects.view")) requests.push(apiGet<AdminCustomerAccount[]>("/admin/customer-accounts").then(setCustomerAccounts));
+    if (current.permissions.includes("admin.catalog.view")) requests.push(apiGet<CatalogPackage[]>("/admin/catalog/packages").then(setPackages));
+    if (current.permissions.includes("admin.billing.view")) {
+      requests.push(apiGet<CustomerSubscription[]>("/admin/billing/subscriptions").then(setSubscriptions));
+      requests.push(apiGet<PaymentTransaction[]>("/admin/billing/payments").then(setPayments));
+      requests.push(apiGet<MarketingAccessToken[]>("/admin/billing/access-tokens").then(setAccessTokens));
+    }
     await Promise.all(requests);
   }
 
@@ -133,6 +156,54 @@ export function AdminClientPage() {
         <article className="panel tablePanel"><p className="eyebrow">Users</p><h2>Recent users</h2><div className="tableScroller"><table className="dataTable"><thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td>{user.name ?? "No name"}</td><td>{user.email ?? "No email"}</td><td>{user.phone ?? "No phone"}</td></tr>)}</tbody></table></div></article>
         <article className="panel tablePanel"><p className="eyebrow">Audit Logs</p><h2>Recent actions</h2><div className="tableScroller"><table className="dataTable"><thead><tr><th>Action</th><th>Project</th><th>When</th></tr></thead><tbody>{logs.map((log) => <tr key={log.id}><td><strong>{log.action}</strong><small>{JSON.stringify(log.metadata)}</small></td><td>{log.project_id ?? "Platform"}</td><td>{new Date(log.created_at).toLocaleString()}</td></tr>)}</tbody></table></div></article>
       </section>
+      {me.permissions.includes("admin.projects.view") ? (
+        <section className="panel tablePanel">
+          <p className="eyebrow">Customers</p>
+          <h2>Customer accounts</h2>
+          <div className="tableScroller"><table className="dataTable"><thead><tr><th>Account</th><th>Owner</th><th>Status</th><th>Events</th><th>Entitlements</th></tr></thead><tbody>{customerAccounts.map((account) => <tr key={account.id}><td><strong>{account.name}</strong><small>{new Date(account.created_at).toLocaleDateString()}</small></td><td>{account.owner_email ?? account.owner_user_id ?? "Not set"}</td><td>{account.status}</td><td>{account.project_count}</td><td>{account.entitlement_count}</td></tr>)}</tbody></table></div>
+        </section>
+      ) : null}
+      {me.permissions.includes("admin.catalog.view") ? (
+        <section className="panel tablePanel">
+          <p className="eyebrow">Commercial Catalog</p>
+          <h2>Packages and entitlement mapping</h2>
+          <div className="tableScroller">
+            <table className="dataTable">
+              <thead><tr><th>Package</th><th>Status</th><th>Visibility</th><th>Prices</th><th>Entitlement grants</th></tr></thead>
+              <tbody>
+                {packages.map((catalogPackage) => (
+                  <tr key={catalogPackage.id}>
+                    <td><strong>{catalogPackage.name}</strong><small>{catalogPackage.code}{catalogPackage.is_add_on ? " · Add-on" : ""}</small></td>
+                    <td>{catalogPackage.status}</td>
+                    <td>{catalogPackage.is_public ? "Public" : "Internal"}</td>
+                    <td>{catalogPackage.prices.length ? catalogPackage.prices.map((price) => `${price.currency} ${price.amount_minor} · ${price.billing_interval} · ${price.status}`).join(", ") : "No price set"}</td>
+                    <td>{catalogPackage.entitlement_grants.map((grant) => `${grant.entitlement_key}${grant.quantity ? `: ${grant.quantity}` : ""}`).join(", ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : null}
+      {me.permissions.includes("admin.billing.view") ? (
+        <section className="grid twoColumns">
+          <article className="panel tablePanel">
+            <p className="eyebrow">Billing</p>
+            <h2>Subscriptions</h2>
+            <div className="tableScroller"><table className="dataTable"><thead><tr><th>Package</th><th>Status</th><th>Source</th><th>Period end</th></tr></thead><tbody>{subscriptions.map((subscription) => <tr key={subscription.id}><td><strong>{subscription.package_name ?? subscription.package_plan_id}</strong><small>{subscription.currency} {subscription.amount_minor} · {subscription.billing_interval}</small></td><td>{subscription.status}</td><td>{subscription.access_source}</td><td>{subscription.current_period_end ? new Date(subscription.current_period_end).toLocaleDateString() : "Not active"}</td></tr>)}</tbody></table></div>
+          </article>
+          <article className="panel tablePanel">
+            <p className="eyebrow">Payments</p>
+            <h2>Recent transactions</h2>
+            <div className="tableScroller"><table className="dataTable"><thead><tr><th>Reference</th><th>Amount</th><th>Status</th></tr></thead><tbody>{payments.map((payment) => <tr key={payment.id}><td><strong>{payment.provider_reference}</strong><small>{payment.provider}</small></td><td>{payment.currency} {payment.amount_minor}</td><td>{payment.status}</td></tr>)}</tbody></table></div>
+          </article>
+          <article className="panel tablePanel">
+            <p className="eyebrow">Free Access</p>
+            <h2>Marketing tokens</h2>
+            <div className="tableScroller"><table className="dataTable"><thead><tr><th>Code</th><th>Status</th><th>Redemptions</th><th>Expiry</th></tr></thead><tbody>{accessTokens.map((token) => <tr key={token.id}><td><strong>{token.code}</strong><small>{token.duration_days} days</small></td><td>{token.status}</td><td>{token.redemption_count}{token.max_redemptions ? `/${token.max_redemptions}` : ""}</td><td>{token.expires_at ? new Date(token.expires_at).toLocaleDateString() : "No expiry"}</td></tr>)}</tbody></table></div>
+          </article>
+        </section>
+      ) : null}
     </section>
   );
 }

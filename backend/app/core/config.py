@@ -30,6 +30,13 @@ class Settings(BaseSettings):
     whatsapp_cloud_api_token: str | None = None
     whatsapp_phone_number_id: str | None = None
     notification_max_attempts: int = 3
+    payment_provider: str = "flutterwave"
+    flutterwave_secret_key: str | None = None
+    flutterwave_public_key: str | None = None
+    flutterwave_webhook_secret: str | None = None
+    flutterwave_base_url: str = "https://api.flutterwave.com/v3"
+    billing_checkout_redirect_url: str | None = None
+    billing_grace_period_days: int = 7
 
     model_config = SettingsConfigDict(
         env_file=("backend/.env", ".env", "backend/.env.local", ".env.local", "../.env.local"),
@@ -58,6 +65,14 @@ class Settings(BaseSettings):
         if url.startswith("postgresql://"):
             return url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment.lower() in {"production", "prod"}
+
+    @property
+    def checkout_redirect_url(self) -> str:
+        return self.billing_checkout_redirect_url or f"{self.frontend_url.rstrip('/')}/billing"
 
 
 @lru_cache

@@ -9,6 +9,206 @@ create table users (
   check (phone is not null or email is not null)
 );
 
+create table customer_accounts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  status text not null default 'ACTIVE' check (status in ('LEAD','ACTIVE','SUSPENDED','CANCELLED')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
+create table customer_account_members (
+  id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  role text not null default 'MEMBER' check (role in ('OWNER','MEMBER')),
+  status text not null default 'ACTIVE' check (status in ('ACTIVE','INACTIVE')),
+  created_at timestamptz not null default now(),
+  unique(customer_account_id, user_id)
+);
+
+create table account_entitlements (
+  id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  key text not null,
+  quantity integer,
+  used_quantity integer not null default 0,
+  status text not null default 'ACTIVE' check (status in ('ACTIVE','INACTIVE','EXPIRED','CANCELLED')),
+  starts_at timestamptz,
+  expires_at timestamptz,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  check (quantity is null or quantity >= 0),
+  check (used_quantity >= 0)
+);
+
+create table entitlement_definitions (
+  id uuid primary key default gen_random_uuid(),
+  key text not null unique,
+  name text not null,
+  description text not null,
+  value_type text not null check (value_type in ('BOOLEAN','QUANTITY','UNLIMITED')),
+  scope text not null check (scope in ('ACCOUNT','EVENT')),
+  is_usage_tracked boolean not null default false,
+  status text not null default 'ACTIVE' check (status in ('ACTIVE','INACTIVE')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
+create table package_plans (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null,
+  description text not null,
+  status text not null default 'DRAFT' check (status in ('DRAFT','ACTIVE','INACTIVE','ARCHIVED')),
+  is_public boolean not null default false,
+  is_add_on boolean not null default false,
+  display_order integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
+);
+
+create table package_prices (
+  id uuid primary key default gen_random_uuid(),
+  package_plan_id uuid not null references package_plans(id) on delete cascade,
+  currency text not null default 'UGX' check (currency in ('UGX')),
+  amount_minor integer not null check (amount_minor >= 0),
+  billing_interval text not null default 'ONE_TIME' check (billing_interval in ('ONE_TIME','MONTHLY','YEARLY')),
+  status text not null default 'DRAFT' check (status in ('DRAFT','ACTIVE','INACTIVE','ARCHIVED')),
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  check (ends_at is null or starts_at is null or ends_at > starts_at)
+);
+
+create table package_entitlement_grants (
+  id uuid primary key default gen_random_uuid(),
+  package_plan_id uuid not null references package_plans(id) on delete cascade,
+  entitlement_key text not null references entitlement_definitions(key),
+  scope text not null check (scope in ('ACCOUNT','EVENT')),
+  value_type text not null check (value_type in ('BOOLEAN','QUANTITY','UNLIMITED')),
+  quantity integer,
+  duration_days integer,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  unique(package_plan_id, entitlement_key),
+  check (quantity is null or quantity >= 0),
+  check (duration_days is null or duration_days > 0),
+  check (
+    (value_type = 'QUANTITY' and quantity is not null and quantity > 0)
+    or (value_type in ('BOOLEAN','UNLIMITED') and quantity is null)
+  )
+);
+
+create table billing_customers (
+  id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  provider text not null default 'flutterwave',
+  provider_customer_id text,
+  status text not null default 'ACTIVE' check (status in ('ACTIVE','INACTIVE')),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  unique(customer_account_id),
+  unique(provider, provider_customer_id)
+);
+
+create table customer_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  package_plan_id uuid not null references package_plans(id),
+  package_price_id uuid references package_prices(id),
+  status text not null default 'INCOMPLETE' check (status in ('INCOMPLETE','ACTIVE','PAST_DUE','CANCELLED','EXPIRED','FAILED')),
+  access_source text not null default 'PAID' check (access_source in ('PAID','MARKETING')),
+  currency text not null default 'UGX' check (currency in ('UGX')),
+  amount_minor integer not null default 0 check (amount_minor >= 0),
+  billing_interval text not null default 'MONTHLY' check (billing_interval in ('ONE_TIME','MONTHLY','YEARLY')),
+  current_period_start timestamptz,
+  current_period_end timestamptz,
+  cancel_at_period_end boolean not null default false,
+  cancelled_at timestamptz,
+  started_at timestamptz,
+  ended_at timestamptz,
+  provider text not null default 'flutterwave',
+  provider_subscription_id text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  unique(provider, provider_subscription_id)
+);
+
+create table payment_transactions (
+  id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  subscription_id uuid references customer_subscriptions(id) on delete set null,
+  package_price_id uuid references package_prices(id),
+  amount_minor integer not null check (amount_minor >= 0),
+  currency text not null default 'UGX' check (currency in ('UGX')),
+  provider text not null default 'flutterwave',
+  provider_transaction_id text,
+  provider_reference text not null,
+  status text not null default 'INITIATED' check (status in ('INITIATED','PENDING','SUCCESSFUL','FAILED','CANCELLED','REFUNDED')),
+  checkout_url text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  unique(provider, provider_reference),
+  unique(provider, provider_transaction_id)
+);
+
+create table payment_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null default 'flutterwave',
+  provider_event_id text not null,
+  event_type text not null,
+  provider_reference text,
+  provider_transaction_id text,
+  signature_valid boolean not null default false,
+  status text not null default 'RECEIVED' check (status in ('RECEIVED','PROCESSED','IGNORED','FAILED')),
+  payload jsonb not null default '{}'::jsonb,
+  error text,
+  processed_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique(provider, provider_event_id)
+);
+
+create table marketing_access_tokens (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  package_plan_id uuid not null references package_plans(id),
+  package_price_id uuid references package_prices(id),
+  duration_days integer not null check (duration_days > 0),
+  starts_at timestamptz,
+  expires_at timestamptz,
+  max_redemptions integer check (max_redemptions is null or max_redemptions > 0),
+  redemption_count integer not null default 0 check (redemption_count >= 0),
+  assigned_email text,
+  assigned_user_id uuid references users(id),
+  status text not null default 'ACTIVE' check (status in ('ACTIVE','INACTIVE','EXPIRED')),
+  internal_notes text,
+  created_by uuid references users(id),
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  check (expires_at is null or starts_at is null or expires_at > starts_at),
+  constraint ck_marketing_access_token_redemption_max check (max_redemptions is null or redemption_count <= max_redemptions)
+);
+
+create table marketing_access_token_redemptions (
+  id uuid primary key default gen_random_uuid(),
+  access_token_id uuid not null references marketing_access_tokens(id) on delete cascade,
+  customer_account_id uuid not null references customer_accounts(id) on delete cascade,
+  user_id uuid not null references users(id),
+  subscription_id uuid not null references customer_subscriptions(id) on delete cascade,
+  redeemed_at timestamptz not null default now(),
+  unique(access_token_id, customer_account_id),
+  unique(access_token_id, user_id)
+);
+
 create table staff_members (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
@@ -36,6 +236,7 @@ create table auth_challenges (
 
 create table projects (
   id uuid primary key default gen_random_uuid(),
+  customer_account_id uuid not null references customer_accounts(id),
   type text not null check (type in ('wedding','introduction','linked')),
   title text not null,
   owner_user_id uuid not null references users(id),
@@ -324,10 +525,29 @@ create table testimonials (
 );
 
 create index idx_staff_members_user_status on staff_members(user_id, status);
+create index idx_customer_account_members_user on customer_account_members(user_id, status);
+create index idx_customer_account_members_account on customer_account_members(customer_account_id, status);
+create unique index uq_customer_account_one_active_owner on customer_account_members(customer_account_id) where role = 'OWNER' and status = 'ACTIVE';
+create index idx_account_entitlements_account_key on account_entitlements(customer_account_id, key, status);
+create unique index uq_account_entitlements_subscription_key on account_entitlements(customer_account_id, key, (metadata->>'subscription_id')) where metadata ? 'subscription_id';
+create index idx_entitlement_definitions_status on entitlement_definitions(status);
+create index idx_package_plans_public_status on package_plans(is_public, status, display_order);
+create index idx_package_prices_plan_status on package_prices(package_plan_id, status, starts_at, ends_at);
+create index idx_package_entitlement_grants_plan on package_entitlement_grants(package_plan_id);
+create index idx_package_entitlement_grants_key on package_entitlement_grants(entitlement_key);
+create index idx_billing_customers_account on billing_customers(customer_account_id, status);
+create index idx_customer_subscriptions_account_status on customer_subscriptions(customer_account_id, status);
+create index idx_customer_subscriptions_period_end on customer_subscriptions(current_period_end);
+create index idx_payment_transactions_account_status on payment_transactions(customer_account_id, status);
+create index idx_payment_transactions_subscription on payment_transactions(subscription_id);
+create index idx_payment_events_reference on payment_events(provider, provider_reference);
+create index idx_marketing_access_tokens_code_status on marketing_access_tokens(code, status);
+create index idx_marketing_token_redemptions_account on marketing_access_token_redemptions(customer_account_id);
 create index idx_auth_challenges_contact_status on auth_challenges(contact, status, requested_at);
 create index idx_audit_logs_actor_action on audit_logs(actor_user_id, action, created_at);
 create index idx_audit_logs_project_action on audit_logs(project_id, action, created_at);
 create index idx_project_settings_project on project_settings(project_id);
+create index idx_projects_customer_account on projects(customer_account_id);
 create index idx_project_members_project_user on project_members(project_id, user_id);
 create index idx_project_links_primary on project_links(primary_project_id);
 create index idx_project_links_linked on project_links(linked_project_id);
@@ -489,13 +709,63 @@ set search_path = public
 as $$
 declare
   project_id uuid;
+  account_id uuid;
+  entitlement_id uuid;
+  entitlement_quantity integer;
+  entitlement_used integer;
 begin
   if owner_user_id <> auth.uid() then
     raise insufficient_privilege using message = 'Project owner must match authenticated user';
   end if;
 
-  insert into public.projects (type, title, owner_user_id, partner_user_id, event_date, status)
-  values (project_type, project_title, owner_user_id, partner_user_id, event_date, 'active')
+  select cam.customer_account_id
+    into account_id
+  from public.customer_account_members cam
+  join public.customer_accounts ca on ca.id = cam.customer_account_id
+  where cam.user_id = owner_user_id
+    and cam.role = 'OWNER'
+    and cam.status = 'ACTIVE'
+    and ca.status in ('LEAD','ACTIVE')
+  order by ca.created_at asc
+  limit 1;
+
+  if account_id is null then
+    insert into public.customer_accounts (name, status)
+    select coalesce(nullif(u.name, ''), u.email, u.phone, 'Ellenor Events Customer') || ' Account', 'ACTIVE'
+    from public.users u
+    where u.id = owner_user_id
+    returning id into account_id;
+
+    insert into public.customer_account_members (customer_account_id, user_id, role, status)
+    values (account_id, owner_user_id, 'OWNER', 'ACTIVE');
+  end if;
+
+  select ae.id, ae.quantity, ae.used_quantity
+    into entitlement_id, entitlement_quantity, entitlement_used
+  from public.account_entitlements ae
+  where ae.customer_account_id = account_id
+    and ae.key = 'events'
+    and ae.status = 'ACTIVE'
+    and (ae.starts_at is null or ae.starts_at <= now())
+    and (ae.expires_at is null or ae.expires_at > now())
+    and (ae.quantity is null or ae.used_quantity + 1 <= ae.quantity)
+  order by
+    case
+      when upper(coalesce(ae.metadata->>'source', '')) = 'PAID' then 1
+      when upper(coalesce(ae.metadata->>'source', '')) = 'MARKETING' then 2
+      when coalesce((ae.metadata->>'compatibility')::boolean, false) = true then 9
+      else 5
+    end,
+    ae.created_at asc,
+    ae.id asc
+  limit 1;
+
+  if entitlement_id is null then
+    raise insufficient_privilege using message = 'No active events entitlement is available for this customer account';
+  end if;
+
+  insert into public.projects (customer_account_id, type, title, owner_user_id, partner_user_id, event_date, status)
+  values (account_id, project_type, project_title, owner_user_id, partner_user_id, event_date, 'active')
   returning id into project_id;
 
   insert into public.project_members (project_id, user_id, role, permissions_level, budget_visibility_mode)
@@ -504,10 +774,14 @@ begin
   insert into public.project_settings (project_id)
   values (project_id);
 
+  update public.account_entitlements
+  set used_quantity = used_quantity + 1,
+      updated_at = now()
+  where id = entitlement_id;
+
   return project_id;
 end;
 $$;
-
 
 create or replace function public.grant_configured_super_admin()
 returns trigger

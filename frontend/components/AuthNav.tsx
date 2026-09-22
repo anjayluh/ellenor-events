@@ -44,6 +44,7 @@ export function AuthNav() {
         {notice ? <span className="sessionNotice" role="status">{notice}</span> : null}
         <nav className="nav" aria-label="Public navigation">
           <Link href="/">Home</Link>
+          <Link href="/packages">Packages</Link>
           <Link href="/login">Login</Link>
         </nav>
       </div>
@@ -53,6 +54,8 @@ export function AuthNav() {
   return (
     <nav className="nav" aria-label="Account navigation">
       <Link href="/">My Events</Link>
+      <Link href="/packages">Packages</Link>
+      <Link href="/billing">Billing</Link>
       <Link href="/vendor-marketplace">Vendor Marketplace</Link>
       <Link href="/vendor-portal">Vendor Portal</Link>
       {isAdmin ? <Link href="/admin">Admin</Link> : null}

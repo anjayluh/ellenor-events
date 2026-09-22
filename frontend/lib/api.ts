@@ -21,7 +21,7 @@ export class ApiError extends Error {
 }
 
 function isPublicPath(path: string) {
-  return path.startsWith("/auth/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path);
+  return path.startsWith("/auth/") || path.startsWith("/catalog/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path);
 }
 
 function resolveAccessToken(path: string, token?: string): string | null {

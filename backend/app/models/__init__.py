@@ -1,6 +1,9 @@
 from app.models.audit_log import AuditLog
 from app.models.auth_challenge import AuthChallenge
+from app.models.billing import BillingCustomer, CustomerSubscription, MarketingAccessToken, MarketingAccessTokenRedemption, PaymentEvent, PaymentTransaction
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
+from app.models.catalog import EntitlementDefinition, PackageEntitlementGrant, PackagePlan, PackagePrice
+from app.models.customer_account import AccountEntitlement, CustomerAccount, CustomerAccountMember
 from app.models.guest_invite import GuestInvite
 from app.models.invite import Invite
 from app.models.meeting import Meeting, MeetingRsvp
@@ -19,18 +22,31 @@ from app.models.vendor_portal import VendorBooking, VendorPayment, VendorPortfol
 
 __all__ = [
     "AuditLog",
+    "AccountEntitlement",
     "AuthChallenge",
+    "BillingCustomer",
     "Budget",
     "BudgetLineItem",
     "BudgetProposal",
     "Contribution",
+    "EntitlementDefinition",
+    "CustomerAccount",
+    "CustomerAccountMember",
+    "CustomerSubscription",
     "GuestInvite",
     "Invite",
     "Meeting",
     "MeetingRsvp",
+    "MarketingAccessToken",
+    "MarketingAccessTokenRedemption",
     "Notification",
     "NotificationPreference",
     "Participant",
+    "PackageEntitlementGrant",
+    "PackagePlan",
+    "PackagePrice",
+    "PaymentEvent",
+    "PaymentTransaction",
     "Project",
     "ProjectLink",
     "ProjectMember",

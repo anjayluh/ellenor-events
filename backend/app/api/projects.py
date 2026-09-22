@@ -11,8 +11,10 @@ from app.db.session import get_db
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.project_settings import ProjectSettings
+from app.models.user import User
 from app.schemas.project import ProjectCreate, ProjectRead, ProjectSettingsRead, ProjectSettingsUpdate, ProjectUpdate
 from app.services.audit_service import write_audit_log
+from app.services.customer_account_service import create_project_for_account
 
 router = APIRouter()
 
@@ -39,6 +41,7 @@ def serialize_project(project: Project, membership: ProjectMember | None = None)
         id=project.id,
         type=project.type,
         title=project.title,
+        customer_account_id=project.customer_account_id,
         owner_user_id=project.owner_user_id,
         partner_user_id=project.partner_user_id,
         event_date=project.event_date,
@@ -93,27 +96,11 @@ def create_project(payload: ProjectCreate, current_user: CurrentUser = Depends(g
         )
         return serialize_project(project, membership)
 
-    project = Project(**payload.model_dump(), owner_user_id=current_user.id)
-    db.add(project)
-    db.flush()
-    db.add(
-        ProjectMember(
-            project_id=project.id,
-            user_id=current_user.id,
-            role="OWNER",
-            permissions_level="admin",
-            budget_visibility_mode="FULL_ACCESS",
-        )
-    )
-    db.add(ProjectSettings(project_id=project.id))
+    owner = db.query(User).filter(User.id == current_user.id).first()
+    project, membership = create_project_for_account(db, owner=owner, payload=payload)
     write_audit_log(db, "project.created", actor_user_id=current_user.id, project_id=project.id)
     db.commit()
     db.refresh(project)
-    membership = (
-        db.query(ProjectMember)
-        .filter(ProjectMember.project_id == project.id, ProjectMember.user_id == current_user.id)
-        .first()
-    )
     return serialize_project(project, membership)
 
 

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import admin, auth, budget, guest_invites, invites, meetings, members, notifications, participants, projects, staff, tasks, testimonials, vendor_portal, vendors
+from app.api import admin, auth, billing, budget, catalog, customer_accounts, guest_invites, invites, meetings, members, notifications, participants, projects, staff, tasks, testimonials, vendor_portal, vendors
 from app.core.config import settings
 
 app = FastAPI(
@@ -19,7 +19,10 @@ app.add_middleware(
 )
 
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
+app.include_router(catalog.router, prefix="/catalog", tags=["catalog"])
+app.include_router(billing.router, prefix="/billing", tags=["billing"])
 app.include_router(admin.router, prefix="/admin", tags=["admin"])
+app.include_router(customer_accounts.router, prefix="/customer-accounts", tags=["customer-accounts"])
 app.include_router(projects.router, prefix="/projects", tags=["projects"])
 app.include_router(members.router, prefix="/projects/{project_id}/members", tags=["members"])
 app.include_router(participants.router, prefix="/projects/{project_id}/participants", tags=["participants"])

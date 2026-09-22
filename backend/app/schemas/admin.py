@@ -38,3 +38,14 @@ class AuditLogRead(BaseModel):
     action: str
     metadata: dict
     created_at: datetime
+
+
+class CustomerAccountAdminRead(BaseModel):
+    id: UUID
+    name: str
+    status: str
+    owner_email: str | None = None
+    owner_user_id: UUID | None = None
+    project_count: int = 0
+    entitlement_count: int = 0
+    created_at: datetime

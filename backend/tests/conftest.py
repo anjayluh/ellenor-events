@@ -10,22 +10,37 @@ from sqlalchemy.pool import StaticPool
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.security import create_access_token
+from app.core.config import settings
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.services.customer_account_service import get_or_create_primary_account_for_user
 from app.models import (
     AuditLog,
     AuthChallenge,
+    BillingCustomer,
     Budget,
     BudgetLineItem,
     BudgetProposal,
+    AccountEntitlement,
+    EntitlementDefinition,
+    CustomerAccount,
+    CustomerAccountMember,
+    CustomerSubscription,
     Contribution,
     GuestInvite,
     Invite,
     Meeting,
     MeetingRsvp,
+    MarketingAccessToken,
+    MarketingAccessTokenRedemption,
     Notification,
     NotificationPreference,
+    PackageEntitlementGrant,
+    PackagePlan,
+    PackagePrice,
+    PaymentEvent,
+    PaymentTransaction,
     Participant,
     Project,
     ProjectLink,
@@ -46,6 +61,15 @@ from app.models import (
 @compiles(JSONB, "sqlite")
 def compile_jsonb_for_sqlite(type_, compiler, **kw):
     return "JSON"
+
+
+@pytest.fixture(autouse=True)
+def isolated_test_settings(monkeypatch):
+    monkeypatch.setattr(settings, "auth_provider", "local")
+    monkeypatch.setattr(settings, "supabase_url", None)
+    monkeypatch.setattr(settings, "supabase_anon_key", None)
+    monkeypatch.setattr(settings, "environment", "test")
+    yield
 
 
 @pytest.fixture
@@ -97,7 +121,8 @@ def create_project_with_member(
     role: str = "OWNER",
     budget_visibility_mode: str = "FULL_ACCESS",
 ) -> Project:
-    project = Project(type="wedding", title=title, owner_user_id=user.id)
+    account = get_or_create_primary_account_for_user(db, user)
+    project = Project(type="wedding", title=title, customer_account_id=account.id, owner_user_id=user.id)
     db.add(project)
     db.flush()
     db.add(

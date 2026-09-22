@@ -1,3 +1,4 @@
+import { CustomerAccountPanel } from "../components/CustomerAccountPanel";
 import { MyEventsPanel } from "../components/MyEventsPanel";
 import { PortalShell } from "../components/PortalShell";
 
@@ -15,11 +16,7 @@ export default function Home() {
 
       <section className="grid twoColumns">
         <MyEventsPanel />
-        <aside className="panel">
-          <p className="eyebrow">Event Workspaces</p>
-          <h2>Every event stays organized in its own workspace.</h2>
-          <p>Open an event to see the planning tools and details that have been shared with your account.</p>
-        </aside>
+        <CustomerAccountPanel />
       </section>
     </PortalShell>
   );

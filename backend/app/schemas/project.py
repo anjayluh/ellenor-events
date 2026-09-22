@@ -21,6 +21,7 @@ class ProjectUpdate(BaseModel):
 
 class ProjectRead(ProjectCreate):
     id: UUID
+    customer_account_id: UUID
     owner_user_id: UUID
     status: str
     role: str | None = None

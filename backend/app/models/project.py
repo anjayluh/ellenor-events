@@ -14,6 +14,7 @@ class Project(Base):
     id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
     type: Mapped[str] = mapped_column(String, index=True)
     title: Mapped[str] = mapped_column(String)
+    customer_account_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("customer_accounts.id"), index=True)
     owner_user_id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("users.id"))
     partner_user_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), nullable=True)
     event_date: Mapped[date | None] = mapped_column(Date)
