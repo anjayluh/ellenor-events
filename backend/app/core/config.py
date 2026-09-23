@@ -64,6 +64,17 @@ class Settings(BaseSettings):
         return self.auth_provider == "supabase" and bool(self.resolved_supabase_url and self.resolved_supabase_anon_key)
 
     @property
+    def has_configured_database_url(self) -> bool:
+        return bool(
+            self.database_pooler_url
+            or "database_url" in self.model_fields_set
+            or self.postgres_prisma_url
+            or self.postgres_url
+            or self.postgres_url_non_pooling
+            or self.supabase_db_url
+        )
+
+    @property
     def resolved_supabase_url(self) -> str | None:
         return self.supabase_url or self.next_public_supabase_url
 

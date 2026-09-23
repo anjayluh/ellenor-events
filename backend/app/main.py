@@ -1,8 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, status
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api import admin, auth, billing, budget, catalog, customer_accounts, guest_invites, invites, meetings, members, notifications, participants, projects, staff, tasks, testimonials, vendor_portal, vendors
 from app.core.config import settings
+from app.db.session import SessionLocal
 
 app = FastAPI(
     title=settings.app_name,
@@ -42,3 +46,32 @@ app.include_router(staff.router, prefix="/staff", tags=["staff"])
 @app.get("/health", tags=["system"])
 def health_check() -> dict[str, str]:
     return {"status": "ok", "service": "eecs-api"}
+
+
+@app.get("/health/readiness", tags=["system"])
+def readiness_check():
+    database_configured = settings.has_configured_database_url
+    database_connected = False
+    database_error = None
+    if database_configured:
+        try:
+            with SessionLocal() as db:
+                db.execute(text("select 1"))
+            database_connected = True
+        except SQLAlchemyError:
+            database_error = "database_unavailable"
+
+    supabase_auth_configured = settings.uses_remote_supabase_auth
+    ready = database_connected and supabase_auth_configured
+    payload = {
+        "status": "ok" if ready else "degraded",
+        "service": "eecs-api",
+        "database_configured": database_configured,
+        "database_connected": database_connected,
+        "database_error": database_error,
+        "supabase_auth_configured": supabase_auth_configured,
+        "payment_provider": settings.payment_provider,
+    }
+    if ready:
+        return payload
+    return JSONResponse(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, content=payload)
