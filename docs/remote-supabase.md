@@ -13,6 +13,11 @@ Required local/deployment variables:
 ```env
 DATABASE_URL=postgresql://postgres:<password>@db.<project-ref>.supabase.co:5432/postgres
 DATABASE_POOLER_URL=postgresql://postgres.<project-ref>:<password>@<region>.pooler.supabase.com:6543/postgres
+# Optional backend-only fallbacks recognized in deployments:
+# POSTGRES_PRISMA_URL=postgresql://...
+# POSTGRES_URL=postgresql://...
+# POSTGRES_URL_NON_POOLING=postgresql://...
+# SUPABASE_DB_URL=postgresql://...
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_JWT_SECRET=<jwt-secret>
@@ -24,7 +29,7 @@ PAYMENT_PROVIDER=mock
 BILLING_CHECKOUT_REDIRECT_URL=http://localhost:3000/billing
 ```
 
-The backend normalizes `postgresql://` to `postgresql+psycopg://` internally for SQLAlchemy. Use `DATABASE_POOLER_URL` for local QA when direct Supabase Postgres is unreachable over IPv6.
+The backend normalizes `postgresql://` to `postgresql+psycopg://` internally for SQLAlchemy. Use `DATABASE_POOLER_URL` for local QA and Vercel backend deployments when direct Supabase Postgres is unreachable over IPv6. If a deployment integration exposes only a provider-specific Postgres variable, the backend can fall back to `POSTGRES_PRISMA_URL`, `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, or `SUPABASE_DB_URL`.
 
 ## Migration Status
 

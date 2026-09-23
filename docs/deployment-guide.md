@@ -49,6 +49,7 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `ENVIRONMENT` | Production, Preview | Set to `production` for production and `preview` or `staging` for previews. |
 | `DATABASE_POOLER_URL` | Production, Preview | Preferred Supabase pooled Postgres URL for serverless connections. |
 | `DATABASE_URL` | Production, Preview | Supabase direct Postgres URL fallback if the pooler URL is unavailable. |
+| `POSTGRES_PRISMA_URL` / `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` / `SUPABASE_DB_URL` | Production, Preview | Optional deployment-provider aliases. The backend accepts these only as fallbacks when `DATABASE_POOLER_URL` or an explicit `DATABASE_URL` is not configured. |
 | `AUTH_PROVIDER` | Production, Preview | Use `supabase`. |
 | `SUPABASE_URL` | Production, Preview | Supabase project URL used for Auth and JWT verification. |
 | `SUPABASE_ANON_KEY` | Production, Preview | Supabase public anon key used by backend auth flows. |
@@ -74,6 +75,8 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `NEXT_PUBLIC_API_BASE_URL` | Usually unset | Leave unset for Vercel Services same-origin routing. Set only if intentionally calling a separate backend origin. |
 
 Do not add `.env.local`, `backend/.env`, or any local secret files to Git.
+
+For Vercel deployments, configure one server-side database URL for the backend service. Prefer `DATABASE_POOLER_URL`; if Vercel or Supabase integration exposes a different Postgres variable name, the backend also recognizes `POSTGRES_PRISMA_URL`, `POSTGRES_URL`, `POSTGRES_URL_NON_POOLING`, and `SUPABASE_DB_URL` as non-public fallbacks.
 
 ## 5. Billing Provider Setup
 

@@ -2,12 +2,18 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/ellenor_events"
+
 
 class Settings(BaseSettings):
     app_name: str = "Ellenor Events Coordination System"
     environment: str = "development"
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ellenor_events"
+    database_url: str = DEFAULT_DATABASE_URL
     database_pooler_url: str | None = None
+    postgres_url: str | None = None
+    postgres_prisma_url: str | None = None
+    postgres_url_non_pooling: str | None = None
+    supabase_db_url: str | None = None
     auth_provider: str = "supabase"
     supabase_url: str | None = None
     supabase_anon_key: str | None = None
@@ -61,7 +67,18 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_url(self) -> str:
-        url = self.database_pooler_url or self.database_url
+        explicit_database_url = self.database_url if "database_url" in self.model_fields_set else None
+        url = (
+            self.database_pooler_url
+            or explicit_database_url
+            or self.postgres_prisma_url
+            or self.postgres_url
+            or self.postgres_url_non_pooling
+            or self.supabase_db_url
+            or self.database_url
+        )
+        if url.startswith("postgres://"):
+            return url.replace("postgres://", "postgresql+psycopg://", 1)
         if url.startswith("postgresql://"):
             return url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url

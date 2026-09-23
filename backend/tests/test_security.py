@@ -58,6 +58,29 @@ def test_postgresql_url_is_normalized_for_psycopg_driver():
     assert settings.sqlalchemy_database_url == "postgresql+psycopg://postgres:postgres@db.example.supabase.co:5432/postgres"
 
 
+def test_database_pooler_url_takes_precedence_over_vercel_aliases():
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        database_pooler_url="postgresql://pooler:postgres@pooler.example.supabase.com:6543/postgres",
+        postgres_url="postgres://direct:postgres@db.example.supabase.co:5432/postgres",
+    )
+
+    assert settings.sqlalchemy_database_url == "postgresql+psycopg://pooler:postgres@pooler.example.supabase.com:6543/postgres"
+
+
+def test_vercel_postgres_aliases_are_supported_when_database_url_is_unset():
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        postgres_prisma_url="postgres://prisma:postgres@db.example.supabase.co:5432/postgres",
+    )
+
+    assert settings.sqlalchemy_database_url == "postgresql+psycopg://prisma:postgres@db.example.supabase.co:5432/postgres"
+
+
 def test_remote_supabase_auth_requires_url_and_anon_key():
     from app.core.config import Settings
 
