@@ -50,7 +50,8 @@ def health_check() -> dict[str, str]:
 
 @app.get("/health/readiness", tags=["system"])
 def readiness_check():
-    database_configured = settings.has_configured_database_url
+    config_errors = settings.deployment_config_errors
+    database_configured = settings.has_configured_database_url and not settings.database_points_to_localhost
     database_connected = False
     database_error = None
     if database_configured:
@@ -60,6 +61,8 @@ def readiness_check():
             database_connected = True
         except SQLAlchemyError:
             database_error = "database_unavailable"
+        except RuntimeError:
+            database_error = "database_configuration_invalid"
 
     supabase_auth_configured = settings.uses_remote_supabase_auth
     ready = database_connected and supabase_auth_configured
@@ -71,6 +74,7 @@ def readiness_check():
         "database_error": database_error,
         "supabase_auth_configured": supabase_auth_configured,
         "payment_provider": settings.payment_provider,
+        "configuration_errors": config_errors,
     }
     if ready:
         return payload

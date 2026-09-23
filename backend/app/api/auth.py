@@ -19,7 +19,7 @@ def serialize_auth_token(token: str, user) -> AuthToken:
 
 @router.post("/register", response_model=AuthToken, responses={202: {"model": AuthMessage}})
 def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthToken:
-    if settings.uses_remote_supabase_auth:
+    if settings.auth_provider == "supabase":
         token, user = register_with_supabase_password(db, payload)
         db.commit()
         return serialize_auth_token(token, user)
@@ -32,7 +32,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> AuthTok
 
 @router.post("/login", response_model=AuthToken)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> AuthToken:
-    if settings.uses_remote_supabase_auth:
+    if settings.auth_provider == "supabase":
         token, user = login_with_supabase_password(db, payload)
         db.commit()
         return serialize_auth_token(token, user)

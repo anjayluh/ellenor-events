@@ -68,6 +68,12 @@ def isolated_test_settings(monkeypatch):
     monkeypatch.setattr(settings, "auth_provider", "local")
     monkeypatch.setattr(settings, "supabase_url", None)
     monkeypatch.setattr(settings, "supabase_anon_key", None)
+    monkeypatch.setattr(settings, "database_url", None)
+    monkeypatch.setattr(settings, "database_pooler_url", None)
+    monkeypatch.setattr(settings, "postgres_prisma_url", None)
+    monkeypatch.setattr(settings, "postgres_url", None)
+    monkeypatch.setattr(settings, "postgres_url_non_pooling", None)
+    monkeypatch.setattr(settings, "supabase_db_url", None)
     monkeypatch.setattr(settings, "environment", "test")
     yield
 

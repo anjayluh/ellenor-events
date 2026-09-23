@@ -2,13 +2,11 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_DATABASE_URL = "postgresql+psycopg://postgres:postgres@localhost:5432/ellenor_events"
-
 
 class Settings(BaseSettings):
     app_name: str = "Ellenor Events Coordination System"
     environment: str = "development"
-    database_url: str = DEFAULT_DATABASE_URL
+    database_url: str | None = None
     database_pooler_url: str | None = None
     postgres_url: str | None = None
     postgres_prisma_url: str | None = None
@@ -65,9 +63,13 @@ class Settings(BaseSettings):
 
     @property
     def has_configured_database_url(self) -> bool:
-        return bool(
+        return bool(self.configured_database_url)
+
+    @property
+    def configured_database_url(self) -> str | None:
+        return (
             self.database_pooler_url
-            or "database_url" in self.model_fields_set
+            or self.database_url
             or self.postgres_prisma_url
             or self.postgres_url
             or self.postgres_url_non_pooling
@@ -88,21 +90,78 @@ class Settings(BaseSettings):
 
     @property
     def sqlalchemy_database_url(self) -> str:
-        explicit_database_url = self.database_url if "database_url" in self.model_fields_set else None
-        url = (
-            self.database_pooler_url
-            or explicit_database_url
-            or self.postgres_prisma_url
-            or self.postgres_url
-            or self.postgres_url_non_pooling
-            or self.supabase_db_url
-            or self.database_url
-        )
+        url = self.configured_database_url
+        if not url:
+            raise RuntimeError(
+                "Database URL is not configured. Set DATABASE_POOLER_URL, DATABASE_URL, "
+                "POSTGRES_PRISMA_URL, POSTGRES_URL, POSTGRES_URL_NON_POOLING, or SUPABASE_DB_URL."
+            )
+        if "localhost" in url or "127.0.0.1" in url:
+            raise RuntimeError(
+                "Localhost database URLs are not allowed for this deployment. "
+                "Set DATABASE_POOLER_URL or DATABASE_URL to the Supabase/Postgres database."
+            )
+        return self.normalize_database_url(url)
+
+    @staticmethod
+    def normalize_database_url(url: str) -> str:
         if url.startswith("postgres://"):
             return url.replace("postgres://", "postgresql+psycopg://", 1)
         if url.startswith("postgresql://"):
             return url.replace("postgresql://", "postgresql+psycopg://", 1)
         return url
+
+    @property
+    def safe_database_host(self) -> str | None:
+        url = self.configured_database_url
+        if not url:
+            return None
+        try:
+            from urllib.parse import urlparse
+
+            parsed = urlparse(self.normalize_database_url(url))
+            return parsed.hostname
+        except ValueError:
+            return "invalid"
+
+    @property
+    def database_points_to_localhost(self) -> bool:
+        host = self.safe_database_host
+        return host in {"localhost", "127.0.0.1", "::1"}
+
+    def validate_deployment_configuration(self) -> None:
+        errors = []
+        if not self.has_configured_database_url:
+            errors.append("database URL is missing")
+        elif self.database_points_to_localhost:
+            errors.append("database URL points to localhost")
+        if self.auth_provider == "supabase" and not self.resolved_supabase_url:
+            errors.append("Supabase URL is missing")
+        if self.auth_provider == "supabase" and not self.resolved_supabase_anon_key:
+            errors.append("Supabase anon key is missing")
+        if self.is_production and self.payment_provider == "mock":
+            errors.append("mock payment provider is not allowed in production")
+        if errors:
+            raise RuntimeError(
+                "Invalid deployment configuration: "
+                + "; ".join(errors)
+                + ". Configure the backend service environment variables in Vercel."
+            )
+
+    @property
+    def deployment_config_errors(self) -> list[str]:
+        errors = []
+        if not self.has_configured_database_url:
+            errors.append("database_url_missing")
+        elif self.database_points_to_localhost:
+            errors.append("database_url_points_to_localhost")
+        if self.auth_provider == "supabase" and not self.resolved_supabase_url:
+            errors.append("supabase_url_missing")
+        if self.auth_provider == "supabase" and not self.resolved_supabase_anon_key:
+            errors.append("supabase_anon_key_missing")
+        if self.is_production and self.payment_provider == "mock":
+            errors.append("mock_payment_provider_in_production")
+        return errors
 
     @property
     def is_production(self) -> bool:

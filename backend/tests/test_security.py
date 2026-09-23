@@ -81,6 +81,30 @@ def test_vercel_postgres_aliases_are_supported_when_database_url_is_unset():
     assert settings.sqlalchemy_database_url == "postgresql+psycopg://prisma:postgres@db.example.supabase.co:5432/postgres"
 
 
+def test_database_url_must_be_configured_explicitly():
+    from app.core.config import Settings
+
+    settings = Settings(_env_file=None, database_url=None, database_pooler_url=None)
+
+    assert settings.has_configured_database_url is False
+    with pytest.raises(RuntimeError, match="Database URL is not configured"):
+        _ = settings.sqlalchemy_database_url
+
+
+def test_localhost_database_url_is_rejected():
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        database_url="postgresql://postgres:postgres@127.0.0.1:5432/ellenor_events",
+        database_pooler_url=None,
+    )
+
+    assert "database_url_points_to_localhost" in settings.deployment_config_errors
+    with pytest.raises(RuntimeError, match="Localhost database URLs are not allowed"):
+        _ = settings.sqlalchemy_database_url
+
+
 def test_remote_supabase_auth_requires_url_and_anon_key():
     from app.core.config import Settings
 
