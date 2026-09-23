@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiGet } from "../lib/api";
 import { clearSession, consumeSessionNotice, getSessionUser, subscribeToAuthChanges } from "../lib/session";
 import type { AuthUser } from "../lib/types";
 
 export function AuthNav() {
+  const router = useRouter();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [notice, setNotice] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
@@ -59,7 +61,16 @@ export function AuthNav() {
       <Link href="/vendor-marketplace">Vendor Marketplace</Link>
       <Link href="/vendor-portal">Vendor Portal</Link>
       {isAdmin ? <Link href="/admin">Admin</Link> : null}
-      <button className="navButton" type="button" onClick={() => clearSession()}>Logout</button>
+      <button
+        className="navButton"
+        type="button"
+        onClick={() => {
+          clearSession();
+          router.replace("/");
+        }}
+      >
+        Logout
+      </button>
     </nav>
   );
 }
