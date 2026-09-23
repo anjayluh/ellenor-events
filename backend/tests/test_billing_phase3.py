@@ -6,6 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.api.dependencies import trusted_backend_write
 from app.models import (
     AccountEntitlement,
     CustomerSubscription,
@@ -381,3 +382,34 @@ def test_billing_hardening_migration_removes_client_insert_policies():
     assert "drop policy if exists payment_transactions_customer_checkout_insert" in migration
     assert "create policy customer_subscriptions_customer_checkout_insert" not in migration
     assert "create policy payment_transactions_customer_checkout_insert" not in migration
+
+
+def test_trusted_backend_write_temporarily_resets_authenticated_rls_context(monkeypatch):
+    class FakeDialect:
+        name = "postgresql"
+
+    class FakeBind:
+        dialect = FakeDialect()
+
+    class FakeSession:
+        def __init__(self):
+            self.info = {"supabase_rls_applied": True, "supabase_rls_user_id": "00000000-0000-0000-0000-000000000001"}
+            self.statements: list[str] = []
+
+        def get_bind(self):
+            return FakeBind()
+
+        def execute(self, statement, params=None):
+            self.statements.append(str(statement))
+
+    fake_session = FakeSession()
+    monkeypatch.setattr(settings, "auth_provider", "supabase")
+    monkeypatch.setattr(settings, "supabase_url", "https://example.supabase.co")
+    monkeypatch.setattr(settings, "supabase_anon_key", "anon")
+
+    with trusted_backend_write(fake_session):
+        fake_session.statements.append("trusted write")
+
+    assert fake_session.statements[0] == "reset role"
+    assert fake_session.statements[1] == "trusted write"
+    assert any("set local role authenticated" in statement for statement in fake_session.statements)

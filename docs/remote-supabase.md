@@ -20,6 +20,8 @@ AUTH_PROVIDER=supabase
 ENVIRONMENT=production
 TESTER_EMAIL=<confirmed-qa-user-email>
 TESTER_PASSWORD=<confirmed-qa-user-password>
+PAYMENT_PROVIDER=mock
+BILLING_CHECKOUT_REDIRECT_URL=http://localhost:3000/billing
 ```
 
 The backend normalizes `postgresql://` to `postgresql+psycopg://` internally for SQLAlchemy. Use `DATABASE_POOLER_URL` for local QA when direct Supabase Postgres is unreachable over IPv6.
@@ -63,6 +65,10 @@ Service-only writes use narrow security-definer functions:
 - `public.create_notification(...)`
 
 These functions validate project role context before writing service tables that are otherwise protected by RLS.
+
+Checkout also uses a trusted FastAPI backend write section for server-owned billing rows such as subscriptions and payment transactions. Browser clients still cannot insert those rows directly through Supabase; the backend validates the authenticated account owner and package price first, then temporarily resets the PostgreSQL request role only for the trusted billing write.
+
+For billing QA before Flutterwave is available, set `PAYMENT_PROVIDER=mock`. The mock provider uses the same checkout, webhook, payment verification, subscription, entitlement, and event-access lifecycle without charging real money. When Flutterwave is ready, configure `PAYMENT_PROVIDER=flutterwave`, `FLUTTERWAVE_SECRET_KEY`, `FLUTTERWAVE_WEBHOOK_SECRET`, `FLUTTERWAVE_BASE_URL`, and `BILLING_CHECKOUT_REDIRECT_URL`, then run a controlled test transaction before enabling live payments.
 
 ## Verification Performed
 

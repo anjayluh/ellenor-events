@@ -65,24 +65,46 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `WHATSAPP_CLOUD_API_TOKEN` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |
 | `WHATSAPP_PHONE_NUMBER_ID` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |
 | `NOTIFICATION_MAX_ATTEMPTS` | Production, Preview | Notification retry limit. |
+| `PAYMENT_PROVIDER` | Production, Preview | Use `mock` only for controlled preview/QA without real money. Use `flutterwave` when Flutterwave credentials are ready. |
+| `FLUTTERWAVE_SECRET_KEY` | Production, Preview | Required only when `PAYMENT_PROVIDER=flutterwave`; keep server-only. |
+| `FLUTTERWAVE_PUBLIC_KEY` | Production, Preview | Flutterwave public key, used for provider setup/reference. |
+| `FLUTTERWAVE_WEBHOOK_SECRET` | Production, Preview | Required to verify Flutterwave webhook authenticity. |
+| `FLUTTERWAVE_BASE_URL` | Production, Preview | Usually `https://api.flutterwave.com/v3`. |
+| `BILLING_CHECKOUT_REDIRECT_URL` | Production, Preview | Frontend return URL after provider checkout, for example `<FRONTEND_URL>/billing`. |
 | `NEXT_PUBLIC_API_BASE_URL` | Usually unset | Leave unset for Vercel Services same-origin routing. Set only if intentionally calling a separate backend origin. |
 
 Do not add `.env.local`, `backend/.env`, or any local secret files to Git.
 
-## 5. CORS
+## 5. Billing Provider Setup
+
+Use `PAYMENT_PROVIDER=mock` for controlled QA before the Flutterwave account is ready. The mock provider still uses the normal checkout, webhook, payment verification, subscription, entitlement, and event-access flow; it must not be used when `ENVIRONMENT=production`.
+
+To activate Flutterwave later:
+
+1. Create the Ellenor Events Flutterwave account.
+2. Obtain Flutterwave test credentials first, then live credentials only when ready.
+3. Set the backend webhook URL to `/billing/webhooks/flutterwave`.
+4. Configure the Flutterwave webhook secret and set `FLUTTERWAVE_WEBHOOK_SECRET`.
+5. Set `BILLING_CHECKOUT_REDIRECT_URL` to the deployed billing page.
+6. Set `PAYMENT_PROVIDER=flutterwave`.
+7. Deploy or restart the backend.
+8. Run a controlled test transaction and verify subscription/entitlement activation.
+9. Switch to live credentials only after the controlled test succeeds.
+
+## 6. CORS
 
 With Vercel Services, frontend requests use the same deployment origin and are routed internally to the backend service. Keep `FRONTEND_URL` set to the canonical app URL and use `CORS_ORIGINS` for any additional preview/custom domains that need direct browser access to backend routes.
 
 Local development still uses `http://localhost:3000` for the frontend and `http://127.0.0.1:8000` for the backend.
 
-## 6. Operations
+## 7. Operations
 
 - GitHub Actions `CI` runs backend tests and frontend lint/typecheck/smoke/build.
 - GitHub Actions `Uptime` pings the production health endpoint every 30 minutes when repository variable `PRODUCTION_API_HEALTH_URL` is configured.
 - Use Supabase logs as the MVP audit/operations fallback before adding a dedicated analytics product.
 - Keep production secrets in Vercel environment variables and Supabase settings only.
 
-## 7. Release Smoke Test
+## 8. Release Smoke Test
 
 Run these checks after each production deploy:
 

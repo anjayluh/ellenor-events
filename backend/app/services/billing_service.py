@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import CurrentUser
+from app.api.dependencies import CurrentUser, trusted_backend_write
 from app.core.config import settings
 from app.models.billing import CustomerSubscription, MarketingAccessToken, MarketingAccessTokenRedemption, PaymentEvent, PaymentTransaction
 from app.models.catalog import PackagePlan, PackagePrice
@@ -83,34 +83,35 @@ def create_checkout(
     account_id = resolve_owned_account(db, current_user, customer_account_id)
     price, package = get_price_with_package_or_404(db, package_price_id)
     validate_checkout_price(price, package)
-    subscription = CustomerSubscription(
-        customer_account_id=account_id,
-        package_plan_id=package.id,
-        package_price_id=price.id,
-        status="INCOMPLETE",
-        access_source="PAID",
-        currency=price.currency,
-        amount_minor=price.amount_minor,
-        billing_interval=price.billing_interval,
-        provider=(provider or get_payment_provider()).name,
-        metadata_json={"package_code": package.code},
-    )
-    db.add(subscription)
-    db.flush()
-    provider_reference = f"ellenor-{subscription.id.hex}-{uuid4().hex[:8]}"
-    transaction = PaymentTransaction(
-        customer_account_id=account_id,
-        subscription_id=subscription.id,
-        package_price_id=price.id,
-        amount_minor=price.amount_minor,
-        currency=price.currency,
-        provider=subscription.provider,
-        provider_reference=provider_reference,
-        status="INITIATED",
-        metadata_json={"package_plan_id": str(package.id), "package_code": package.code},
-    )
-    db.add(transaction)
-    db.flush()
+    with trusted_backend_write(db):
+        subscription = CustomerSubscription(
+            customer_account_id=account_id,
+            package_plan_id=package.id,
+            package_price_id=price.id,
+            status="INCOMPLETE",
+            access_source="PAID",
+            currency=price.currency,
+            amount_minor=price.amount_minor,
+            billing_interval=price.billing_interval,
+            provider=(provider or get_payment_provider()).name,
+            metadata_json={"package_code": package.code},
+        )
+        db.add(subscription)
+        db.flush()
+        provider_reference = f"ellenor-{subscription.id.hex}-{uuid4().hex[:8]}"
+        transaction = PaymentTransaction(
+            customer_account_id=account_id,
+            subscription_id=subscription.id,
+            package_price_id=price.id,
+            amount_minor=price.amount_minor,
+            currency=price.currency,
+            provider=subscription.provider,
+            provider_reference=provider_reference,
+            status="INITIATED",
+            metadata_json={"package_plan_id": str(package.id), "package_code": package.code},
+        )
+        db.add(transaction)
+        db.flush()
     active_provider = provider or get_payment_provider(subscription.provider)
     session = active_provider.create_checkout_session(
         transaction_id=transaction.id,
@@ -121,10 +122,11 @@ def create_checkout(
         redirect_url=settings.checkout_redirect_url,
         metadata={"subscription_id": str(subscription.id), "customer_account_id": str(account_id)},
     )
-    transaction.checkout_url = session.checkout_url
-    transaction.metadata_json = {**(transaction.metadata_json or {}), "provider_payload": session.provider_payload}
-    transaction.updated_at = now_utc()
-    db.flush()
+    with trusted_backend_write(db):
+        transaction.checkout_url = session.checkout_url
+        transaction.metadata_json = {**(transaction.metadata_json or {}), "provider_payload": session.provider_payload}
+        transaction.updated_at = now_utc()
+        db.flush()
     return subscription, transaction
 
 

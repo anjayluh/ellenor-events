@@ -2,6 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user, get_project_membership, membership_role
@@ -66,26 +67,38 @@ def list_projects(current_user: CurrentUser = Depends(get_current_user), db: Ses
 @router.post("", response_model=ProjectRead)
 def create_project(payload: ProjectCreate, current_user: CurrentUser = Depends(get_current_user), db: Session = Depends(get_db)):
     if settings.uses_remote_supabase_auth and db.get_bind().dialect.name == "postgresql":
-        project_id = db.execute(
-            text(
-                """
-                select public.create_project_with_owner(
-                    :project_type,
-                    :project_title,
-                    :owner_user_id,
-                    :partner_user_id,
-                    :event_date
-                )
-                """
-            ),
-            {
-                "project_type": payload.type.value,
-                "project_title": payload.title,
-                "owner_user_id": str(current_user.id),
-                "partner_user_id": str(payload.partner_user_id) if payload.partner_user_id else None,
-                "event_date": payload.event_date,
-            },
-        ).scalar_one()
+        try:
+            project_id = db.execute(
+                text(
+                    """
+                    select public.create_project_with_owner(
+                        :project_type,
+                        :project_title,
+                        :owner_user_id,
+                        :partner_user_id,
+                        :event_date
+                    )
+                    """
+                ),
+                {
+                    "project_type": payload.type.value,
+                    "project_title": payload.title,
+                    "owner_user_id": str(current_user.id),
+                    "partner_user_id": str(payload.partner_user_id) if payload.partner_user_id else None,
+                    "event_date": payload.event_date,
+                },
+            ).scalar_one()
+        except ProgrammingError as exc:
+            if "No active events entitlement is available" in str(exc):
+                db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                    detail={
+                        "code": "EVENT_ENTITLEMENT_REQUIRED",
+                        "message": "Choose an active Ellenor Events package before creating a new event.",
+                    },
+                ) from exc
+            raise
         write_audit_log(db, "project.created", actor_user_id=current_user.id, project_id=project_id)
         db.commit()
         project = get_project_or_404(db, project_id)

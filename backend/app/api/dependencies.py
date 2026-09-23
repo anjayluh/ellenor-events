@@ -1,3 +1,5 @@
+from collections.abc import Generator
+from contextlib import contextmanager
 from uuid import UUID
 
 import httpx
@@ -42,6 +44,42 @@ def apply_supabase_rls_context(db: Session, user_id: UUID) -> None:
         {"user_id": str(user_id)},
     )
     db.info["supabase_rls_applied"] = True
+    db.info["supabase_rls_user_id"] = str(user_id)
+
+
+def restore_supabase_rls_context(db: Session) -> None:
+    user_id = db.info.get("supabase_rls_user_id")
+    if not user_id:
+        return
+    db.execute(text("set local role authenticated"))
+    db.execute(
+        text(
+            """
+            select
+                set_config('request.jwt.claim.sub', :user_id, true),
+                set_config('request.jwt.claim.role', 'authenticated', true)
+            """
+        ),
+        {"user_id": user_id},
+    )
+
+
+@contextmanager
+def trusted_backend_write(db: Session) -> Generator[None, None, None]:
+    if not settings.uses_remote_supabase_auth:
+        yield
+        return
+    if db.get_bind().dialect.name != "postgresql":
+        yield
+        return
+    if not db.info.get("supabase_rls_applied"):
+        yield
+        return
+    db.execute(text("reset role"))
+    try:
+        yield
+    finally:
+        restore_supabase_rls_context(db)
 
 
 def resolve_supabase_user_from_token(token: str) -> tuple[UUID, dict]:

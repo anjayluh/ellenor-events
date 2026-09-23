@@ -1,11 +1,17 @@
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 
+from app.api.projects import create_project
+from app.core.config import settings
 from app.models.customer_account import AccountEntitlement, CustomerAccount, CustomerAccountMember
 from app.models.project_member import ProjectMember
+from app.schemas.project import ProjectCreate
 from app.services.customer_account_service import add_account_member, create_customer_account, list_account_projects
 from app.services.entitlement_service import active_entitlements, create_entitlement, entitlement_is_active
 
@@ -127,6 +133,43 @@ def test_new_account_without_paid_or_marketing_entitlement_cannot_create_event(c
     )
 
     assert response.status_code == 402
+
+
+def test_remote_project_creation_entitlement_denial_returns_clean_error(monkeypatch):
+    class FakeDialect:
+        name = "postgresql"
+
+    class FakeBind:
+        dialect = FakeDialect()
+
+    class FakeDb:
+        def __init__(self):
+            self.rolled_back = False
+
+        def get_bind(self):
+            return FakeBind()
+
+        def execute(self, statement, params=None):
+            raise ProgrammingError("select public.create_project_with_owner(...)", params or {}, Exception("No active events entitlement is available for this customer account"))
+
+        def rollback(self):
+            self.rolled_back = True
+
+    fake_db = FakeDb()
+    monkeypatch.setattr(settings, "auth_provider", "supabase")
+    monkeypatch.setattr(settings, "supabase_url", "https://example.supabase.co")
+    monkeypatch.setattr(settings, "supabase_anon_key", "anon")
+
+    with pytest.raises(HTTPException) as exc:
+        create_project(
+            ProjectCreate(type="wedding", title="Needs Package", event_date=None),
+            current_user=SimpleNamespace(id=uuid4()),
+            db=fake_db,
+        )
+
+    assert exc.value.status_code == 402
+    assert exc.value.detail["code"] == "EVENT_ENTITLEMENT_REQUIRED"
+    assert fake_db.rolled_back is True
 
 
 def test_legacy_compatibility_account_can_create_event(client, db_session: Session):
