@@ -131,7 +131,7 @@ def update_project(project_id: UUID, payload: ProjectUpdate, membership=Depends(
     write_audit_log(db, "project.updated", actor_user_id=membership.user_id, project_id=project_id)
     db.commit()
     db.refresh(project)
-    return project
+    return serialize_project(project, membership)
 
 
 @router.post("/{project_id}/archive", response_model=ProjectRead)
@@ -142,7 +142,7 @@ def archive_project(project_id: UUID, membership=Depends(get_project_membership)
     write_audit_log(db, "project.archived", actor_user_id=membership.user_id, project_id=project_id)
     db.commit()
     db.refresh(project)
-    return project
+    return serialize_project(project, membership)
 
 
 @router.post("/{project_id}/restore", response_model=ProjectRead)
@@ -153,7 +153,7 @@ def restore_project(project_id: UUID, membership=Depends(get_project_membership)
     write_audit_log(db, "project.restored", actor_user_id=membership.user_id, project_id=project_id)
     db.commit()
     db.refresh(project)
-    return project
+    return serialize_project(project, membership)
 
 
 @router.get("/{project_id}/settings", response_model=ProjectSettingsRead)

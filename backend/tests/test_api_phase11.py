@@ -34,6 +34,25 @@ def test_project_list_is_scoped_to_current_membership(client, db_session: Sessio
     assert projects[0]["title"] == "Visible Wedding"
 
 
+def test_project_update_response_preserves_membership_fields(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    project = create_project_with_member(db_session, owner, title="Original Wedding")
+    db_session.commit()
+
+    response = client.patch(
+        f"/projects/{project.id}",
+        headers=auth_headers(owner),
+        json={"title": "Updated Wedding"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "Updated Wedding"
+    assert payload["role"] == "OWNER"
+    assert payload["budget_visibility_mode"] == "FULL_ACCESS"
+    assert "permissions" in payload
+
+
 def test_cross_project_member_meeting_and_budget_access_is_denied(client, db_session: Session):
     owner = create_user(db_session, name="Owner")
     outsider = create_user(db_session, name="Outsider")
