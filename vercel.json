@@ -15,6 +15,10 @@
   "rewrites": [
     { "source": "/health", "destination": { "service": "backend" } },
     { "source": "/auth/(.*)", "destination": { "service": "backend" } },
+    { "source": "/billing/(.*)", "destination": { "service": "backend" } },
+    { "source": "/catalog/(.*)", "destination": { "service": "backend" } },
+    { "source": "/customer-accounts", "destination": { "service": "backend" } },
+    { "source": "/customer-accounts/(.*)", "destination": { "service": "backend" } },
     { "source": "/projects", "destination": { "service": "backend" } },
     { "source": "/projects/(.*)", "destination": { "service": "backend" } },
     { "source": "/invites/(.*)", "destination": { "service": "backend" } },

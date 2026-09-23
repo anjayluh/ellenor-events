@@ -50,6 +50,9 @@ assert.equal(vercelConfig.services.frontend.root, 'frontend', 'Vercel frontend s
 assert.equal(vercelConfig.services.backend.root, 'backend', 'Vercel backend service should build from backend/');
 assert.equal(vercelConfig.services.backend.entrypoint, 'app.main:app', 'Vercel backend service should use the actual FastAPI entrypoint');
 assert.ok(vercelConfig.rewrites.some((rewrite) => rewrite.source === '/projects' && rewrite.destination.service === 'backend'), 'Vercel rewrites should expose backend collection routes');
+for (const source of ['/auth/(.*)', '/billing/(.*)', '/catalog/(.*)', '/customer-accounts', '/customer-accounts/(.*)', '/projects', '/projects/(.*)', '/invites/(.*)', '/guest-invites/(.*)', '/vendors/(.*)', '/staff/(.*)', '/admin/(.*)']) {
+  assert.ok(vercelConfig.rewrites.some((rewrite) => rewrite.source === source && rewrite.destination.service === 'backend'), `Vercel rewrites should route ${source} to the backend service`);
+}
 assert.ok(vercelConfig.rewrites.at(-1)?.destination.service === 'frontend', 'Vercel catch-all rewrite should route to the frontend service');
 
 const session = readFileSync(join(root, 'lib/session.ts'), 'utf8');
