@@ -20,6 +20,9 @@ DATABASE_POOLER_URL=postgresql://postgres.<project-ref>:<password>@<region>.pool
 # SUPABASE_DB_URL=postgresql://...
 SUPABASE_URL=https://<project-ref>.supabase.co
 SUPABASE_ANON_KEY=<anon-key>
+# Optional public fallbacks recognized by the backend if the server names above are unset:
+# NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon-key>
 SUPABASE_JWT_SECRET=<jwt-secret>
 AUTH_PROVIDER=supabase
 ENVIRONMENT=production

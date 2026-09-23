@@ -34,14 +34,15 @@ def _decode_jwt_json(segment: str) -> dict:
 
 
 def _load_supabase_jwks(force_refresh: bool = False) -> list[dict]:
-    if not settings.supabase_url:
+    supabase_url = settings.resolved_supabase_url
+    if not supabase_url:
         raise ValueError("Supabase URL is not configured")
 
     now = time.time()
     if not force_refresh and now < float(_JWKS_CACHE["expires_at"]):
         return list(_JWKS_CACHE["keys"])
 
-    response = httpx.get(f"{settings.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json", timeout=5)
+    response = httpx.get(f"{supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json", timeout=5)
     response.raise_for_status()
     keys = response.json().get("keys", [])
     _JWKS_CACHE["keys"] = keys
@@ -91,7 +92,8 @@ def decode_supabase_access_token(token: str) -> tuple[UUID, dict]:
         expires_at = payload.get("exp")
         issuer = payload.get("iss")
         audience = payload.get("aud")
-        expected_issuer = f"{settings.supabase_url.rstrip('/')}/auth/v1" if settings.supabase_url else None
+        supabase_url = settings.resolved_supabase_url
+        expected_issuer = f"{supabase_url.rstrip('/')}/auth/v1" if supabase_url else None
         if not subject or not expires_at:
             raise ValueError("Missing Supabase token claims")
         if issuer != expected_issuer:

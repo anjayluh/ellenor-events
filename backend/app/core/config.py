@@ -17,6 +17,8 @@ class Settings(BaseSettings):
     auth_provider: str = "supabase"
     supabase_url: str | None = None
     supabase_anon_key: str | None = None
+    next_public_supabase_url: str | None = None
+    next_public_supabase_anon_key: str | None = None
     supabase_service_role_key: str | None = None
     supabase_jwt_secret: str | None = None
     jwt_secret: str = "development-only-change-me"
@@ -59,7 +61,15 @@ class Settings(BaseSettings):
 
     @property
     def uses_remote_supabase_auth(self) -> bool:
-        return self.auth_provider == "supabase" and bool(self.supabase_url and self.supabase_anon_key)
+        return self.auth_provider == "supabase" and bool(self.resolved_supabase_url and self.resolved_supabase_anon_key)
+
+    @property
+    def resolved_supabase_url(self) -> str | None:
+        return self.supabase_url or self.next_public_supabase_url
+
+    @property
+    def resolved_supabase_anon_key(self) -> str | None:
+        return self.supabase_anon_key or self.next_public_supabase_anon_key
 
     @property
     def jwt_signing_secret(self) -> str:

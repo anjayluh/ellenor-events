@@ -94,3 +94,18 @@ def test_remote_supabase_auth_requires_url_and_anon_key():
 
     assert disabled.uses_remote_supabase_auth is False
     assert enabled.uses_remote_supabase_auth is True
+
+
+def test_remote_supabase_auth_accepts_public_deployment_aliases():
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        auth_provider="supabase",
+        next_public_supabase_url="https://example.supabase.co",
+        next_public_supabase_anon_key="anon-key",
+    )
+
+    assert settings.resolved_supabase_url == "https://example.supabase.co"
+    assert settings.resolved_supabase_anon_key == "anon-key"
+    assert settings.uses_remote_supabase_auth is True

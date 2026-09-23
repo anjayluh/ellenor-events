@@ -39,7 +39,7 @@ def get_or_create_local_user(db: Session, email: str, name: str | None = None) -
 
 
 def supabase_auth_headers(use_service_role: bool = False) -> dict[str, str]:
-    key = settings.supabase_service_role_key if use_service_role and settings.supabase_service_role_key else settings.supabase_anon_key
+    key = settings.supabase_service_role_key if use_service_role and settings.supabase_service_role_key else settings.resolved_supabase_anon_key
     if not key:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Supabase key is not configured")
     return {
@@ -50,9 +50,10 @@ def supabase_auth_headers(use_service_role: bool = False) -> dict[str, str]:
 
 
 def supabase_auth_url(path: str) -> str:
-    if not settings.supabase_url:
+    supabase_url = settings.resolved_supabase_url
+    if not supabase_url:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Supabase URL is not configured")
-    return f"{settings.supabase_url.rstrip('/')}/auth/v1/{path.lstrip('/')}"
+    return f"{supabase_url.rstrip('/')}/auth/v1/{path.lstrip('/')}"
 
 
 def password_reset_redirect_url() -> str:
