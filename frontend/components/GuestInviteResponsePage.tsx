@@ -2,9 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../lib/api";
+import { formatDate } from "../lib/customer-display";
 import { StateBlock } from "./StateBlock";
 
-type GuestInvite = { guest_name: string; invitation_card_url?: string | null; attendance_status: string; status: string; token: string };
+type GuestInvite = {
+  token: string;
+  recipient_name: string;
+  event_title: string;
+  event_date?: string | null;
+  invitation_card_url?: string | null;
+  invitation_status: string;
+  rsvp_status: "PENDING" | "ATTENDING" | "NOT_ATTENDING";
+  responded_at?: string | null;
+};
 
 export function GuestInviteResponsePage({ token }: { token: string }) {
   const [invite, setInvite] = useState<GuestInvite | null>(null);
@@ -12,16 +22,16 @@ export function GuestInviteResponsePage({ token }: { token: string }) {
   const [processing, setProcessing] = useState<string | null>(null);
 
   useEffect(() => {
-    void apiGet<GuestInvite>(`/guest-invites/${token}`).then(setInvite).catch(() => setNotice("This invitation could not be loaded."));
+    void apiGet<GuestInvite>(`/guest-rsvps/${token}`).then(setInvite).catch(() => setNotice("This invitation could not be loaded."));
   }, [token]);
 
-  async function respond(attendance_status: "accepted" | "declined" | "cancelled") {
-    setProcessing(attendance_status);
+  async function respond(rsvp_status: "ATTENDING" | "NOT_ATTENDING") {
+    setProcessing(rsvp_status);
     setNotice("Saving your RSVP...");
     try {
-      const nextInvite = await apiPost<GuestInvite, { attendance_status: string }>(`/guest-invites/${token}/respond`, { attendance_status });
+      const nextInvite = await apiPost<GuestInvite, { rsvp_status: string }>(`/guest-rsvps/${token}/respond`, { rsvp_status });
       setInvite(nextInvite);
-      setNotice(attendance_status === "accepted" ? "Thank you. Your attendance is recorded." : "Your response has been recorded.");
+      setNotice(rsvp_status === "ATTENDING" ? "Thank you. Your attendance is recorded." : "Thank you. Your response has been recorded.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Could not save RSVP.");
     } finally {
@@ -35,11 +45,12 @@ export function GuestInviteResponsePage({ token }: { token: string }) {
     <section className="grid twoColumns">
       <article className="hero compact">
         <p className="eyebrow">Event Invitation</p>
-        <h1>{invite.guest_name}, you are invited</h1>
-        <p>Status: {invite.attendance_status.replaceAll("_", " ")}</p>
+        <h1>{invite.recipient_name}, you are invited</h1>
+        <p>{invite.event_title}{invite.event_date ? ` · ${formatDate(invite.event_date)}` : ""}</p>
+        <p>RSVP status: {invite.rsvp_status.toLowerCase().replaceAll("_", " ")}</p>
         <div className="buttonRow">
-          <button className="primaryButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void respond("accepted")}>{processing === "accepted" ? "Saving..." : "I will attend"}</button>
-          <button className="secondaryButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => void respond("declined")}>{processing === "declined" ? "Saving..." : "I cannot attend"}</button>
+          <button className="primaryButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void respond("ATTENDING")}>{processing === "ATTENDING" ? "Saving..." : "I will attend"}</button>
+          <button className="secondaryButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => void respond("NOT_ATTENDING")}>{processing === "NOT_ATTENDING" ? "Saving..." : "I cannot attend"}</button>
         </div>
         <p>{notice}</p>
       </article>

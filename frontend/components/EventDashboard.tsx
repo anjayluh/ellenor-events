@@ -16,7 +16,7 @@ type Task = { id: string; title: string; status: string; due_date?: string | nul
 type Vendor = { id: string; name: string; category: string; status: string };
 type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
-type GuestInviteSummary = { total: number; sent: number; accepted: number; declined: number; pending: number; rejected: number };
+type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number };
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
 type EventOverviewData = {
   budget: BudgetResponse | null;
@@ -92,7 +92,7 @@ export function EventDashboard({ project }: { project: Project }) {
     async function loadOverview() {
       const [budget, guestSummary, inviteAnalytics, meetings, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetResponse | null>(`/projects/${projectId}/budget`, null),
-        safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guest-invites/summary`, null),
+        safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
@@ -128,7 +128,7 @@ export function EventDashboard({ project }: { project: Project }) {
   const attentionItems = [
     ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/committee?project=${currentProject.id}` })),
     ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
-    ...(overviewData.guestSummary && overviewData.guestSummary.pending > 0 ? [{ title: `${overviewData.guestSummary.pending} guest response${overviewData.guestSummary.pending === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guest-invites?project=${currentProject.id}` }] : []),
+    ...(overviewData.guestSummary && overviewData.guestSummary.pending_rsvp > 0 ? [{ title: `${overviewData.guestSummary.pending_rsvp} guest response${overviewData.guestSummary.pending_rsvp === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guests?project=${currentProject.id}` }] : []),
     ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review vendor stages and next steps.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(budgetBalance && budgetBalance > 0 ? [{ title: `${formatMoney(budgetBalance)} still awaiting payment`, detail: "Review budget deposits and balances.", href: `/budget?project=${currentProject.id}` }] : [])
   ].slice(0, 5);
@@ -198,7 +198,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Guests</span>
           <strong>{overviewData.guestSummary ? overviewData.guestSummary.total : "—"}</strong>
-          <p>{overviewData.guestSummary ? `${overviewData.guestSummary.sent} sent · ${overviewData.guestSummary.accepted} accepted` : "Guest invitations will appear once added."}</p>
+          <p>{overviewData.guestSummary ? `${overviewData.guestSummary.invitation_sent} sent · ${overviewData.guestSummary.attending} attending` : "Guest invitations will appear once added."}</p>
         </article>
         <article className="metric eventMetric">
           <span>Vendors</span>
@@ -235,7 +235,7 @@ export function EventDashboard({ project }: { project: Project }) {
           <div className="quickActionGrid">
             <Link className="ghostButton" data-icon="↗" href={`/meetings?project=${currentProject.id}`}>Meetings</Link>
             {canEditBudget || visibility !== "NO_ACCESS" ? <Link className="ghostButton" data-icon="↗" href={`/budget?project=${currentProject.id}`}>{canEditBudget ? "Manage budget" : "View budget"}</Link> : null}
-            {canManageGuests ? <Link className="ghostButton" data-icon="↗" href={`/guest-invites?project=${currentProject.id}`}>Guest RSVPs</Link> : null}
+            {canManageGuests ? <Link className="ghostButton" data-icon="↗" href={`/guests?project=${currentProject.id}`}>Manage Guests</Link> : null}
             {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Vendors</Link> : null}
             {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/committee?project=${currentProject.id}`}>Tasks</Link> : null}
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}

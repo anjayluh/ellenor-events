@@ -24,6 +24,7 @@
     { "source": "/projects/(.*)", "destination": { "service": "backend" } },
     { "source": "/invites/(.*)", "destination": { "service": "backend" } },
     { "source": "/guest-invites/(.*)", "destination": { "service": "backend" } },
+    { "source": "/guest-rsvps/(.*)", "destination": { "service": "backend" } },
     { "source": "/vendors/(.*)", "destination": { "service": "backend" } },
     { "source": "/staff/(.*)", "destination": { "service": "backend" } },
     { "source": "/admin/(.*)", "destination": { "service": "backend" } },

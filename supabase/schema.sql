@@ -381,6 +381,44 @@ create table guest_invites (
   check (email is not null or phone is not null)
 );
 
+
+create table project_guests (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  first_name text not null,
+  last_name text,
+  display_name text not null,
+  email text,
+  phone text,
+  category text,
+  group_name text,
+  notes text,
+  invitation_card_url text,
+  invitation_status text not null default 'NOT_SENT' check (invitation_status in ('NOT_SENT','SENT','OPENED','RESPONDED')),
+  rsvp_status text not null default 'PENDING' check (rsvp_status in ('PENDING','ATTENDING','NOT_ATTENDING')),
+  rsvp_responded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  check (email is not null or phone is not null)
+);
+
+create table project_guest_invitations (
+  id uuid primary key default gen_random_uuid(),
+  project_guest_id uuid not null references project_guests(id) on delete cascade,
+  project_id uuid not null references projects(id) on delete cascade,
+  recipient_email text not null,
+  recipient_name text not null,
+  token text not null unique,
+  status text not null default 'SENT' check (status in ('SENT','OPENED','RESPONDED','FAILED','CANCELLED')),
+  sent_at timestamptz,
+  opened_at timestamptz,
+  responded_at timestamptz,
+  notification_id uuid,
+  provider_reference text,
+  created_at timestamptz not null default now(),
+  check (recipient_email <> '')
+);
+
 create table vendor_profiles (
   user_id uuid primary key references users(id) on delete cascade,
   business_name text not null,
@@ -559,6 +597,15 @@ create index idx_invites_project on invites(project_id);
 create index idx_guest_invites_project on guest_invites(project_id);
 create index idx_guest_invites_token on guest_invites(token);
 create index idx_guest_invites_attendance on guest_invites(project_id, attendance_status);
+
+create index idx_project_guests_project on project_guests(project_id);
+create index idx_project_guests_invitation_status on project_guests(project_id, invitation_status);
+create index idx_project_guests_rsvp_status on project_guests(project_id, rsvp_status);
+create index idx_project_guests_email on project_guests(project_id, lower(email)) where email is not null;
+create index idx_project_guests_category_group on project_guests(project_id, category, group_name);
+create index idx_project_guest_invitations_guest on project_guest_invitations(project_guest_id);
+create index idx_project_guest_invitations_project on project_guest_invitations(project_id, status);
+create index idx_project_guest_invitations_token on project_guest_invitations(token);
 create index idx_vendor_profiles_category_status on vendor_profiles(category, status);
 create index idx_vendor_portfolio_vendor on vendor_portfolio_items(vendor_user_id);
 create index idx_vendor_bookings_project on vendor_bookings(project_id);
@@ -804,3 +851,25 @@ drop trigger if exists grant_configured_super_admin_on_user on public.users;
 create trigger grant_configured_super_admin_on_user
   after insert or update of email on public.users
   for each row execute function public.grant_configured_super_admin();
+
+
+alter table project_guests enable row level security;
+alter table project_guest_invitations enable row level security;
+
+create policy project_guests_select_planning_team on project_guests
+  for select
+  using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']));
+
+create policy project_guests_mutate_guest_managers on project_guests
+  for all
+  using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']))
+  with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']));
+
+create policy project_guest_invitations_select_planning_team on project_guest_invitations
+  for select
+  using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']));
+
+create policy project_guest_invitations_mutate_guest_managers on project_guest_invitations
+  for all
+  using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']))
+  with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']));

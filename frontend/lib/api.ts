@@ -21,7 +21,7 @@ export class ApiError extends Error {
 }
 
 function isPublicPath(path: string) {
-  return path.startsWith("/auth/") || path.startsWith("/catalog/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path);
+  return path.startsWith("/auth/") || path.startsWith("/catalog/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path) || /^\/guest-rsvps\/[^/]+$/.test(path) || /^\/guest-rsvps\/[^/]+\/respond$/.test(path);
 }
 
 function resolveAccessToken(path: string, token?: string): string | null {
@@ -34,7 +34,7 @@ async function parseResponse<T>(response: Response, hadAuth: boolean): Promise<T
     let message = response.status === 401 ? "Please sign in again to continue." : `We could not complete that request (${response.status}).`;
     try {
       const payload = await response.json();
-      message = typeof payload.detail === "string" ? payload.detail : message;
+      message = typeof payload.detail === "string" ? payload.detail : typeof payload.detail?.message === "string" ? payload.detail.message : message;
     } catch {
       // Keep default message when the response is not JSON.
     }

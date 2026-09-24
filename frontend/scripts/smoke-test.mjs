@@ -14,6 +14,8 @@ const requiredRoutes = [
   'app/invites/page.tsx',
   'app/staff/page.tsx',
   'app/invite/[token]/page.tsx',
+  'app/guests/page.tsx',
+  'app/guest-rsvp/[token]/page.tsx',
 ];
 
 for (const route of requiredRoutes) {
@@ -50,7 +52,7 @@ assert.equal(vercelConfig.services.frontend.root, 'frontend', 'Vercel frontend s
 assert.equal(vercelConfig.services.backend.root, 'backend', 'Vercel backend service should build from backend/');
 assert.equal(vercelConfig.services.backend.entrypoint, 'app.main:app', 'Vercel backend service should use the actual FastAPI entrypoint');
 assert.ok(vercelConfig.rewrites.some((rewrite) => rewrite.source === '/projects' && rewrite.destination.service === 'backend'), 'Vercel rewrites should expose backend collection routes');
-for (const source of ['/auth/(.*)', '/billing/(.*)', '/catalog/(.*)', '/customer-accounts', '/customer-accounts/(.*)', '/projects', '/projects/(.*)', '/invites/(.*)', '/guest-invites/(.*)', '/vendors/(.*)', '/staff/(.*)', '/admin/(.*)']) {
+for (const source of ['/auth/(.*)', '/billing/(.*)', '/catalog/(.*)', '/customer-accounts', '/customer-accounts/(.*)', '/projects', '/projects/(.*)', '/invites/(.*)', '/guest-invites/(.*)', '/guest-rsvps/(.*)', '/vendors/(.*)', '/staff/(.*)', '/admin/(.*)']) {
   assert.ok(vercelConfig.rewrites.some((rewrite) => rewrite.source === source && rewrite.destination.service === 'backend'), `Vercel rewrites should route ${source} to the backend service`);
 }
 assert.ok(vercelConfig.rewrites.at(-1)?.destination.service === 'frontend', 'Vercel catch-all rewrite should route to the frontend service');
@@ -65,6 +67,11 @@ const activeProjectHook = readFileSync(join(root, 'lib/useActiveProject.ts'), 'u
 assert.match(activeProjectHook, /eecs_active_project_id|getActiveProjectId/, 'Feature pages should use the active event workspace instead of the first project');
 assert.match(activeProjectHook, /selection_required/, 'Feature pages should require an event selection when no event is active');
 assert.match(activeProjectHook, /status === 401/, 'Event workspace loading should treat 401 responses as signed-out state');
+
+const guestPage = readFileSync(join(root, 'components/GuestInvitesClientPage.tsx'), 'utf8');
+assert.match(guestPage, /\/projects\/\$\{project\.id\}\/guests/, 'Guests page should use the project-scoped guests API');
+assert.match(guestPage, /guest_usage|invitation_email_usage/, 'Guests page should show package usage for guests and invitation emails');
+assert.match(guestPage, /Send invitation|Resend invitation/, 'Guests page should expose invitation sending actions');
 
 const protectedPages = readFileSync(join(root, 'components/ProtectedPages.tsx'), 'utf8');
 assert.match(protectedPages, /InvitesClientPage/, 'Authenticated users should have an invite management screen');

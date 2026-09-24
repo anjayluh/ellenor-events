@@ -10,7 +10,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "committee", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guest-invites", label: "Guest RSVPs" }
+    { href: "guests", label: "Guests" }
   ],
   PARTNER: [
     { href: "overview", label: "Overview" },
@@ -20,7 +20,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "committee", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guest-invites", label: "Guest RSVPs" }
+    { href: "guests", label: "Guests" }
   ],
   COMMITTEE_CHAIR: [
     { href: "overview", label: "Overview" },
@@ -30,7 +30,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "committee", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guest-invites", label: "Guest RSVPs" }
+    { href: "guests", label: "Guests" }
   ],
   COMMITTEE_MEMBER: [
     { href: "overview", label: "Overview" },

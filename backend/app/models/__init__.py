@@ -10,6 +10,7 @@ from app.models.meeting import Meeting, MeetingRsvp
 from app.models.notification import Notification, NotificationPreference
 from app.models.participant import Participant
 from app.models.project import Project
+from app.models.project_guest import ProjectGuest, ProjectGuestInvitation
 from app.models.project_link import ProjectLink
 from app.models.project_member import ProjectMember
 from app.models.project_settings import ProjectSettings
@@ -48,6 +49,8 @@ __all__ = [
     "PaymentEvent",
     "PaymentTransaction",
     "Project",
+    "ProjectGuest",
+    "ProjectGuestInvitation",
     "ProjectLink",
     "ProjectMember",
     "ProjectSettings",
