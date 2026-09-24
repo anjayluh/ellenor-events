@@ -90,6 +90,9 @@ export function subscriptionEntitlementQuantity(entitlement: Record<string, unkn
   const quantity = typeof entitlement.quantity === "number" ? entitlement.quantity : null;
   const used = typeof entitlement.used_quantity === "number" ? entitlement.used_quantity : 0;
   if (quantity == null) return "Available";
+  if (!key.endsWith("_per_event") && !key.endsWith("_per_month") && !["account_owners", "events"].includes(key) && quantity === 1) {
+    return "Included";
+  }
   return entitlementQuantity({ key, quantity, used_quantity: used });
 }
 
