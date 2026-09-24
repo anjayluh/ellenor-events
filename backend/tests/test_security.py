@@ -75,6 +75,8 @@ def test_vercel_postgres_aliases_are_supported_when_database_url_is_unset():
 
     settings = Settings(
         _env_file=None,
+        database_url=None,
+        database_pooler_url=None,
         postgres_prisma_url="postgres://prisma:postgres@db.example.supabase.co:5432/postgres",
     )
 
