@@ -228,7 +228,7 @@ export function EventDashboard({ project }: { project: Project }) {
             ))}
           </div>
           {activePlanningAreas.length ? (
-            <p>{activePlanningAreas.length} planning area{activePlanningAreas.length === 1 ? "" : "s"} already contain real event activity.</p>
+            <p>{activePlanningAreas.length} planning area{activePlanningAreas.length === 1 ? " contains" : "s contain"} real event activity.</p>
           ) : (
             <p>Start adding your planning items to track progress here. No percentage is shown until there is enough real planning data.</p>
           )}
