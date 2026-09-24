@@ -82,6 +82,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .resourceCard h2, .panel h2 { margin-top: 0; }
 .resourceCard .buttonRow { margin-top: auto; padding-top: 8px; }
 .eventCard h3 { margin: 0 0 12px; }
+.cardTitleRow { align-items: flex-start; display: flex; gap: 12px; justify-content: space-between; }
+.cardTitleRow h2, .cardTitleRow h3 { margin: 0; }
+.cardAction { color: var(--purple); display: inline-flex; font-weight: 900; margin-top: 14px; }
+.softBadge { background: rgba(53, 21, 93, 0.08); color: var(--purple); text-transform: capitalize; }
+.successBadge { background: rgba(20, 108, 46, 0.12); color: var(--success); }
 .meta { color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.9rem; }
 .badge { background: rgba(214, 169, 59, 0.16); color: #805d00; border-radius: 999px; padding: 5px 10px; font-weight: 700; }
 .progressTrack { background: rgba(53, 21, 93, 0.12); border-radius: 999px; height: 12px; overflow: hidden; }
@@ -91,6 +96,22 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .metric span { color: var(--muted); display: block; }
 .metric strong { color: var(--purple); display: block; font-size: 3rem; margin-top: 8px; }
 @media (max-width: 860px) { .twoColumns, .threeColumns { grid-template-columns: 1fr; } .hero { padding: 34px; } .nav { display: none; } .sessionNotice { display: none; } }
+
+.dashboardStack { gap: 22px; }
+.customerHero { align-items: center; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.34fr); }
+.summaryPill { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.26); border-radius: 26px; padding: 18px; }
+.summaryPill span { color: rgba(255, 255, 255, 0.74); display: block; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.summaryPill strong { display: block; font-size: 1.3rem; margin-top: 8px; }
+.summaryPill.success { box-shadow: inset 4px 0 0 var(--gold); }
+.summaryPill.attention { box-shadow: inset 4px 0 0 #ffcf8a; }
+.summaryPill.muted { box-shadow: inset 4px 0 0 rgba(255, 255, 255, 0.5); }
+.dashboardCard { gap: 10px; }
+.statusLine strong { color: var(--purple); text-transform: capitalize; }
+.usageList { display: grid; gap: 10px; margin: 8px 0 18px; }
+.usageRow { align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; display: flex; gap: 12px; justify-content: space-between; padding: 12px 14px; }
+.usageRow span { color: var(--muted); font-weight: 700; }
+.usageRow strong { color: var(--purple); text-align: right; }
+@media (max-width: 860px) { .customerHero { grid-template-columns: 1fr; } .summaryPill { max-width: 100%; } .cardTitleRow { align-items: flex-start; flex-direction: column; } }
 
 .buttonRow { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-top: 24px; }
 .compactButtons { margin-top: 12px; }

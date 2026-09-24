@@ -1,54 +1,44 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiGet, apiPost } from "../lib/api";
-import type { CatalogPackage, CheckoutResponse, PackageEntitlementGrant, PackagePrice } from "../lib/types";
+import { activeSubscription, customerStatusLabel, describeGrant, formatPrice } from "../lib/customer-display";
+import { getAccessToken, subscribeToAuthChanges } from "../lib/session";
+import type { BillingOverview, CatalogPackage, CheckoutResponse, PackagePrice } from "../lib/types";
 import { StateBlock } from "./StateBlock";
-
-const featureLabels: Record<string, string> = {
-  budget_management: "Budget planning",
-  rsvp_management: "Guest RSVP tools",
-  vendor_management: "Vendor coordination",
-  meeting_management: "Meeting coordination",
-  task_management: "Task tracking"
-};
-
-const limitLabels: Record<string, string> = {
-  events: "event workspace",
-  guests_per_event: "guests per event",
-  collaborators_per_event: "collaborators per event",
-  vendors_per_event: "vendors per event"
-};
-
-function formatPrice(price: PackagePrice) {
-  const amount = new Intl.NumberFormat("en-UG", { style: "currency", currency: price.currency, maximumFractionDigits: 0 }).format(price.amount_minor);
-  const interval = price.billing_interval === "ONE_TIME" ? "one-time" : price.billing_interval.toLowerCase();
-  return `${amount} · ${interval}`;
-}
-
-function describeGrant(grant: PackageEntitlementGrant) {
-  if (grant.value_type === "BOOLEAN") return featureLabels[grant.entitlement_key] ?? grant.entitlement_key.replaceAll("_", " ");
-  if (grant.value_type === "UNLIMITED") return `Unlimited ${limitLabels[grant.entitlement_key] ?? grant.entitlement_key.replaceAll("_", " ")}`;
-  const label = limitLabels[grant.entitlement_key] ?? grant.entitlement_key.replaceAll("_", " ");
-  return `${grant.quantity} ${label}`;
-}
 
 export function PackageCatalogPage() {
   const [packages, setPackages] = useState<CatalogPackage[]>([]);
+  const [billing, setBilling] = useState<BillingOverview | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [message, setMessage] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    void apiGet<CatalogPackage[]>("/catalog/packages")
-      .then((nextPackages) => {
+    const loadCatalog = async () => {
+      try {
+        const nextPackages = await apiGet<CatalogPackage[]>("/catalog/packages");
         setPackages(nextPackages);
+        const token = getAccessToken();
+        if (token) {
+          try {
+            setBilling(await apiGet<BillingOverview>("/billing/subscription", token));
+          } catch {
+            setBilling(null);
+          }
+        } else {
+          setBilling(null);
+        }
         setStatus("ready");
-      })
-      .catch((error) => {
+      } catch (error) {
         setMessage(error instanceof Error ? error.message : "Could not load packages.");
         setStatus("error");
-      });
+      }
+    };
+
+    void loadCatalog();
+    return subscribeToAuthChanges(() => void loadCatalog());
   }, []);
 
   if (status === "loading") return <StateBlock title="Loading packages" message="Preparing Ellenor Events package options." />;
@@ -66,18 +56,26 @@ export function PackageCatalogPage() {
     }
   }
 
+  const currentSubscription = activeSubscription(billing?.subscriptions ?? []);
+  const activePackagePriceId = currentSubscription?.status === "ACTIVE" ? currentSubscription.package_price_id : null;
+  const activePackagePlanId = currentSubscription?.status === "ACTIVE" ? currentSubscription.package_plan_id : null;
+  const isAuthenticated = Boolean(getAccessToken());
+
   return (
     <section className="stack">
       <section className="hero compact">
         <p className="eyebrow">Packages</p>
         <h1>Choose the planning support that fits your event.</h1>
-        <p>These package definitions show what Ellenor Events can support. Checkout and online payment will be added in a later phase.</p>
+        <p>Packages define the event capacity and planning tools available to your Ellenor Events account. Checkout always uses the package price selected from the backend catalog.</p>
       </section>
       <section className="grid threeColumns">
         {packages.map((catalogPackage) => (
           <article className="panel resourceCard" key={catalogPackage.id}>
             <p className="eyebrow">{catalogPackage.is_add_on ? "Add-on" : "Package"}</p>
-            <h2>{catalogPackage.name}</h2>
+            <div className="cardTitleRow">
+              <h2>{catalogPackage.name}</h2>
+              {activePackagePlanId === catalogPackage.id ? <span className="badge successBadge">Current package</span> : null}
+            </div>
             <p>{catalogPackage.description}</p>
             <div className="meta">
               {catalogPackage.prices.length ? catalogPackage.prices.map((price) => <span className="badge" key={price.id}>{formatPrice(price)}</span>) : <span className="badge">Pricing to be confirmed</span>}
@@ -86,13 +84,16 @@ export function PackageCatalogPage() {
               {catalogPackage.entitlement_grants.map((grant) => <li key={grant.id}>{describeGrant(grant)}</li>)}
             </ul>
             <div className="buttonRow compactButtons">
-              {catalogPackage.prices.length ? catalogPackage.prices.map((price) => (
-                <button className="primaryButton" data-icon="→" disabled={checkoutStatus[price.id] === "Preparing checkout..." || checkoutStatus[price.id] === "Redirecting to payment..."} key={price.id} type="button" onClick={() => void startCheckout(price)}>
-                  {checkoutStatus[price.id] === "Preparing checkout..." ? "Preparing..." : "Choose package"}
+              {!isAuthenticated && catalogPackage.prices.length ? (
+                <Link className="primaryButton" href="/login">Sign in to choose</Link>
+              ) : catalogPackage.prices.length ? catalogPackage.prices.map((price) => (
+                <button className={activePackagePriceId === price.id ? "ghostButton" : "primaryButton"} data-icon={activePackagePriceId === price.id ? "✓" : "→"} disabled={activePackagePriceId === price.id || checkoutStatus[price.id] === "Preparing checkout..." || checkoutStatus[price.id] === "Redirecting to payment..."} key={price.id} type="button" onClick={() => void startCheckout(price)}>
+                  {activePackagePriceId === price.id ? "Current package" : checkoutStatus[price.id] === "Preparing checkout..." ? "Preparing..." : "Choose package"}
                 </button>
               )) : <button className="ghostButton" disabled type="button">Checkout coming soon</button>}
             </div>
             {catalogPackage.prices.map((price) => checkoutStatus[price.id] ? <p className="helperText" key={`${price.id}-status`}>{checkoutStatus[price.id]}</p> : null)}
+            {currentSubscription && activePackagePlanId === catalogPackage.id ? <p className="helperText">Your current access is {customerStatusLabel(currentSubscription.status)}.</p> : null}
           </article>
         ))}
       </section>

@@ -55,7 +55,8 @@ export function AuthNav() {
 
   return (
     <nav className="nav" aria-label="Account navigation">
-      <Link href="/">My Events</Link>
+      <Link href="/">Dashboard</Link>
+      <Link href="/#events">My Events</Link>
       <Link href="/packages">Packages</Link>
       <Link href="/billing">Billing</Link>
       <Link href="/vendor-marketplace">Vendor Marketplace</Link>
