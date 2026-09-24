@@ -113,6 +113,23 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .usageRow strong { color: var(--purple); text-align: right; }
 @media (max-width: 860px) { .customerHero { grid-template-columns: 1fr; } .summaryPill { max-width: 100%; } .cardTitleRow { align-items: flex-start; flex-direction: column; } }
 
+.eventHero { align-items: end; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) auto; }
+.eventHeroMeta { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0 10px; }
+.eventHeroMeta span { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px; color: white; font-weight: 800; padding: 7px 11px; }
+.eventHeroActions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.eventMetricGrid { margin-top: 8px; }
+.eventMetric { gap: 8px; min-width: 0; }
+.eventMetric strong { font-size: clamp(2rem, 4vw, 3rem); overflow-wrap: anywhere; }
+.eventMetric p { color: var(--muted); margin: 0; }
+.overviewPanel, .attentionPanel { min-height: 100%; }
+.planningAreaList { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; }
+.quickActionGrid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: auto; padding-top: 12px; }
+.attentionList { display: grid; gap: 10px; }
+.attentionItem { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; display: grid; gap: 4px; padding: 13px 14px; }
+.attentionItem strong { color: var(--purple); }
+.attentionItem span { color: var(--muted); font-size: 0.9rem; }
+@media (max-width: 860px) { .eventHero { align-items: stretch; grid-template-columns: 1fr; } .eventHeroActions { justify-content: stretch; } .eventHeroActions a { width: 100%; } }
+
 .buttonRow { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start; margin-top: 24px; }
 .compactButtons { margin-top: 12px; }
 .secondaryButton { background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 999px; color: white; cursor: pointer; font-weight: 800; min-height: 48px; padding: 14px 20px; }
