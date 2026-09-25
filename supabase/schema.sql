@@ -378,7 +378,8 @@ create table guest_invites (
   responded_at timestamptz,
   notes text,
   created_at timestamptz default now(),
-  check (email is not null or phone is not null)
+  check (email is not null or phone is not null),
+  constraint ck_project_guests_rsvp_attendee_count check (rsvp_attendee_count >= 0)
 );
 
 
@@ -397,6 +398,8 @@ create table project_guests (
   invitation_status text not null default 'NOT_SENT' check (invitation_status in ('NOT_SENT','SENT','OPENED','RESPONDED')),
   rsvp_status text not null default 'PENDING' check (rsvp_status in ('PENDING','ATTENDING','NOT_ATTENDING')),
   rsvp_responded_at timestamptz,
+  rsvp_attendee_count integer not null default 1,
+  rsvp_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz,
   check (email is not null or phone is not null)

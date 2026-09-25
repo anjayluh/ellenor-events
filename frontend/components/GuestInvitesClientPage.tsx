@@ -22,6 +22,8 @@ type ProjectGuest = {
   invitation_status: "NOT_SENT" | "SENT" | "OPENED" | "RESPONDED";
   rsvp_status: "PENDING" | "ATTENDING" | "NOT_ATTENDING";
   rsvp_responded_at?: string | null;
+  rsvp_attendee_count: number;
+  rsvp_note?: string | null;
   created_at: string;
 };
 
@@ -34,6 +36,8 @@ type GuestSummary = {
   pending_rsvp: number;
   opened: number;
   responded: number;
+  invitations_opened: number;
+  rsvp_responses: number;
   guest_usage: Usage;
   invitation_email_usage: Usage;
 };
@@ -55,7 +59,17 @@ function usageText(usage?: Usage | null) {
 }
 
 function statusLabel(value: string) {
-  return value.toLowerCase().replaceAll("_", " ");
+  return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function rsvpProgress(summary: GuestSummary | null) {
+  if (!summary?.total) return 0;
+  return Math.round((summary.rsvp_responses / summary.total) * 100);
+}
+
+function invitationProgress(summary: GuestSummary | null) {
+  if (!summary?.total) return 0;
+  return Math.round((summary.invitation_sent / summary.total) * 100);
 }
 
 function buildQuery(filters: GuestFilters) {
@@ -235,9 +249,25 @@ export function GuestInvitesClientPage() {
       <EventScopedHeader projects={projects} project={project} onSelect={selectProject} />
       <section className="grid fourColumns">
         <article className="metric"><span>Total guests</span><strong>{summary?.total ?? 0}</strong><p>{usageText(summary?.guest_usage)} guests</p></article>
-        <article className="metric"><span>Invitations sent</span><strong>{summary?.invitation_sent ?? 0}</strong><p>{usageText(summary?.invitation_email_usage)} emails</p></article>
-        <article className="metric"><span>Attending</span><strong>{summary?.attending ?? 0}</strong><p>{summary?.not_attending ?? 0} not attending</p></article>
-        <article className="metric"><span>Pending RSVP</span><strong>{summary?.pending_rsvp ?? 0}</strong><p>{summary?.responded ?? 0} responded</p></article>
+        <article className="metric"><span>Invitations sent</span><strong>{summary?.invitation_sent ?? 0}</strong><p>{summary?.invitations_opened ?? summary?.opened ?? 0} opened · {usageText(summary?.invitation_email_usage)} emails</p></article>
+        <article className="metric"><span>RSVP responses</span><strong>{summary?.rsvp_responses ?? summary?.responded ?? 0}</strong><p>{summary?.attending ?? 0} attending · {summary?.not_attending ?? 0} not attending</p></article>
+        <article className="metric"><span>Pending RSVP</span><strong>{summary?.pending_rsvp ?? 0}</strong><p>{rsvpProgress(summary)}% response completion</p></article>
+      </section>
+
+      <section className="panel resourceCard">
+        <div className="cardTitleRow"><div><p className="eyebrow">Guest insights</p><h2>Invitation and RSVP progress</h2></div><span className="badge softBadge">Live event data</span></div>
+        <div className="grid twoColumns compactGrid">
+          <div>
+            <p className="helperText">Invitations sent</p>
+            <div className="progressTrack" aria-label="Invitation completion"><div className="progressFill" style={{ width: `${invitationProgress(summary)}%` }} /></div>
+            <p>{invitationProgress(summary)}% of guests have been sent an invitation.</p>
+          </div>
+          <div>
+            <p className="helperText">RSVP responses</p>
+            <div className="progressTrack" aria-label="RSVP completion"><div className="progressFill" style={{ width: `${rsvpProgress(summary)}%` }} /></div>
+            <p>{rsvpProgress(summary)}% of guests have responded.</p>
+          </div>
+        </div>
       </section>
 
       <section className="grid twoColumns">
@@ -258,7 +288,8 @@ export function GuestInvitesClientPage() {
                 <label className="formField">Category<input value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Bride family" /></label>
                 <label className="formField">Group<input value={form.group_name} onChange={(event) => setForm((current) => ({ ...current, group_name: event.target.value }))} placeholder="VIP table" /></label>
               </div>
-              <label className="formField">Invitation card URL<input value={form.invitation_card_url} onChange={(event) => setForm((current) => ({ ...current, invitation_card_url: event.target.value }))} placeholder="https://.../card.png" /><span className="helperText">Use the event invitation card link. Upload storage can be connected later without changing guest records.</span></label>
+              <label className="formField">Invitation card URL<input value={form.invitation_card_url} onChange={(event) => setForm((current) => ({ ...current, invitation_card_url: event.target.value }))} placeholder="https://.../card.png" /><span className="helperText">This card will be shown on the guest RSVP page. Upload storage can be connected later without changing guest records.</span></label>
+              {form.invitation_card_url ? <div aria-label="Invitation card preview" className="inviteCardPreview imagePreview contain" role="img" style={{ backgroundImage: `url(${form.invitation_card_url})` }} /> : null}
               <label className="formField">Notes<input value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Dietary needs, family role, transport note" /></label>
               <button className="primaryButton" data-icon="+" disabled={!canSubmit} type="submit">{processing === "create" ? "Adding..." : "Add guest"}</button>
             </form>
@@ -314,10 +345,13 @@ export function GuestInvitesClientPage() {
               </div>
             ) : (
               <>
-                <div className="cardTitleRow"><div><p className="eyebrow">{statusLabel(guest.invitation_status)} · {statusLabel(guest.rsvp_status)}</p><h2>{guest.display_name}</h2></div><span className="badge softBadge">{guest.category || "Guest"}</span></div>
+                <div className="cardTitleRow"><div><p className="eyebrow">Invitation: {statusLabel(guest.invitation_status)} · RSVP: {statusLabel(guest.rsvp_status)}</p><h2>{guest.display_name}</h2></div><span className="badge softBadge">{guest.category || "Guest"}</span></div>
+                <div className="planningAreaList"><span className="badge softBadge">Invitation {statusLabel(guest.invitation_status)}</span><span className={guest.rsvp_status === "ATTENDING" ? "badge successBadge" : "badge softBadge"}>RSVP {statusLabel(guest.rsvp_status)}</span></div>
                 <p>{guest.email ?? "No email"}{guest.phone ? ` · ${guest.phone}` : ""}</p>
-                <p>{guest.group_name ? `Group: ${guest.group_name}` : "No group assigned yet."}</p>
+                <p>{guest.group_name ? `Group: ${guest.group_name}` : "No group assigned yet."}{guest.rsvp_status !== "PENDING" ? ` · ${guest.rsvp_attendee_count} attending` : ""}</p>
+                {guest.rsvp_note ? <p className="helperText">RSVP note: {guest.rsvp_note}</p> : null}
                 {guest.notes ? <p className="helperText">{guest.notes}</p> : null}
+                {guest.invitation_card_url ? <p className="helperText">Invitation card attached for this guest.</p> : null}
                 <div className="buttonRow compactButtons">
                   <button className="ghostButton" data-icon="✉" disabled={!guest.email || Boolean(processing)} type="button" onClick={() => void sendGuest(guest, guest.invitation_status !== "NOT_SENT")}>{processing === `send-${guest.id}` ? "Sending..." : guest.invitation_status === "NOT_SENT" ? "Send invitation" : "Resend invitation"}</button>
                   {!guest.email ? <span className="helperText">Add an email to send an invitation.</span> : null}

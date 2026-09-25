@@ -224,6 +224,8 @@ def preview_guest_rsvp(token: str, db: Session = Depends(get_db)):
         invitation_card_url=guest.invitation_card_url,
         invitation_status=guest.invitation_status,
         rsvp_status=guest.rsvp_status,
+        rsvp_attendee_count=guest.rsvp_attendee_count,
+        rsvp_note=guest.rsvp_note,
     )
 
 
@@ -237,7 +239,18 @@ def respond_guest_rsvp(token: str, payload: PublicGuestRsvpUpdate, db: Session =
     guest = get_project_guest_or_404(db, invitation.project_id, invitation.project_guest_id, lock=True)
     project = project_or_404(db, invitation.project_id)
     now = datetime.now(timezone.utc)
+    attendee_count = payload.rsvp_attendee_count
+    if payload.rsvp_status == "ATTENDING":
+        attendee_count = 1 if attendee_count is None else attendee_count
+        if attendee_count < 1:
+            from fastapi import HTTPException, status
+
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Attending guests must include at least one attendee")
+    else:
+        attendee_count = 0 if attendee_count is None else attendee_count
     guest.rsvp_status = payload.rsvp_status
+    guest.rsvp_attendee_count = attendee_count
+    guest.rsvp_note = (payload.rsvp_note or "").strip() or None
     guest.rsvp_responded_at = now
     guest.invitation_status = "RESPONDED"
     guest.updated_at = now
@@ -255,5 +268,7 @@ def respond_guest_rsvp(token: str, payload: PublicGuestRsvpUpdate, db: Session =
         invitation_card_url=guest.invitation_card_url,
         invitation_status=guest.invitation_status,
         rsvp_status=guest.rsvp_status,
+        rsvp_attendee_count=guest.rsvp_attendee_count,
+        rsvp_note=guest.rsvp_note,
         responded_at=guest.rsvp_responded_at,
     )

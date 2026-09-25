@@ -173,13 +173,18 @@ def update_project_guest(db: Session, guest: ProjectGuest, payload: ProjectGuest
     for field, value in updates.items():
         if field == "email" and value:
             value = str(value).lower()
-        if field in {"last_name", "phone", "category", "group_name", "notes", "invitation_card_url"}:
+        if field in {"last_name", "phone", "category", "group_name", "notes", "invitation_card_url", "rsvp_note"}:
             value = clean_optional(value)
         setattr(guest, field, value)
     if "first_name" in updates or "last_name" in updates:
         guest.display_name = display_name(guest.first_name, guest.last_name)
-    if "rsvp_status" in updates and updates["rsvp_status"] != "PENDING":
-        guest.rsvp_responded_at = datetime.now(timezone.utc)
+    if "rsvp_status" in updates:
+        if updates["rsvp_status"] != "PENDING":
+            guest.rsvp_responded_at = datetime.now(timezone.utc)
+        else:
+            guest.rsvp_responded_at = None
+            guest.rsvp_attendee_count = 1
+            guest.rsvp_note = None
     guest.updated_at = datetime.now(timezone.utc)
     db.flush()
     return guest
@@ -228,15 +233,28 @@ def public_invitation_by_token(db: Session, token: str) -> ProjectGuestInvitatio
 
 def guest_summary_counts(db: Session, project_id: UUID) -> dict[str, int]:
     total = db.query(ProjectGuest).filter(ProjectGuest.project_id == project_id).count()
-    invitation_rows = db.query(ProjectGuest.invitation_status, func.count(ProjectGuest.id)).filter(ProjectGuest.project_id == project_id).group_by(ProjectGuest.invitation_status).all()
     rsvp_rows = db.query(ProjectGuest.rsvp_status, func.count(ProjectGuest.id)).filter(ProjectGuest.project_id == project_id).group_by(ProjectGuest.rsvp_status).all()
-    invitation_counts = {status: count for status, count in invitation_rows}
     rsvp_counts = {status: count for status, count in rsvp_rows}
+    invitation_sent = (
+        db.query(func.count(func.distinct(ProjectGuestInvitation.project_guest_id)))
+        .filter(ProjectGuestInvitation.project_id == project_id, ProjectGuestInvitation.status.in_(["SENT", "OPENED", "RESPONDED"]))
+        .scalar()
+        or 0
+    )
+    invitations_opened = (
+        db.query(func.count(func.distinct(ProjectGuestInvitation.project_guest_id)))
+        .filter(ProjectGuestInvitation.project_id == project_id, ProjectGuestInvitation.opened_at.isnot(None))
+        .scalar()
+        or 0
+    )
+    rsvp_responses = rsvp_counts.get("ATTENDING", 0) + rsvp_counts.get("NOT_ATTENDING", 0)
     return {
         "total": total,
-        "invitation_sent": total - invitation_counts.get("NOT_SENT", 0),
-        "opened": invitation_counts.get("OPENED", 0),
-        "responded": invitation_counts.get("RESPONDED", 0),
+        "invitation_sent": invitation_sent,
+        "opened": invitations_opened,
+        "responded": rsvp_responses,
+        "invitations_opened": invitations_opened,
+        "rsvp_responses": rsvp_responses,
         "attending": rsvp_counts.get("ATTENDING", 0),
         "not_attending": rsvp_counts.get("NOT_ATTENDING", 0),
         "pending_rsvp": rsvp_counts.get("PENDING", 0),

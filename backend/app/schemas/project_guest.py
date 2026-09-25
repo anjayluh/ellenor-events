@@ -32,6 +32,8 @@ class ProjectGuestUpdate(BaseModel):
     invitation_card_url: str | None = None
     invitation_status: str | None = None
     rsvp_status: str | None = None
+    rsvp_attendee_count: int | None = Field(default=None, ge=0, le=50)
+    rsvp_note: str | None = Field(default=None, max_length=1000)
 
 
 class ProjectGuestRead(BaseModel):
@@ -49,6 +51,8 @@ class ProjectGuestRead(BaseModel):
     invitation_status: str
     rsvp_status: str
     rsvp_responded_at: datetime | None = None
+    rsvp_attendee_count: int = 1
+    rsvp_note: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 
@@ -88,6 +92,8 @@ class ProjectGuestSummary(BaseModel):
     pending_rsvp: int
     opened: int
     responded: int
+    invitations_opened: int
+    rsvp_responses: int
     guest_usage: GuestUsageRead
     invitation_email_usage: GuestUsageRead
 
@@ -112,10 +118,14 @@ class PublicGuestInviteRead(BaseModel):
     invitation_card_url: str | None = None
     invitation_status: str
     rsvp_status: str
+    rsvp_attendee_count: int = 1
+    rsvp_note: str | None = None
 
 
 class PublicGuestRsvpUpdate(BaseModel):
     rsvp_status: str
+    rsvp_attendee_count: int | None = Field(default=None, ge=0, le=50)
+    rsvp_note: str | None = Field(default=None, max_length=1000)
 
 
 class PublicGuestRsvpRead(PublicGuestInviteRead):

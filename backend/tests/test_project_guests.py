@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from app.models.customer_account import AccountEntitlement
-from app.models.project_guest import ProjectGuestInvitation
+from app.models.project_guest import ProjectGuest, ProjectGuestInvitation
 
 from conftest import auth_headers, create_project_with_member, create_user
 
@@ -121,14 +121,54 @@ def test_public_guest_rsvp_token_flow_is_scoped(client, db_session: Session):
     invalid = client.post(f"/guest-rsvps/{uuid4().hex}/respond", json={"rsvp_status": "ATTENDING"})
     assert invalid.status_code == 404
 
-    response = client.post(f"/guest-rsvps/{token}/respond", json={"rsvp_status": "ATTENDING"})
+    response = client.post(f"/guest-rsvps/{token}/respond", json={"rsvp_status": "ATTENDING", "rsvp_attendee_count": 2, "rsvp_note": "Vegetarian meal, please"})
     assert response.status_code == 200
     assert response.json()["rsvp_status"] == "ATTENDING"
+    assert response.json()["rsvp_attendee_count"] == 2
+    assert response.json()["rsvp_note"] == "Vegetarian meal, please"
     assert response.json()["responded_at"] is not None
 
+    changed = client.post(f"/guest-rsvps/{token}/respond", json={"rsvp_status": "NOT_ATTENDING", "rsvp_note": "Travel changed"})
+    assert changed.status_code == 200
+    assert changed.json()["rsvp_status"] == "NOT_ATTENDING"
+    assert changed.json()["rsvp_attendee_count"] == 0
+
+    stored_guest = db_session.query(ProjectGuest).filter(ProjectGuest.id == UUID(guest.json()["id"])).one()
+    assert stored_guest.rsvp_note == "Travel changed"
+
     summary = client.get(f"/projects/{project.id}/guests/summary", headers=auth_headers(owner))
-    assert summary.json()["attending"] == 1
+    assert summary.json()["attending"] == 0
+    assert summary.json()["not_attending"] == 1
     assert summary.json()["responded"] == 1
+    assert summary.json()["rsvp_responses"] == 1
+    assert summary.json()["invitations_opened"] == 1
+
+
+def test_guest_summary_counts_distinct_guests_not_invitation_history(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    project = create_project_with_member(db_session, owner, title="Summary Wedding")
+    grant_guest_entitlements(db_session, project, guests=5, emails=5)
+    db_session.commit()
+
+    guest = client.post(f"/projects/{project.id}/guests", headers=auth_headers(owner), json=guest_payload(email="summary@example.com"))
+    assert guest.status_code == 200
+    first_send = client.post(f"/projects/{project.id}/guests/{guest.json()['id']}/invite", headers=auth_headers(owner), json={})
+    assert first_send.status_code == 200
+    preview = client.get(f"/guest-rsvps/{first_send.json()['invitation']['token']}")
+    assert preview.status_code == 200
+
+    resend = client.post(f"/projects/{project.id}/guests/{guest.json()['id']}/invite", headers=auth_headers(owner), json={"resend": True})
+    assert resend.status_code == 200
+    assert db_session.query(ProjectGuestInvitation).filter(ProjectGuestInvitation.project_guest_id == UUID(guest.json()["id"])).count() == 2
+
+    summary = client.get(f"/projects/{project.id}/guests/summary", headers=auth_headers(owner))
+    assert summary.status_code == 200
+    assert summary.json()["total"] == 1
+    assert summary.json()["invitation_sent"] == 1
+    assert summary.json()["opened"] == 1
+    assert summary.json()["invitations_opened"] == 1
+    assert summary.json()["pending_rsvp"] == 1
+    assert summary.json()["invitation_email_usage"]["used"] == 2
 
 
 def test_guest_from_another_project_cannot_be_modified(client, db_session: Session):

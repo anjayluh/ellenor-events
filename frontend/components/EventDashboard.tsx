@@ -16,7 +16,7 @@ type Task = { id: string; title: string; status: string; due_date?: string | nul
 type Vendor = { id: string; name: string; category: string; status: string };
 type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
-type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number };
+type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
 type EventOverviewData = {
   budget: BudgetResponse | null;
@@ -116,6 +116,8 @@ export function EventDashboard({ project }: { project: Project }) {
   const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !["booked", "rejected"].includes(vendor.status));
   const bookedVendors = overviewData.vendors.filter((vendor) => vendor.status === "booked");
   const budgetBalance = overviewData.budget?.line_item_balance_total ?? overviewData.budget?.remaining ?? null;
+  const guestRsvpResponses = overviewData.guestSummary?.rsvp_responses ?? overviewData.guestSummary?.responded ?? 0;
+  const guestRsvpProgress = overviewData.guestSummary?.total ? Math.round((guestRsvpResponses / overviewData.guestSummary.total) * 100) : 0;
   const planningAreas = [
     { label: "Guests", hasData: Boolean(overviewData.guestSummary?.total) },
     { label: "Vendors", hasData: overviewData.vendors.length > 0 },
@@ -198,7 +200,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Guests</span>
           <strong>{overviewData.guestSummary ? overviewData.guestSummary.total : "—"}</strong>
-          <p>{overviewData.guestSummary ? `${overviewData.guestSummary.invitation_sent} sent · ${overviewData.guestSummary.attending} attending` : "Guest invitations will appear once added."}</p>
+          <p>{overviewData.guestSummary ? `${overviewData.guestSummary.invitation_sent} sent · ${guestRsvpResponses} responded` : "Guest invitations will appear once added."}</p>
         </article>
         <article className="metric eventMetric">
           <span>Vendors</span>
@@ -227,6 +229,13 @@ export function EventDashboard({ project }: { project: Project }) {
               <span className={area.hasData ? "badge successBadge" : "badge softBadge"} key={area.label}>{area.hasData ? "✓" : "•"} {area.label}</span>
             ))}
           </div>
+          {overviewData.guestSummary ? (
+            <div>
+              <p className="helperText">Guest RSVP completion</p>
+              <div className="progressTrack" aria-label="Guest RSVP completion"><div className="progressFill" style={{ width: `${guestRsvpProgress}%` }} /></div>
+              <p>{overviewData.guestSummary.attending} attending · {overviewData.guestSummary.pending_rsvp} pending · {guestRsvpProgress}% responded</p>
+            </div>
+          ) : null}
           {activePlanningAreas.length ? (
             <p>{activePlanningAreas.length} planning area{activePlanningAreas.length === 1 ? " contains" : "s contain"} real event activity.</p>
           ) : (

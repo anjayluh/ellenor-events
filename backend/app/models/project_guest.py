@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,6 +25,8 @@ class ProjectGuest(Base):
     invitation_status: Mapped[str] = mapped_column(String, default="NOT_SENT", index=True)
     rsvp_status: Mapped[str] = mapped_column(String, default="PENDING", index=True)
     rsvp_responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rsvp_attendee_count: Mapped[int] = mapped_column(Integer, default=1)
+    rsvp_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
