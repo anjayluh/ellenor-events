@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user, get_project_membership, membership_budget_visibility, membership_role
@@ -10,6 +10,7 @@ from app.db.session import get_db
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
 from app.schemas.budget import (
     BudgetExport,
+    BudgetItemSummary,
     BudgetLineItemCreate,
     BudgetLineItemRead,
     BudgetLineItemUpdate,
@@ -21,9 +22,22 @@ from app.schemas.budget import (
     ContributionCreate,
     ContributionRead,
     ContributionUpdate,
+    ProjectBudgetItemCreate,
+    ProjectBudgetItemRead,
+    ProjectBudgetItemUpdate,
 )
 from app.services.audit_service import write_audit_log
 from app.services.budget_service import money, shape_budget_response
+from app.services.project_budget_service import (
+    budget_item_summary,
+    create_budget_item,
+    get_budget_item_or_404,
+    list_project_budget_items,
+    require_budget_manager,
+    serialize_budget_item,
+    update_budget_item,
+    vendor_map,
+)
 
 router = APIRouter()
 CONTRIBUTION_WRITE_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER, ProjectRole.COMMITTEE_CHAIR, ProjectRole.COMMITTEE_MEMBER}
@@ -68,7 +82,47 @@ def get_budget(project_id: UUID, membership=Depends(get_project_membership), db:
     budget = db.query(Budget).filter(Budget.project_id == project_id).first()
     contributions = db.query(Contribution).filter(Contribution.project_id == project_id).all()
     line_items = db.query(BudgetLineItem).filter(BudgetLineItem.project_id == project_id).all() if visibility == BudgetVisibilityMode.FULL_ACCESS else []
-    return shape_budget_response(visibility, budget, contributions, line_items)
+    project_items = list_project_budget_items(db, project_id) if visibility == BudgetVisibilityMode.FULL_ACCESS else []
+    vendors = vendor_map(db, project_items)
+    serialized_items = [serialize_budget_item(item, vendors) for item in project_items]
+    summary = budget_item_summary(db, project_id) if visibility in {BudgetVisibilityMode.FULL_ACCESS, BudgetVisibilityMode.SUMMARY_ACCESS} else None
+    return shape_budget_response(visibility, budget, contributions, line_items, serialized_items, summary)
+
+
+@router.get("/summary", response_model=BudgetItemSummary)
+def get_budget_summary(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_read(membership_budget_visibility(membership))
+    return budget_item_summary(db, project_id)
+
+
+@router.get("/items", response_model=list[ProjectBudgetItemRead])
+def list_project_budget_item_records(
+    project_id: UUID,
+    search: str | None = None,
+    category: str | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    vendor_id: UUID | None = None,
+    payment_filter: str | None = None,
+    overdue: bool | None = None,
+    limit: int = Query(default=100, ge=1, le=250),
+    offset: int = Query(default=0, ge=0),
+    membership=Depends(get_project_membership),
+    db: Session = Depends(get_db),
+):
+    require_budget_read(membership_budget_visibility(membership))
+    items = list_project_budget_items(db, project_id, search=search, category=category, status_filter=status_filter, vendor_id=vendor_id, payment_filter=payment_filter, overdue=overdue, limit=limit, offset=offset)
+    vendors = vendor_map(db, items)
+    return [serialize_budget_item(item, vendors) for item in items]
+
+
+@router.post("", response_model=ProjectBudgetItemRead)
+def create_project_budget_item(project_id: UUID, payload: ProjectBudgetItemCreate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    item = create_budget_item(db, project_id, payload, created_by_user_id=membership.user_id)
+    write_audit_log(db, "budget.item_created", actor_user_id=membership.user_id, project_id=project_id, metadata={"item_id": str(item.id)})
+    db.commit()
+    db.refresh(item)
+    return serialize_budget_item(item, vendor_map(db, [item]))
 
 
 @router.patch("", response_model=BudgetRead)
@@ -213,3 +267,31 @@ def export_budget(project_id: UUID, membership=Depends(get_project_membership), 
         contributions=contributions,
         proposals=proposals,
     )
+
+
+@router.get("/{budget_item_id}", response_model=ProjectBudgetItemRead)
+def get_project_budget_item(project_id: UUID, budget_item_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_read(membership_budget_visibility(membership))
+    item = get_budget_item_or_404(db, project_id, budget_item_id)
+    return serialize_budget_item(item, vendor_map(db, [item]))
+
+
+@router.patch("/{budget_item_id}", response_model=ProjectBudgetItemRead)
+def update_project_budget_item(project_id: UUID, budget_item_id: UUID, payload: ProjectBudgetItemUpdate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    item = get_budget_item_or_404(db, project_id, budget_item_id)
+    update_budget_item(db, item, payload)
+    write_audit_log(db, "budget.item_updated", actor_user_id=membership.user_id, project_id=project_id, metadata={"item_id": str(budget_item_id)})
+    db.commit()
+    db.refresh(item)
+    return serialize_budget_item(item, vendor_map(db, [item]))
+
+
+@router.delete("/{budget_item_id}")
+def delete_project_budget_item(project_id: UUID, budget_item_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    item = get_budget_item_or_404(db, project_id, budget_item_id)
+    db.delete(item)
+    write_audit_log(db, "budget.item_deleted", actor_user_id=membership.user_id, project_id=project_id, metadata={"item_id": str(budget_item_id)})
+    db.commit()
+    return {"status": "deleted"}

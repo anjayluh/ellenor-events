@@ -6,8 +6,8 @@ export default function BudgetPage() {
     <PortalShell>
       <section className="hero compact">
         <p className="eyebrow">Budget</p>
-        <h1>Financial clarity, without leaking sensitive details.</h1>
-        <p>Open an event workspace to review budget totals, deposits, balances, and upcoming payment dates.</p>
+        <h1>Plan every commitment with calm financial clarity.</h1>
+        <p>Open an event workspace to track planned costs, vendor-linked commitments, deposits, balances, and upcoming payment dates.</p>
       </section>
       <BudgetTableClientPage />
     </PortalShell>

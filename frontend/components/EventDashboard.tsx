@@ -6,7 +6,7 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
 import { formatDate } from "../lib/customer-display";
-import type { BudgetResponse, Project, ProjectRole } from "../lib/types";
+import type { BudgetItemSummary, Project, ProjectRole } from "../lib/types";
 
 const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
@@ -20,7 +20,7 @@ type GuestInviteSummary = { total: number; invitation_sent: number; attending: n
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
 type TaskSummary = { total: number; todo: number; in_progress: number; completed: number; overdue: number; due_soon: number; completion_percentage: number; my_tasks: number };
 type EventOverviewData = {
-  budget: BudgetResponse | null;
+  budget: BudgetItemSummary | null;
   guestSummary: GuestInviteSummary | null;
   inviteAnalytics: InviteAnalytics | null;
   taskSummary: TaskSummary | null;
@@ -95,7 +95,7 @@ export function EventDashboard({ project }: { project: Project }) {
     const projectId = currentProject.id;
     async function loadOverview() {
       const [budget, guestSummary, inviteAnalytics, taskSummary, meetings, members, tasks, vendors] = await Promise.all([
-        safeGet<BudgetResponse | null>(`/projects/${projectId}/budget`, null),
+        safeGet<BudgetItemSummary | null>(`/projects/${projectId}/budget/summary`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
         safeGet<TaskSummary | null>(`/projects/${projectId}/tasks/summary`, null),
@@ -120,14 +120,14 @@ export function EventDashboard({ project }: { project: Project }) {
   const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !confirmedVendorStatuses.includes(vendor.status));
   const confirmedVendors = overviewData.vendors.filter((vendor) => confirmedVendorStatuses.includes(vendor.status));
   const vendorOutstandingBalance = overviewData.vendors.reduce((total, vendor) => total + Number(vendor.balance_amount ?? 0), 0);
-  const budgetBalance = overviewData.budget?.line_item_balance_total ?? overviewData.budget?.remaining ?? null;
+  const budgetBalance = overviewData.budget ? Number(overviewData.budget.total_outstanding ?? 0) : null;
   const guestRsvpResponses = overviewData.guestSummary?.rsvp_responses ?? overviewData.guestSummary?.responded ?? 0;
   const guestRsvpProgress = overviewData.guestSummary?.total ? Math.round((guestRsvpResponses / overviewData.guestSummary.total) * 100) : 0;
   const planningAreas = [
     { label: "Guests", hasData: Boolean(overviewData.guestSummary?.total) },
     { label: "Vendors", hasData: overviewData.vendors.length > 0 },
     { label: "Tasks", hasData: overviewData.tasks.length > 0 },
-    { label: "Budget", hasData: Boolean((overviewData.budget?.total ?? 0) > 0 || (overviewData.budget?.line_item_total_cost ?? 0) > 0) },
+    { label: "Budget", hasData: Boolean((overviewData.budget?.total_items ?? 0) > 0) },
     { label: "Meetings", hasData: overviewData.meetings.length > 0 },
     { label: "Team", hasData: overviewData.members.length > 0 || Boolean(overviewData.inviteAnalytics?.pending || overviewData.inviteAnalytics?.accepted) }
   ];
@@ -221,7 +221,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Budget</span>
           <strong>{budgetBalance == null ? "—" : formatMoney(budgetBalance)}</strong>
-          <p>{overviewData.budget ? `Planned ${formatMoney(overviewData.budget.line_item_total_cost ?? overviewData.budget.total)}` : "Budget details depend on your access."}</p>
+          <p>{overviewData.budget ? `Planned ${formatMoney(overviewData.budget.total_planned)} · ${overviewData.budget.paid_percentage}% paid` : "Budget details depend on your access."}</p>
         </article>
       </section>
 

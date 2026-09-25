@@ -1,7 +1,7 @@
 from app.models.audit_log import AuditLog
 from app.models.auth_challenge import AuthChallenge
 from app.models.billing import BillingCustomer, CustomerSubscription, MarketingAccessToken, MarketingAccessTokenRedemption, PaymentEvent, PaymentTransaction
-from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution
+from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution, ProjectBudgetItem
 from app.models.catalog import EntitlementDefinition, PackageEntitlementGrant, PackagePlan, PackagePrice
 from app.models.customer_account import AccountEntitlement, CustomerAccount, CustomerAccountMember
 from app.models.guest_invite import GuestInvite
@@ -49,6 +49,7 @@ __all__ = [
     "PaymentEvent",
     "PaymentTransaction",
     "Project",
+    "ProjectBudgetItem",
     "ProjectGuest",
     "ProjectGuestInvitation",
     "ProjectLink",

@@ -43,6 +43,7 @@ from app.models import (
     PaymentTransaction,
     Participant,
     Project,
+    ProjectBudgetItem,
     ProjectLink,
     ProjectMember,
     ProjectSettings,

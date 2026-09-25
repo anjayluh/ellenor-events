@@ -60,6 +60,74 @@ export type BudgetLineItem = {
   status: string;
 };
 
+export type ProjectBudgetItem = {
+  id: string;
+  project_id: string;
+  name: string;
+  category: string;
+  description?: string | null;
+  vendor_id?: string | null;
+  vendor_name?: string | null;
+  planned_amount: string | number;
+  committed_amount: string | number;
+  paid_amount: string | number;
+  outstanding_amount: string | number;
+  currency: string;
+  due_date?: string | null;
+  status: string;
+  notes?: string | null;
+  created_by_user_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  is_overdue: boolean;
+  is_upcoming: boolean;
+};
+
+export type BudgetCategorySummary = {
+  category: string;
+  planned_amount: string | number;
+  committed_amount: string | number;
+  paid_amount: string | number;
+  outstanding_amount: string | number;
+  item_count: number;
+};
+
+export type BudgetUpcomingPayment = {
+  id: string;
+  name: string;
+  category: string;
+  due_date: string;
+  outstanding_amount: string | number;
+  currency: string;
+};
+
+export type BudgetItemSummary = {
+  project_id: string;
+  currency: string;
+  total_items: number;
+  total_planned: string | number;
+  total_committed: string | number;
+  total_paid: string | number;
+  total_outstanding: string | number;
+  unpaid_items: number;
+  overdue_items: number;
+  upcoming_payments_count: number;
+  paid_items: number;
+  partially_paid_items: number;
+  utilization_percentage: number;
+  paid_percentage: number;
+  category_breakdown: BudgetCategorySummary[];
+  upcoming_payments: BudgetUpcomingPayment[];
+};
+
+export type ProjectVendorOption = {
+  id: string;
+  project_id: string;
+  name: string;
+  category: string;
+  status: string;
+};
+
 export type Contribution = {
   id: string;
   project_id: string;
@@ -81,6 +149,8 @@ export type BudgetResponse = {
   line_item_balance_total?: number | null;
   line_items?: BudgetLineItem[] | null;
   contributions?: Contribution[] | null;
+  items?: ProjectBudgetItem[] | null;
+  summary?: BudgetItemSummary | null;
 };
 
 export type EventPermission =

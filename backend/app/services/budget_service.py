@@ -1,6 +1,6 @@
 from app.core.permissions import BudgetVisibilityMode
 from app.models.budget import Budget, BudgetLineItem, Contribution
-from app.schemas.budget import BudgetRead
+from app.schemas.budget import BudgetItemSummary, BudgetRead, ProjectBudgetItemRead
 
 
 def calculate_spend_ratio(total: float, spent: float) -> float:
@@ -18,6 +18,8 @@ def shape_budget_response(
     budget: Budget | None,
     contributions: list[Contribution],
     line_items: list[BudgetLineItem] | None = None,
+    items: list[ProjectBudgetItemRead] | None = None,
+    summary: BudgetItemSummary | None = None,
 ) -> BudgetRead:
     total = money(budget.total if budget else 0)
     spent = money(budget.spent if budget else 0)
@@ -44,6 +46,8 @@ def shape_budget_response(
             line_item_balance_total=line_item_balance_total,
             line_items=visible_line_items,
             contributions=contributions,
+            items=items or [],
+            summary=summary,
         )
 
     if visibility == BudgetVisibilityMode.SUMMARY_ACCESS:
@@ -52,6 +56,7 @@ def shape_budget_response(
             total=total,
             contribution_progress=paid_total,
             pledged_total=pledged_total,
+            summary=summary,
         )
 
     if visibility == BudgetVisibilityMode.CONTRIBUTION_ONLY:
