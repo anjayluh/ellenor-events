@@ -8,6 +8,7 @@ const requiredRoutes = [
   'app/page.tsx',
   'app/login/page.tsx',
   'app/meetings/page.tsx',
+  'app/timeline/page.tsx',
   'app/budget/page.tsx',
   'app/committee/page.tsx',
   'app/vendors/page.tsx',
@@ -89,6 +90,7 @@ const eventDashboard = readFileSync(join(root, 'components/EventDashboard.tsx'),
 assert.match(eventDashboard, /Save event/, 'Event dashboard should allow permitted users to edit event details');
 assert.match(eventDashboard, /Archive event/, 'Event dashboard should expose safe event archival instead of silent deletion');
 assert.match(eventDashboard, /resourceCard/, 'Event dashboard cards should opt into shared card alignment');
+assert.match(eventDashboard, /timeline\/summary|View Timeline/, 'Event dashboard should surface timeline summary and navigation');
 
 const styles = readFileSync(join(root, 'app/styles.css'), 'utf8');
 assert.match(styles, /resourceCard/, 'Styles should provide shared resource card alignment');

@@ -16,6 +16,7 @@ from app.models.project_member import ProjectMember
 from app.models.project_settings import ProjectSettings
 from app.models.staff_member import StaffMember
 from app.models.task import Task
+from app.models.timeline import ProjectTimelineItem
 from app.models.testimonial import Testimonial
 from app.models.user import User
 from app.models.vendor import Vendor
@@ -55,6 +56,7 @@ __all__ = [
     "ProjectLink",
     "ProjectMember",
     "ProjectSettings",
+    "ProjectTimelineItem",
     "StaffMember",
     "Task",
     "Testimonial",

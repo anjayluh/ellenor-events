@@ -204,3 +204,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .portfolioThumb, .portfolioImage { aspect-ratio: 4 / 3; }
 .inviteCardPreview { aspect-ratio: 4 / 5; max-height: 620px; }
 @media (max-width: 720px) { .permissionGrid, .portfolioGrid { grid-template-columns: 1fr; } }
+
+.timelineList { display: grid; gap: 14px; margin-top: 18px; }
+.timelineItem { align-items: start; background: rgba(255, 255, 255, 0.72); border: 1px solid var(--border); border-radius: 22px; display: grid; gap: 16px; grid-template-columns: 110px minmax(0, 1fr); padding: 16px; position: relative; }
+.timelineItem::before { background: linear-gradient(180deg, var(--gold), var(--purple-soft)); border-radius: 999px; content: ""; height: calc(100% - 32px); left: 124px; opacity: 0.28; position: absolute; top: 16px; width: 3px; }
+.timelineItem.conflictItem { border-color: rgba(179, 38, 30, 0.38); box-shadow: 0 16px 34px rgba(179, 38, 30, 0.08); }
+.timelineTime { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; color: var(--purple); display: grid; gap: 4px; justify-items: center; padding: 12px; text-align: center; }
+.timelineTime strong { font-size: 1.05rem; }
+.timelineTime span { color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.timelineContent { display: grid; gap: 10px; min-width: 0; padding-left: 6px; }
+.timelineContent h3 { margin: 0; }
+.warningBadge { background: rgba(214, 169, 59, 0.16); color: #7a5310; }
+@media (max-width: 720px) { .timelineItem { grid-template-columns: 1fr; } .timelineItem::before { display: none; } .timelineTime { align-items: center; display: flex; justify-content: space-between; } }

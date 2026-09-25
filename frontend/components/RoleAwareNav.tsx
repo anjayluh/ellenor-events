@@ -6,6 +6,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" },
     { href: "budget", label: "Budget" },
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
@@ -16,6 +17,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" },
     { href: "budget", label: "Budget" },
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
@@ -26,6 +28,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" },
     { href: "budget", label: "Budget Summary" },
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
@@ -36,6 +39,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" },
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" }
   ],
@@ -43,12 +47,14 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" },
     { href: "budget", label: "Contributions" }
   ],
   GUEST_VIEWER: [
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
-    { href: "meetings", label: "Meetings" }
+    { href: "meetings", label: "Meetings" },
+    { href: "timeline", label: "Timeline" }
   ]
 };
 

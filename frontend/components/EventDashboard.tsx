@@ -6,7 +6,7 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
 import { formatDate } from "../lib/customer-display";
-import type { BudgetItemSummary, Project, ProjectRole } from "../lib/types";
+import type { BudgetItemSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
 
 const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
@@ -24,6 +24,7 @@ type EventOverviewData = {
   guestSummary: GuestInviteSummary | null;
   inviteAnalytics: InviteAnalytics | null;
   taskSummary: TaskSummary | null;
+  timelineSummary: TimelineSummary | null;
   meetings: Meeting[];
   members: Member[];
   tasks: Task[];
@@ -35,6 +36,7 @@ const emptyOverviewData: EventOverviewData = {
   guestSummary: null,
   inviteAnalytics: null,
   taskSummary: null,
+  timelineSummary: null,
   meetings: [],
   members: [],
   tasks: [],
@@ -94,18 +96,19 @@ export function EventDashboard({ project }: { project: Project }) {
     let isMounted = true;
     const projectId = currentProject.id;
     async function loadOverview() {
-      const [budget, guestSummary, inviteAnalytics, taskSummary, meetings, members, tasks, vendors] = await Promise.all([
+      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, meetings, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetItemSummary | null>(`/projects/${projectId}/budget/summary`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
         safeGet<TaskSummary | null>(`/projects/${projectId}/tasks/summary`, null),
+        safeGet<TimelineSummary | null>(`/projects/${projectId}/timeline/summary`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
         safeGet<Task[]>(`/projects/${projectId}/tasks`, []),
         safeGet<Vendor[]>(`/projects/${projectId}/vendors`, [])
       ]);
       if (isMounted) {
-        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, meetings, members, tasks, vendors });
+        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, meetings, members, tasks, vendors });
       }
     }
     void loadOverview();
@@ -121,12 +124,14 @@ export function EventDashboard({ project }: { project: Project }) {
   const confirmedVendors = overviewData.vendors.filter((vendor) => confirmedVendorStatuses.includes(vendor.status));
   const vendorOutstandingBalance = overviewData.vendors.reduce((total, vendor) => total + Number(vendor.balance_amount ?? 0), 0);
   const budgetBalance = overviewData.budget ? Number(overviewData.budget.total_outstanding ?? 0) : null;
+  const dashboardTimelineItem = overviewData.timelineSummary?.current_item ?? overviewData.timelineSummary?.next_item ?? null;
   const guestRsvpResponses = overviewData.guestSummary?.rsvp_responses ?? overviewData.guestSummary?.responded ?? 0;
   const guestRsvpProgress = overviewData.guestSummary?.total ? Math.round((guestRsvpResponses / overviewData.guestSummary.total) * 100) : 0;
   const planningAreas = [
     { label: "Guests", hasData: Boolean(overviewData.guestSummary?.total) },
     { label: "Vendors", hasData: overviewData.vendors.length > 0 },
     { label: "Tasks", hasData: overviewData.tasks.length > 0 },
+    { label: "Timeline", hasData: Boolean(overviewData.timelineSummary?.total) },
     { label: "Budget", hasData: Boolean((overviewData.budget?.total_items ?? 0) > 0) },
     { label: "Meetings", hasData: overviewData.meetings.length > 0 },
     { label: "Team", hasData: overviewData.members.length > 0 || Boolean(overviewData.inviteAnalytics?.pending || overviewData.inviteAnalytics?.accepted) }
@@ -135,6 +140,9 @@ export function EventDashboard({ project }: { project: Project }) {
   const attentionItems = [
     ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/tasks?project=${currentProject.id}` })),
     ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
+    ...(overviewData.timelineSummary?.current_item ? [{ title: `Now: ${overviewData.timelineSummary.current_item.title}`, detail: `${formatDate(overviewData.timelineSummary.current_item.start_at)} · ${overviewData.timelineSummary.current_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
+    ...(overviewData.timelineSummary?.next_item ? [{ title: `Next up: ${overviewData.timelineSummary.next_item.title}`, detail: `${formatDate(overviewData.timelineSummary.next_item.start_at)} · ${overviewData.timelineSummary.next_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
+    ...(overviewData.timelineSummary?.conflicts ? [{ title: `${overviewData.timelineSummary.conflicts} schedule conflict${overviewData.timelineSummary.conflicts === 1 ? "" : "s"}`, detail: "Review overlapping timeline items.", href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.guestSummary && overviewData.guestSummary.pending_rsvp > 0 ? [{ title: `${overviewData.guestSummary.pending_rsvp} guest response${overviewData.guestSummary.pending_rsvp === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guests?project=${currentProject.id}` }] : []),
     ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review providers not yet confirmed.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(vendorOutstandingBalance > 0 ? [{ title: `${formatMoney(vendorOutstandingBalance)} outstanding with vendors`, detail: "Review vendor deposits and balances.", href: `/vendors?project=${currentProject.id}` }] : []),
@@ -249,6 +257,15 @@ export function EventDashboard({ project }: { project: Project }) {
               <p>{overviewData.taskSummary.completed} complete · {overviewData.taskSummary.due_soon} due soon · {overviewData.taskSummary.completion_percentage}% complete</p>
             </div>
           ) : null}
+          {overviewData.timelineSummary ? (
+            <div>
+              <p className="helperText">Event timeline</p>
+              {dashboardTimelineItem ? (
+                <p><strong>Next up:</strong> {dashboardTimelineItem.title} · {formatDate(dashboardTimelineItem.start_at)}</p>
+              ) : <p>No current or upcoming schedule item yet.</p>}
+              <p>{overviewData.timelineSummary.today} today · {overviewData.timelineSummary.upcoming} upcoming · {overviewData.timelineSummary.conflicts} conflicts</p>
+            </div>
+          ) : null}
           {activePlanningAreas.length ? (
             <p>{activePlanningAreas.length} planning area{activePlanningAreas.length === 1 ? " contains" : "s contain"} real event activity.</p>
           ) : (
@@ -260,6 +277,7 @@ export function EventDashboard({ project }: { project: Project }) {
             {canManageGuests ? <Link className="ghostButton" data-icon="↗" href={`/guests?project=${currentProject.id}`}>Manage Guests</Link> : null}
             {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Manage Vendors</Link> : null}
             {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/tasks?project=${currentProject.id}`}>Manage Tasks</Link> : null}
+            <Link className="ghostButton" data-icon="↗" href={`/timeline?project=${currentProject.id}`}>View Timeline</Link>
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
           </div>
         </article>

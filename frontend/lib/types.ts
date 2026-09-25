@@ -128,6 +128,64 @@ export type ProjectVendorOption = {
   status: string;
 };
 
+export type TimelineStatus = "UPCOMING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+export type TimelineItem = {
+  id: string;
+  project_id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  start_at: string;
+  end_at: string;
+  location?: string | null;
+  assignee_user_id?: string | null;
+  assignee_name?: string | null;
+  assignee_email?: string | null;
+  created_by_user_id?: string | null;
+  status: TimelineStatus;
+  stored_status: TimelineStatus;
+  notes?: string | null;
+  sort_order: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  duration_minutes: number;
+  has_conflict: boolean;
+  conflicts: Array<{ id: string; title: string; start_at: string; end_at: string }>;
+};
+
+export type TimelineSummaryItem = {
+  id: string;
+  title: string;
+  category: string;
+  start_at: string;
+  end_at: string;
+  location?: string | null;
+  assignee_name?: string | null;
+  status: TimelineStatus;
+};
+
+export type TimelineSummary = {
+  project_id: string;
+  total: number;
+  upcoming: number;
+  completed: number;
+  cancelled: number;
+  today: number;
+  in_progress: number;
+  conflicts: number;
+  current_item?: TimelineSummaryItem | null;
+  next_item?: TimelineSummaryItem | null;
+  next_upcoming_at?: string | null;
+};
+
+export type TimelineAssignee = {
+  user_id: string;
+  name?: string | null;
+  email?: string | null;
+  role: ProjectRole;
+};
+
 export type Contribution = {
   id: string;
   project_id: string;

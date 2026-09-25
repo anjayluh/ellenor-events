@@ -49,6 +49,7 @@ from app.models import (
     ProjectSettings,
     StaffMember,
     Task,
+    ProjectTimelineItem,
     Testimonial,
     User,
     Vendor,
