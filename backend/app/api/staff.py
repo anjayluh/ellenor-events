@@ -39,10 +39,10 @@ def project_health_rows(db: Session) -> tuple[list[StaffProjectHealth], list[Sta
 
     for project in projects:
         meeting_count = db.query(Meeting).filter(Meeting.project_id == project.id).count()
-        pending_task_count = db.query(Task).filter(Task.project_id == project.id, Task.status != "done").count()
+        pending_task_count = db.query(Task).filter(Task.project_id == project.id, Task.status != "DONE").count()
         overdue_task_count = (
             db.query(Task)
-            .filter(Task.project_id == project.id, Task.status != "done", Task.due_date.isnot(None), Task.due_date < today)
+            .filter(Task.project_id == project.id, Task.status != "DONE", Task.due_date.isnot(None), Task.due_date < today)
             .count()
         )
         vendor_categories = {row.category for row in db.query(Vendor).filter(Vendor.project_id == project.id).all()}

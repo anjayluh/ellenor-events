@@ -1,60 +1,108 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_project_membership, membership_role
-from app.core.permissions import ProjectRole, require_role
+from app.api.dependencies import get_project_membership
 from app.db.session import get_db
-from app.models.task import Task
-from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import TaskAssigneeRead, TaskCreate, TaskRead, TaskSummary, TaskUpdate
 from app.services.audit_service import write_audit_log
+from app.services.project_task_service import (
+    create_project_task,
+    get_task_or_404,
+    list_project_tasks,
+    list_task_assignees,
+    require_task_manager,
+    serialize_task,
+    task_summary,
+    update_project_task,
+)
 
 router = APIRouter()
-TASK_WRITE_ROLES = {ProjectRole.OWNER, ProjectRole.PARTNER, ProjectRole.COMMITTEE_CHAIR, ProjectRole.COMMITTEE_MEMBER}
-
-
-def get_task_or_404(db: Session, project_id: UUID, task_id: UUID) -> Task:
-    task = db.query(Task).filter(Task.project_id == project_id, Task.id == task_id).first()
-    if not task:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
-    return task
 
 
 @router.get("", response_model=list[TaskRead])
-def list_tasks(project_id: UUID, assigned_to: UUID | None = None, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    query = db.query(Task).filter(Task.project_id == project_id)
-    if assigned_to:
-        query = query.filter(Task.assigned_to == assigned_to)
-    return query.order_by(Task.due_date.asc().nullslast()).all()
+def list_tasks(
+    project_id: UUID,
+    search: str | None = None,
+    status_filter: str | None = Query(default=None, alias="status"),
+    priority: str | None = None,
+    category: str | None = None,
+    assignee: UUID | None = None,
+    assigned_to: UUID | None = None,
+    overdue: bool | None = None,
+    due_soon: bool | None = None,
+    my_tasks: bool = False,
+    limit: int = Query(default=100, ge=1, le=250),
+    offset: int = Query(default=0, ge=0),
+    membership=Depends(get_project_membership),
+    db: Session = Depends(get_db),
+):
+    effective_assignee = assignee or assigned_to
+    tasks = list_project_tasks(
+        db,
+        project_id,
+        current_user_id=membership.user_id,
+        search=search,
+        status_filter=status_filter,
+        priority=priority,
+        category=category,
+        assignee=effective_assignee,
+        overdue=overdue,
+        due_soon=due_soon,
+        my_tasks=my_tasks,
+        limit=limit,
+        offset=offset,
+    )
+    from app.services.project_task_service import assignee_map
+
+    users = assignee_map(db, tasks)
+    return [serialize_task(task, users) for task in tasks]
+
+
+@router.get("/summary", response_model=TaskSummary)
+def get_task_summary(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return task_summary(db, project_id, current_user_id=membership.user_id)
+
+
+@router.get("/assignees", response_model=list[TaskAssigneeRead])
+def get_task_assignees(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return list_task_assignees(db, project_id)
 
 
 @router.post("", response_model=TaskRead)
 def create_task(project_id: UUID, payload: TaskCreate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), TASK_WRITE_ROLES)
-    task = Task(project_id=project_id, **payload.model_dump())
-    db.add(task)
-    write_audit_log(db, "task.created", actor_user_id=membership.user_id, project_id=project_id)
+    require_task_manager(membership)
+    task = create_project_task(db, project_id, payload, created_by_user_id=membership.user_id)
+    write_audit_log(db, "task.created", actor_user_id=membership.user_id, project_id=project_id, metadata={"task_id": str(task.id)})
     db.commit()
     db.refresh(task)
-    return task
+    return serialize_task(task, {})
+
+
+@router.get("/{task_id}", response_model=TaskRead)
+def get_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    task = get_task_or_404(db, project_id, task_id)
+    from app.services.project_task_service import assignee_map
+
+    return serialize_task(task, assignee_map(db, [task]))
 
 
 @router.patch("/{task_id}", response_model=TaskRead)
 def update_task(project_id: UUID, task_id: UUID, payload: TaskUpdate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), TASK_WRITE_ROLES)
     task = get_task_or_404(db, project_id, task_id)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(task, field, value)
+    update_project_task(db, task, payload, membership)
     write_audit_log(db, "task.updated", actor_user_id=membership.user_id, project_id=project_id, metadata={"task_id": str(task_id)})
     db.commit()
     db.refresh(task)
-    return task
+    from app.services.project_task_service import assignee_map
+
+    return serialize_task(task, assignee_map(db, [task]))
 
 
 @router.delete("/{task_id}")
 def delete_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    require_role(membership_role(membership), TASK_WRITE_ROLES)
+    require_task_manager(membership)
     task = get_task_or_404(db, project_id, task_id)
     db.delete(task)
     write_audit_log(db, "task.deleted", actor_user_id=membership.user_id, project_id=project_id, metadata={"task_id": str(task_id)})

@@ -7,7 +7,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
     { href: "budget", label: "Budget" },
-    { href: "committee", label: "Tasks" },
+    { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" }
@@ -17,7 +17,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
     { href: "budget", label: "Budget" },
-    { href: "committee", label: "Tasks" },
+    { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" }
@@ -27,7 +27,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
     { href: "budget", label: "Budget Summary" },
-    { href: "committee", label: "Tasks" },
+    { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" }
@@ -36,7 +36,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
-    { href: "committee", label: "Tasks" },
+    { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" }
   ],
   FAMILY_VIEWER: [

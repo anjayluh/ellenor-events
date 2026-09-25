@@ -12,16 +12,18 @@ const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"]
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
 const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR", "COMMITTEE_MEMBER"];
 
-type Task = { id: string; title: string; status: string; due_date?: string | null };
+type Task = { id: string; title: string; status: string; due_date?: string | null; is_overdue?: boolean; is_due_soon?: boolean };
 type Vendor = { id: string; name: string; category: string; status: string; balance_amount?: string | number | null; payment_status?: string | null };
 type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
 type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
+type TaskSummary = { total: number; todo: number; in_progress: number; completed: number; overdue: number; due_soon: number; completion_percentage: number; my_tasks: number };
 type EventOverviewData = {
   budget: BudgetResponse | null;
   guestSummary: GuestInviteSummary | null;
   inviteAnalytics: InviteAnalytics | null;
+  taskSummary: TaskSummary | null;
   meetings: Meeting[];
   members: Member[];
   tasks: Task[];
@@ -32,6 +34,7 @@ const emptyOverviewData: EventOverviewData = {
   budget: null,
   guestSummary: null,
   inviteAnalytics: null,
+  taskSummary: null,
   meetings: [],
   members: [],
   tasks: [],
@@ -57,7 +60,7 @@ function formatMoney(value?: number | string | null) {
 }
 
 function isOverdue(task: Task) {
-  if (!task.due_date || task.status === "done") return false;
+  if (!task.due_date || task.status === "DONE") return false;
   const dueDate = new Date(`${task.due_date}T23:59:59`);
   return dueDate.getTime() < Date.now();
 }
@@ -91,17 +94,18 @@ export function EventDashboard({ project }: { project: Project }) {
     let isMounted = true;
     const projectId = currentProject.id;
     async function loadOverview() {
-      const [budget, guestSummary, inviteAnalytics, meetings, members, tasks, vendors] = await Promise.all([
+      const [budget, guestSummary, inviteAnalytics, taskSummary, meetings, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetResponse | null>(`/projects/${projectId}/budget`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
+        safeGet<TaskSummary | null>(`/projects/${projectId}/tasks/summary`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
         safeGet<Task[]>(`/projects/${projectId}/tasks`, []),
         safeGet<Vendor[]>(`/projects/${projectId}/vendors`, [])
       ]);
       if (isMounted) {
-        setOverviewData({ budget, guestSummary, inviteAnalytics, meetings, members, tasks, vendors });
+        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, meetings, members, tasks, vendors });
       }
     }
     void loadOverview();
@@ -112,8 +116,6 @@ export function EventDashboard({ project }: { project: Project }) {
 
   const upcomingMeetings = useMemo(() => overviewData.meetings.filter((meeting) => new Date(meeting.scheduled_time).getTime() >= Date.now()).slice(0, 3), [overviewData.meetings]);
   const overdueTasks = overviewData.tasks.filter(isOverdue);
-  const pendingTasks = overviewData.tasks.filter((task) => task.status !== "done");
-  const completedTasks = overviewData.tasks.filter((task) => task.status === "done");
   const confirmedVendorStatuses = ["confirmed", "booked", "completed"];
   const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !confirmedVendorStatuses.includes(vendor.status));
   const confirmedVendors = overviewData.vendors.filter((vendor) => confirmedVendorStatuses.includes(vendor.status));
@@ -131,7 +133,7 @@ export function EventDashboard({ project }: { project: Project }) {
   ];
   const activePlanningAreas = planningAreas.filter((area) => area.hasData);
   const attentionItems = [
-    ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/committee?project=${currentProject.id}` })),
+    ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/tasks?project=${currentProject.id}` })),
     ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
     ...(overviewData.guestSummary && overviewData.guestSummary.pending_rsvp > 0 ? [{ title: `${overviewData.guestSummary.pending_rsvp} guest response${overviewData.guestSummary.pending_rsvp === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guests?project=${currentProject.id}` }] : []),
     ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review providers not yet confirmed.", href: `/vendors?project=${currentProject.id}` }] : []),
@@ -214,7 +216,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Tasks</span>
           <strong>{overviewData.tasks.length}</strong>
-          <p>{overviewData.tasks.length ? `${completedTasks.length} done · ${pendingTasks.length} pending` : "Planning tasks will appear once added."}</p>
+          <p>{overviewData.taskSummary ? `${overviewData.taskSummary.completion_percentage}% complete · ${overviewData.taskSummary.overdue} overdue` : "Planning tasks will appear once added."}</p>
         </article>
         <article className="metric eventMetric">
           <span>Budget</span>
@@ -240,6 +242,13 @@ export function EventDashboard({ project }: { project: Project }) {
               <p>{overviewData.guestSummary.attending} attending · {overviewData.guestSummary.pending_rsvp} pending · {guestRsvpProgress}% responded</p>
             </div>
           ) : null}
+          {overviewData.taskSummary ? (
+            <div>
+              <p className="helperText">Task completion</p>
+              <div className="progressTrack" aria-label="Task completion"><div className="progressFill" style={{ width: `${overviewData.taskSummary.completion_percentage}%` }} /></div>
+              <p>{overviewData.taskSummary.completed} complete · {overviewData.taskSummary.due_soon} due soon · {overviewData.taskSummary.completion_percentage}% complete</p>
+            </div>
+          ) : null}
           {activePlanningAreas.length ? (
             <p>{activePlanningAreas.length} planning area{activePlanningAreas.length === 1 ? " contains" : "s contain"} real event activity.</p>
           ) : (
@@ -250,7 +259,7 @@ export function EventDashboard({ project }: { project: Project }) {
             {canEditBudget || visibility !== "NO_ACCESS" ? <Link className="ghostButton" data-icon="↗" href={`/budget?project=${currentProject.id}`}>{canEditBudget ? "Manage budget" : "View budget"}</Link> : null}
             {canManageGuests ? <Link className="ghostButton" data-icon="↗" href={`/guests?project=${currentProject.id}`}>Manage Guests</Link> : null}
             {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Manage Vendors</Link> : null}
-            {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/committee?project=${currentProject.id}`}>Tasks</Link> : null}
+            {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/tasks?project=${currentProject.id}`}>Manage Tasks</Link> : null}
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
           </div>
         </article>

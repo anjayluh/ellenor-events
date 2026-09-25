@@ -547,10 +547,39 @@ create table tasks (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
   title text not null,
+  description text,
   assigned_to uuid references users(id),
-  status text not null default 'todo',
-  due_date date
+  created_by_user_id uuid references users(id),
+  status text not null default 'TODO' check (status in ('TODO','IN_PROGRESS','DONE')),
+  priority text not null default 'MEDIUM' check (priority in ('LOW','MEDIUM','HIGH','URGENT')),
+  category text not null default 'GENERAL' check (category in ('GENERAL','PROGRAM','FINANCE','GUESTS','VENDORS','LOGISTICS','VENUE','DECOR','COMMUNICATION','FAMILY','COMMITTEE')),
+  due_date date,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz
 );
+
+create or replace function public.set_task_timestamps()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.status = 'DONE' and old.status is distinct from 'DONE' then
+    new.completed_at := coalesce(new.completed_at, now());
+  elsif new.status <> 'DONE' then
+    new.completed_at := null;
+  end if;
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+create trigger trg_tasks_set_timestamps
+before update of status, title, description, priority, category, assigned_to, due_date
+on public.tasks
+for each row
+execute function public.set_task_timestamps();
 
 create table budgets (
   project_id uuid primary key references projects(id) on delete cascade,
@@ -666,6 +695,11 @@ create index idx_vendor_bookings_vendor on vendor_bookings(vendor_user_id);
 create index idx_vendor_payments_booking on vendor_payments(booking_id);
 create index idx_meetings_project_time on meetings(project_id, scheduled_time);
 create index idx_tasks_project on tasks(project_id);
+create index idx_tasks_project_status on tasks(project_id, status);
+create index idx_tasks_project_priority on tasks(project_id, priority);
+create index idx_tasks_project_category on tasks(project_id, category);
+create index idx_tasks_project_assignee on tasks(project_id, assigned_to);
+create index idx_tasks_project_due_date on tasks(project_id, due_date);
 create index idx_budget_line_items_project on budget_line_items(project_id);
 create index idx_budget_proposals_project on budget_proposals(project_id);
 create index idx_contributions_project on contributions(project_id);
