@@ -13,7 +13,7 @@ const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
 const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR", "COMMITTEE_MEMBER"];
 
 type Task = { id: string; title: string; status: string; due_date?: string | null };
-type Vendor = { id: string; name: string; category: string; status: string };
+type Vendor = { id: string; name: string; category: string; status: string; balance_amount?: string | number | null; payment_status?: string | null };
 type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
 type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
@@ -50,9 +50,10 @@ function titleCase(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-function formatMoney(value?: number | null) {
+function formatMoney(value?: number | string | null) {
   if (value == null) return "Not set";
-  return new Intl.NumberFormat("en-UG", { style: "currency", currency: "UGX", maximumFractionDigits: 0 }).format(value);
+  const parsed = Number(value);
+  return new Intl.NumberFormat("en-UG", { style: "currency", currency: "UGX", maximumFractionDigits: 0 }).format(Number.isFinite(parsed) ? parsed : 0);
 }
 
 function isOverdue(task: Task) {
@@ -113,8 +114,10 @@ export function EventDashboard({ project }: { project: Project }) {
   const overdueTasks = overviewData.tasks.filter(isOverdue);
   const pendingTasks = overviewData.tasks.filter((task) => task.status !== "done");
   const completedTasks = overviewData.tasks.filter((task) => task.status === "done");
-  const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !["booked", "rejected"].includes(vendor.status));
-  const bookedVendors = overviewData.vendors.filter((vendor) => vendor.status === "booked");
+  const confirmedVendorStatuses = ["confirmed", "booked", "completed"];
+  const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !confirmedVendorStatuses.includes(vendor.status));
+  const confirmedVendors = overviewData.vendors.filter((vendor) => confirmedVendorStatuses.includes(vendor.status));
+  const vendorOutstandingBalance = overviewData.vendors.reduce((total, vendor) => total + Number(vendor.balance_amount ?? 0), 0);
   const budgetBalance = overviewData.budget?.line_item_balance_total ?? overviewData.budget?.remaining ?? null;
   const guestRsvpResponses = overviewData.guestSummary?.rsvp_responses ?? overviewData.guestSummary?.responded ?? 0;
   const guestRsvpProgress = overviewData.guestSummary?.total ? Math.round((guestRsvpResponses / overviewData.guestSummary.total) * 100) : 0;
@@ -131,7 +134,8 @@ export function EventDashboard({ project }: { project: Project }) {
     ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/committee?project=${currentProject.id}` })),
     ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
     ...(overviewData.guestSummary && overviewData.guestSummary.pending_rsvp > 0 ? [{ title: `${overviewData.guestSummary.pending_rsvp} guest response${overviewData.guestSummary.pending_rsvp === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guests?project=${currentProject.id}` }] : []),
-    ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review vendor stages and next steps.", href: `/vendors?project=${currentProject.id}` }] : []),
+    ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review providers not yet confirmed.", href: `/vendors?project=${currentProject.id}` }] : []),
+    ...(vendorOutstandingBalance > 0 ? [{ title: `${formatMoney(vendorOutstandingBalance)} outstanding with vendors`, detail: "Review vendor deposits and balances.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(budgetBalance && budgetBalance > 0 ? [{ title: `${formatMoney(budgetBalance)} still awaiting payment`, detail: "Review budget deposits and balances.", href: `/budget?project=${currentProject.id}` }] : [])
   ].slice(0, 5);
 
@@ -205,7 +209,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Vendors</span>
           <strong>{overviewData.vendors.length}</strong>
-          <p>{overviewData.vendors.length ? `${bookedVendors.length} booked · ${vendorsNeedingDecision.length} needing attention` : "Vendor options will appear once added."}</p>
+          <p>{overviewData.vendors.length ? `${confirmedVendors.length} confirmed · ${vendorsNeedingDecision.length} needing attention` : "Vendor options will appear once added."}</p>
         </article>
         <article className="metric eventMetric">
           <span>Tasks</span>
@@ -245,7 +249,7 @@ export function EventDashboard({ project }: { project: Project }) {
             <Link className="ghostButton" data-icon="↗" href={`/meetings?project=${currentProject.id}`}>Meetings</Link>
             {canEditBudget || visibility !== "NO_ACCESS" ? <Link className="ghostButton" data-icon="↗" href={`/budget?project=${currentProject.id}`}>{canEditBudget ? "Manage budget" : "View budget"}</Link> : null}
             {canManageGuests ? <Link className="ghostButton" data-icon="↗" href={`/guests?project=${currentProject.id}`}>Manage Guests</Link> : null}
-            {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Vendors</Link> : null}
+            {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Manage Vendors</Link> : null}
             {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/committee?project=${currentProject.id}`}>Tasks</Link> : null}
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
           </div>

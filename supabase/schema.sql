@@ -306,11 +306,57 @@ create table vendors (
   name text not null,
   category text not null,
   contact text,
-  status text not null default 'shortlisted' check (status in ('shortlisted','quote_requested','preferred','booked','rejected','contacted','confirmed','declined','completed')),
+  contact_name text,
+  phone text,
+  email text,
+  status text not null default 'shortlisted' check (status in ('shortlisted','contacted','confirmed','declined','cancelled','quote_requested','preferred','booked','rejected','completed')),
   notes text,
   external_url text,
-  created_at timestamptz default now()
+  agreed_amount numeric(12,2) not null default 0,
+  amount_paid numeric(12,2) not null default 0,
+  balance_amount numeric(12,2) not null default 0,
+  payment_status text not null default 'not_applicable' check (payment_status in ('not_applicable','unpaid','partially_paid','paid')),
+  created_at timestamptz default now(),
+  updated_at timestamptz,
+  constraint ck_vendors_amounts_non_negative check (agreed_amount >= 0 and amount_paid >= 0 and balance_amount >= 0),
+  constraint ck_vendors_amount_paid_not_over_agreed check (amount_paid <= agreed_amount)
 );
+
+
+create or replace function public.set_vendor_financials()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  new.agreed_amount := coalesce(new.agreed_amount, 0);
+  new.amount_paid := coalesce(new.amount_paid, 0);
+
+  if new.agreed_amount < 0 or new.amount_paid < 0 then
+    raise exception 'Vendor amounts cannot be negative';
+  end if;
+
+  if new.amount_paid > new.agreed_amount then
+    raise exception 'Amount paid cannot exceed agreed amount';
+  end if;
+
+  new.balance_amount := new.agreed_amount - new.amount_paid;
+  new.payment_status := case
+    when new.agreed_amount = 0 then 'not_applicable'
+    when new.amount_paid = 0 then 'unpaid'
+    when new.amount_paid < new.agreed_amount then 'partially_paid'
+    else 'paid'
+  end;
+  new.updated_at := coalesce(new.updated_at, now());
+  return new;
+end;
+$$;
+
+create trigger trg_vendors_set_financials
+before insert or update of agreed_amount, amount_paid
+on public.vendors
+for each row
+execute function public.set_vendor_financials();
 
 create table notification_preferences (
   project_id uuid primary key references projects(id) on delete cascade,
@@ -594,6 +640,10 @@ create index idx_project_links_primary on project_links(primary_project_id);
 create index idx_project_links_linked on project_links(linked_project_id);
 create index idx_participants_project on participants(project_id);
 create index idx_vendors_project on vendors(project_id);
+create index idx_vendors_project_status on vendors(project_id, status);
+create index idx_vendors_project_payment_status on vendors(project_id, payment_status);
+create index idx_vendors_project_category on vendors(project_id, category);
+create index idx_vendors_project_email on vendors(project_id, email) where email is not null;
 create index idx_notifications_project_status on notifications(project_id, status);
 create index idx_notifications_next_retry on notifications(next_retry_at) where next_retry_at is not null;
 create index idx_invites_project on invites(project_id);

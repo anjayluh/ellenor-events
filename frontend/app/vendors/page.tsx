@@ -1,5 +1,5 @@
 import { PortalShell } from "../../components/PortalShell";
-import { VendorsClientPage } from "../../components/ProtectedPages";
+import { VendorsClientPage } from "../../components/VendorsClientPage";
 
 export default function VendorsPage() {
   return (
