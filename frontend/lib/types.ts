@@ -64,12 +64,14 @@ export type ProjectBudgetItem = {
   id: string;
   project_id: string;
   name: string;
+  category_id?: string | null;
   category: string;
   description?: string | null;
   vendor_id?: string | null;
   vendor_name?: string | null;
   planned_amount: string | number;
   committed_amount: string | number;
+  actual_amount: string | number;
   paid_amount: string | number;
   outstanding_amount: string | number;
   currency: string;
@@ -84,9 +86,11 @@ export type ProjectBudgetItem = {
 };
 
 export type BudgetCategorySummary = {
+  category_id?: string | null;
   category: string;
   planned_amount: string | number;
   committed_amount: string | number;
+  actual_amount: string | number;
   paid_amount: string | number;
   outstanding_amount: string | number;
   item_count: number;
@@ -107,6 +111,7 @@ export type BudgetItemSummary = {
   total_items: number;
   total_planned: string | number;
   total_committed: string | number;
+  total_actual: string | number;
   total_paid: string | number;
   total_outstanding: string | number;
   unpaid_items: number;
@@ -116,8 +121,19 @@ export type BudgetItemSummary = {
   partially_paid_items: number;
   utilization_percentage: number;
   paid_percentage: number;
+  variance_amount: string | number;
   category_breakdown: BudgetCategorySummary[];
   upcoming_payments: BudgetUpcomingPayment[];
+};
+
+export type ProjectBudgetCategory = {
+  id: string;
+  project_id: string;
+  name: string;
+  description?: string | null;
+  sort_order: number;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type ProjectVendorOption = {

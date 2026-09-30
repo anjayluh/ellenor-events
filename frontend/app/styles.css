@@ -89,6 +89,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .successBadge { background: rgba(20, 108, 46, 0.12); color: var(--success); }
 .meta { color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.9rem; }
 .badge { background: rgba(214, 169, 59, 0.16); color: #805d00; border-radius: 999px; padding: 5px 10px; font-weight: 700; }
+.inlineLinkButton { background: transparent; border: 0; color: inherit; cursor: pointer; font: inherit; font-weight: 900; margin-left: 8px; padding: 0; text-decoration: underline; }
+.dangerText { color: var(--error); }
 .progressTrack { background: rgba(53, 21, 93, 0.12); border-radius: 999px; height: 12px; overflow: hidden; }
 .progressFill { background: linear-gradient(90deg, var(--purple), var(--gold)); height: 100%; width: 62%; }
 .primaryButton { background: var(--gold); border: 0; border-radius: 999px; color: var(--purple); cursor: pointer; font-weight: 900; min-height: 48px; padding: 14px 20px; box-shadow: var(--shadow-1); }

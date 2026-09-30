@@ -358,6 +358,59 @@ on public.vendors
 for each row
 execute function public.set_vendor_financials();
 
+create table project_budget_categories (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  name text not null,
+  description text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  constraint ck_project_budget_categories_name_not_blank check (length(trim(name)) >= 2),
+  constraint uq_project_budget_categories_project_name unique (project_id, name)
+);
+
+create table project_budget_items (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  name text not null,
+  category_id uuid references project_budget_categories(id) on delete set null,
+  category text not null,
+  description text,
+  vendor_id uuid references vendors(id) on delete set null,
+  planned_amount numeric(12,2) not null default 0,
+  committed_amount numeric(12,2) not null default 0,
+  actual_amount numeric(12,2) not null default 0,
+  paid_amount numeric(12,2) not null default 0,
+  currency text not null default 'UGX',
+  due_date date,
+  status text not null default 'PLANNED',
+  notes text,
+  created_by_user_id uuid references users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  constraint ck_project_budget_items_status check (status in ('PLANNED','QUOTED','COMMITTED','PARTIALLY_PAID','PAID','CANCELLED')),
+  constraint ck_project_budget_items_currency check (char_length(currency) = 3 and currency = upper(currency)),
+  constraint ck_project_budget_items_amounts_non_negative check (planned_amount >= 0 and committed_amount >= 0 and actual_amount >= 0 and paid_amount >= 0),
+  constraint ck_project_budget_items_paid_not_over_committed_or_actual check (paid_amount <= case when actual_amount > 0 then actual_amount else committed_amount end),
+  constraint ck_project_budget_items_status_amount_consistency check (
+    (status not in ('PLANNED','QUOTED') or paid_amount = 0)
+    and (status <> 'PARTIALLY_PAID' or (paid_amount > 0 and paid_amount < case when actual_amount > 0 then actual_amount else committed_amount end))
+    and (status <> 'PAID' or (case when actual_amount > 0 then actual_amount else committed_amount end > 0 and paid_amount = case when actual_amount > 0 then actual_amount else committed_amount end))
+  )
+);
+
+create index idx_project_budget_categories_project on project_budget_categories(project_id);
+create index idx_project_budget_categories_project_order on project_budget_categories(project_id, sort_order, name);
+create index idx_project_budget_items_project on project_budget_items(project_id);
+create index idx_project_budget_items_project_status on project_budget_items(project_id, status);
+create index idx_project_budget_items_project_category on project_budget_items(project_id, category);
+create index idx_project_budget_items_project_due_date on project_budget_items(project_id, due_date) where due_date is not null;
+create index idx_project_budget_items_category_id on project_budget_items(category_id) where category_id is not null;
+create index idx_project_budget_items_vendor on project_budget_items(vendor_id) where vendor_id is not null;
+create index idx_project_budget_items_created_by on project_budget_items(created_by_user_id) where created_by_user_id is not null;
+create index idx_project_budget_items_project_actual on project_budget_items(project_id, actual_amount);
+
 create table notification_preferences (
   project_id uuid primary key references projects(id) on delete cascade,
   whatsapp_enabled boolean not null default false,
@@ -960,3 +1013,40 @@ create policy project_guest_invitations_mutate_guest_managers on project_guest_i
   for all
   using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']))
   with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']));
+
+alter table project_budget_categories enable row level security;
+alter table project_budget_items enable row level security;
+
+create policy project_budget_categories_select_members on project_budget_categories
+  for select
+  using (public.is_project_member(project_id));
+
+create policy project_budget_categories_insert_budget_managers on project_budget_categories
+  for insert
+  with check (public.has_project_permission(project_id, 'budget.edit'));
+
+create policy project_budget_categories_update_budget_managers on project_budget_categories
+  for update
+  using (public.has_project_permission(project_id, 'budget.edit'))
+  with check (public.has_project_permission(project_id, 'budget.edit'));
+
+create policy project_budget_categories_delete_budget_managers on project_budget_categories
+  for delete
+  using (public.has_project_permission(project_id, 'budget.edit'));
+
+create policy project_budget_items_select_members on project_budget_items
+  for select
+  using (public.is_project_member(project_id));
+
+create policy project_budget_items_insert_budget_managers on project_budget_items
+  for insert
+  with check (public.has_project_permission(project_id, 'budget.edit'));
+
+create policy project_budget_items_update_budget_managers on project_budget_items
+  for update
+  using (public.has_project_permission(project_id, 'budget.edit'))
+  with check (public.has_project_permission(project_id, 'budget.edit'));
+
+create policy project_budget_items_delete_budget_managers on project_budget_items
+  for delete
+  using (public.has_project_permission(project_id, 'budget.edit'));

@@ -57,13 +57,58 @@ class BudgetLineItemRead(BudgetLineItemCreate):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProjectBudgetCategoryBase(BaseModel):
+    name: str = Field(min_length=2, max_length=80)
+    description: str | None = None
+    sort_order: int = 0
+
+    @model_validator(mode="after")
+    def clean_category(self):
+        self.name = self.name.strip()
+        if self.description is not None:
+            self.description = self.description.strip() or None
+        return self
+
+
+class ProjectBudgetCategoryCreate(ProjectBudgetCategoryBase):
+    pass
+
+
+class ProjectBudgetCategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=80)
+    description: str | None = None
+    sort_order: int | None = None
+
+    @model_validator(mode="after")
+    def clean_category_update(self):
+        if self.name is not None:
+            self.name = self.name.strip()
+        if self.description is not None:
+            self.description = self.description.strip() or None
+        return self
+
+
+class ProjectBudgetCategoryRead(BaseModel):
+    id: UUID
+    project_id: UUID
+    name: str
+    description: str | None = None
+    sort_order: int = 0
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ProjectBudgetItemBase(BaseModel):
     name: str = Field(min_length=2, max_length=180)
+    category_id: UUID | None = None
     category: str = Field(min_length=2, max_length=80)
     description: str | None = None
     vendor_id: UUID | None = None
     planned_amount: Decimal = Field(default=Decimal("0"), ge=0)
     committed_amount: Decimal = Field(default=Decimal("0"), ge=0)
+    actual_amount: Decimal = Field(default=Decimal("0"), ge=0)
     paid_amount: Decimal = Field(default=Decimal("0"), ge=0)
     currency: str = Field(default="UGX", min_length=3, max_length=3)
     due_date: date | None = None
@@ -75,14 +120,16 @@ class ProjectBudgetItemBase(BaseModel):
         status_value = self.status.upper()
         if status_value not in BUDGET_ITEM_STATUSES:
             raise ValueError("Unsupported budget item status")
+        self.category = self.category.strip()
         self.status = status_value
         self.currency = self.currency.upper()
-        if self.paid_amount > self.committed_amount:
-            raise ValueError("Paid amount cannot exceed the committed amount")
-        if status_value == "PAID" and self.committed_amount != self.paid_amount:
-            raise ValueError("Paid budget items must have paid amount equal to committed amount")
-        if status_value == "PARTIALLY_PAID" and not (Decimal("0") < self.paid_amount < self.committed_amount):
-            raise ValueError("Partially paid budget items require paid amount below committed amount")
+        payable_amount = self.actual_amount if self.actual_amount > Decimal("0") else self.committed_amount
+        if self.paid_amount > payable_amount:
+            raise ValueError("Paid amount cannot exceed the committed or actual amount")
+        if status_value == "PAID" and (payable_amount <= Decimal("0") or payable_amount != self.paid_amount):
+            raise ValueError("Paid budget items must have paid amount equal to the committed or actual amount")
+        if status_value == "PARTIALLY_PAID" and not (Decimal("0") < self.paid_amount < payable_amount):
+            raise ValueError("Partially paid budget items require paid amount below the committed or actual amount")
         if status_value in {"PLANNED", "QUOTED"} and self.paid_amount > Decimal("0"):
             raise ValueError("Planned or quoted budget items cannot have payments recorded")
         return self
@@ -94,11 +141,13 @@ class ProjectBudgetItemCreate(ProjectBudgetItemBase):
 
 class ProjectBudgetItemUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=180)
+    category_id: UUID | None = None
     category: str | None = Field(default=None, min_length=2, max_length=80)
     description: str | None = None
     vendor_id: UUID | None = None
     planned_amount: Decimal | None = Field(default=None, ge=0)
     committed_amount: Decimal | None = Field(default=None, ge=0)
+    actual_amount: Decimal | None = Field(default=None, ge=0)
     paid_amount: Decimal | None = Field(default=None, ge=0)
     currency: str | None = Field(default=None, min_length=3, max_length=3)
     due_date: date | None = None
@@ -110,12 +159,14 @@ class ProjectBudgetItemRead(BaseModel):
     id: UUID
     project_id: UUID
     name: str
+    category_id: UUID | None = None
     category: str
     description: str | None = None
     vendor_id: UUID | None = None
     vendor_name: str | None = None
     planned_amount: Decimal
     committed_amount: Decimal
+    actual_amount: Decimal
     paid_amount: Decimal
     outstanding_amount: Decimal
     currency: str
@@ -132,9 +183,11 @@ class ProjectBudgetItemRead(BaseModel):
 
 
 class BudgetCategorySummary(BaseModel):
+    category_id: UUID | None = None
     category: str
     planned_amount: Decimal
     committed_amount: Decimal
+    actual_amount: Decimal
     paid_amount: Decimal
     outstanding_amount: Decimal
     item_count: int
@@ -155,6 +208,7 @@ class BudgetItemSummary(BaseModel):
     total_items: int
     total_planned: Decimal
     total_committed: Decimal
+    total_actual: Decimal
     total_paid: Decimal
     total_outstanding: Decimal
     unpaid_items: int
@@ -164,6 +218,7 @@ class BudgetItemSummary(BaseModel):
     partially_paid_items: int
     utilization_percentage: int
     paid_percentage: int
+    variance_amount: Decimal
     category_breakdown: list[BudgetCategorySummary]
     upcoming_payments: list[BudgetUpcomingPayment]
 

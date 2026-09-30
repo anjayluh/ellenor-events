@@ -22,6 +22,9 @@ from app.schemas.budget import (
     ContributionCreate,
     ContributionRead,
     ContributionUpdate,
+    ProjectBudgetCategoryCreate,
+    ProjectBudgetCategoryRead,
+    ProjectBudgetCategoryUpdate,
     ProjectBudgetItemCreate,
     ProjectBudgetItemRead,
     ProjectBudgetItemUpdate,
@@ -30,11 +33,16 @@ from app.services.audit_service import write_audit_log
 from app.services.budget_service import money, shape_budget_response
 from app.services.project_budget_service import (
     budget_item_summary,
+    create_budget_category,
     create_budget_item,
+    delete_budget_category,
+    get_budget_category_or_404,
     get_budget_item_or_404,
+    list_budget_categories,
     list_project_budget_items,
     require_budget_manager,
     serialize_budget_item,
+    update_budget_category,
     update_budget_item,
     vendor_map,
 )
@@ -93,6 +101,43 @@ def get_budget(project_id: UUID, membership=Depends(get_project_membership), db:
 def get_budget_summary(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
     require_budget_read(membership_budget_visibility(membership))
     return budget_item_summary(db, project_id)
+
+
+@router.get("/categories", response_model=list[ProjectBudgetCategoryRead])
+def list_project_budget_categories(project_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_read(membership_budget_visibility(membership))
+    return list_budget_categories(db, project_id)
+
+
+@router.post("/categories", response_model=ProjectBudgetCategoryRead)
+def create_project_budget_category(project_id: UUID, payload: ProjectBudgetCategoryCreate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    category = create_budget_category(db, project_id, payload)
+    write_audit_log(db, "budget.category_created", actor_user_id=membership.user_id, project_id=project_id, metadata={"category_id": str(category.id)})
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@router.patch("/categories/{category_id}", response_model=ProjectBudgetCategoryRead)
+def update_project_budget_category(project_id: UUID, category_id: UUID, payload: ProjectBudgetCategoryUpdate, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    category = get_budget_category_or_404(db, project_id, category_id)
+    update_budget_category(db, category, payload)
+    write_audit_log(db, "budget.category_updated", actor_user_id=membership.user_id, project_id=project_id, metadata={"category_id": str(category_id)})
+    db.commit()
+    db.refresh(category)
+    return category
+
+
+@router.delete("/categories/{category_id}")
+def delete_project_budget_category(project_id: UUID, category_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    require_budget_manager(membership)
+    category = get_budget_category_or_404(db, project_id, category_id)
+    delete_budget_category(db, category)
+    write_audit_log(db, "budget.category_deleted", actor_user_id=membership.user_id, project_id=project_id, metadata={"category_id": str(category_id)})
+    db.commit()
+    return {"status": "deleted"}
 
 
 @router.get("/items", response_model=list[ProjectBudgetItemRead])

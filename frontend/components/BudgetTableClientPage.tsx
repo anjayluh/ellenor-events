@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
-import type { BudgetItemSummary, Project, ProjectBudgetItem, ProjectVendorOption } from "../lib/types";
+import type { BudgetItemSummary, Project, ProjectBudgetCategory, ProjectBudgetItem, ProjectVendorOption } from "../lib/types";
 import { useActiveProject } from "../lib/useActiveProject";
 import { EventScopedHeader, EventWorkspaceGuard } from "./EventWorkspaceGuard";
 import { StateBlock } from "./StateBlock";
@@ -10,11 +10,13 @@ import { StateBlock } from "./StateBlock";
 type BudgetStatus = "PLANNED" | "QUOTED" | "COMMITTED" | "PARTIALLY_PAID" | "PAID" | "CANCELLED";
 type BudgetForm = {
   name: string;
+  category_id: string;
   category: string;
   description: string;
   vendor_id: string;
   planned_amount: string;
   committed_amount: string;
+  actual_amount: string;
   paid_amount: string;
   currency: string;
   due_date: string;
@@ -24,20 +26,25 @@ type BudgetForm = {
 type BudgetFilters = { search: string; category: string; status: string; vendor_id: string; payment_filter: string; overdue: boolean };
 type BudgetPayload = {
   name: string;
+  category_id: string | null;
   category: string;
   description: string | null;
   vendor_id: string | null;
   planned_amount: string;
   committed_amount: string;
+  actual_amount: string;
   paid_amount: string;
   currency: string;
   due_date: string | null;
   status: BudgetStatus;
   notes: string | null;
 };
+type CategoryForm = { name: string; description: string; sort_order: string };
+type CategoryPayload = { name: string; description: string | null; sort_order: number };
 
-const emptyForm: BudgetForm = { name: "", category: "", description: "", vendor_id: "", planned_amount: "0", committed_amount: "0", paid_amount: "0", currency: "UGX", due_date: "", status: "PLANNED", notes: "" };
+const emptyForm: BudgetForm = { name: "", category_id: "", category: "", description: "", vendor_id: "", planned_amount: "0", committed_amount: "0", actual_amount: "0", paid_amount: "0", currency: "UGX", due_date: "", status: "PLANNED", notes: "" };
 const emptyFilters: BudgetFilters = { search: "", category: "", status: "", vendor_id: "", payment_filter: "", overdue: false };
+const emptyCategoryForm: CategoryForm = { name: "", description: "", sort_order: "0" };
 const budgetCategories = ["Venue", "Catering", "Decor", "Photography", "Videography", "Attire", "Makeup", "Hair", "Transport", "Cake", "Entertainment", "Invitations", "Gifts", "Ceremony", "Reception", "Planner / Coordinator", "Other"];
 const budgetStatuses: Array<{ value: BudgetStatus; label: string; hint: string }> = [
   { value: "PLANNED", label: "Planned", hint: "A cost you are estimating before quotes or commitments." },
@@ -89,14 +96,16 @@ function normalizeApiMessage(error: unknown) {
   return error instanceof Error ? error.message : "We could not complete that request.";
 }
 
-function toPayload(form: BudgetForm): BudgetPayload {
+function toPayload(form: BudgetForm, categoryId: string | null): BudgetPayload {
   return {
     name: form.name.trim(),
+    category_id: categoryId,
     category: form.category.trim(),
     description: form.description.trim() || null,
     vendor_id: form.vendor_id || null,
     planned_amount: form.planned_amount.trim() || "0",
     committed_amount: form.committed_amount.trim() || "0",
+    actual_amount: form.actual_amount.trim() || "0",
     paid_amount: form.paid_amount.trim() || "0",
     currency: form.currency.trim().toUpperCase() || "UGX",
     due_date: form.due_date || null,
@@ -108,11 +117,13 @@ function toPayload(form: BudgetForm): BudgetPayload {
 function formFromItem(item: ProjectBudgetItem): BudgetForm {
   return {
     name: item.name,
+    category_id: item.category_id ?? "",
     category: item.category,
     description: item.description ?? "",
     vendor_id: item.vendor_id ?? "",
     planned_amount: String(item.planned_amount ?? "0"),
     committed_amount: String(item.committed_amount ?? "0"),
+    actual_amount: String(item.actual_amount ?? "0"),
     paid_amount: String(item.paid_amount ?? "0"),
     currency: item.currency ?? "UGX",
     due_date: item.due_date ?? "",
@@ -124,11 +135,13 @@ function formFromItem(item: ProjectBudgetItem): BudgetForm {
 function validateForm(form: BudgetForm) {
   const planned = numericValue(form.planned_amount);
   const committed = numericValue(form.committed_amount);
+  const actual = numericValue(form.actual_amount);
   const paid = numericValue(form.paid_amount);
-  if (planned < 0 || committed < 0 || paid < 0) return "Budget amounts cannot be negative.";
-  if (paid > committed) return "Paid amount cannot exceed the committed amount.";
-  if (form.status === "PAID" && committed !== paid) return "Paid items must have paid amount equal to committed amount.";
-  if (form.status === "PARTIALLY_PAID" && !(paid > 0 && paid < committed)) return "Partially paid items need a payment below the committed amount.";
+  const payable = actual > 0 ? actual : committed;
+  if (planned < 0 || committed < 0 || actual < 0 || paid < 0) return "Budget amounts cannot be negative.";
+  if (paid > payable) return "Paid amount cannot exceed the committed or actual amount.";
+  if (form.status === "PAID" && payable !== paid) return "Paid items must have paid amount equal to the committed or actual amount.";
+  if (form.status === "PARTIALLY_PAID" && !(paid > 0 && paid < payable)) return "Partially paid items need a payment below the committed or actual amount.";
   if ((form.status === "PLANNED" || form.status === "QUOTED") && paid > 0) return "Planned or quoted items cannot have payments recorded yet.";
   return "";
 }
@@ -138,21 +151,26 @@ export function BudgetTableClientPage() {
   const [items, setItems] = useState<ProjectBudgetItem[]>([]);
   const [summary, setSummary] = useState<BudgetItemSummary | null>(null);
   const [vendors, setVendors] = useState<ProjectVendorOption[]>([]);
+  const [categories, setCategories] = useState<ProjectBudgetCategory[]>([]);
   const [form, setForm] = useState<BudgetForm>(emptyForm);
+  const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [filters, setFilters] = useState<BudgetFilters>(emptyFilters);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("Track planned costs, commitments, deposits, balances, and upcoming payment dates for this event.");
   const [processing, setProcessing] = useState<string | null>(null);
 
   const loadBudget = useCallback(async (activeProject: Project, nextFilters: BudgetFilters) => {
-    const [nextItems, nextSummary, nextVendors] = await Promise.all([
+    const [nextItems, nextSummary, nextVendors, nextCategories] = await Promise.all([
       apiGet<ProjectBudgetItem[]>(`/projects/${activeProject.id}/budget/items${buildQuery(nextFilters)}`),
       apiGet<BudgetItemSummary>(`/projects/${activeProject.id}/budget/summary`),
-      apiGet<ProjectVendorOption[]>(`/projects/${activeProject.id}/vendors`)
+      apiGet<ProjectVendorOption[]>(`/projects/${activeProject.id}/vendors`),
+      apiGet<ProjectBudgetCategory[]>(`/projects/${activeProject.id}/budget/categories`)
     ]);
     setItems(nextItems);
     setSummary(nextSummary);
     setVendors(nextVendors);
+    setCategories(nextCategories);
   }, []);
 
   useEffect(() => {
@@ -160,6 +178,7 @@ export function BudgetTableClientPage() {
       setItems([]);
       setSummary(null);
       setVendors([]);
+      setCategories([]);
       return;
     }
     void loadBudget(project, filters).catch((error) => {
@@ -177,14 +196,20 @@ export function BudgetTableClientPage() {
   }, []);
 
   const canManage = canEditBudget(project);
-  const categories = useMemo(() => [...new Set([...budgetCategories, ...items.map((item) => item.category).filter(Boolean)])], [items]);
+  const categoryNames = useMemo(() => [...new Set([...budgetCategories, ...categories.map((category) => category.name), ...items.map((item) => item.category).filter(Boolean)])], [categories, items]);
+  const selectedCategoryId = useMemo(() => {
+    if (form.category_id) return form.category_id;
+    const match = categories.find((category) => category.name.toLowerCase() === form.category.trim().toLowerCase());
+    return match?.id ?? null;
+  }, [categories, form.category, form.category_id]);
   const amountError = validateForm(form);
   const nameError = form.name && form.name.trim().length < 2 ? "Budget item name must be at least 2 characters." : "";
   const categoryError = form.category && form.category.trim().length < 2 ? "Category must be at least 2 characters." : "";
   const canSubmit = Boolean(project && canManage && form.name.trim().length >= 2 && form.category.trim().length >= 2 && !nameError && !categoryError && !amountError && !processing);
   const committed = numericValue(form.committed_amount);
+  const actual = numericValue(form.actual_amount);
   const paid = numericValue(form.paid_amount);
-  const outstanding = Math.max(committed - paid, 0);
+  const outstanding = Math.max((actual > 0 ? actual : committed) - paid, 0);
   const paidProgress = summary?.paid_percentage ?? 0;
   const committedProgress = summary?.utilization_percentage ?? 0;
 
@@ -194,8 +219,8 @@ export function BudgetTableClientPage() {
     setProcessing(editingId ? `update-${editingId}` : "create");
     setNotice(editingId ? "Saving budget item..." : "Adding budget item...");
     try {
-      if (editingId) await apiPatch<ProjectBudgetItem, BudgetPayload>(`/projects/${project.id}/budget/${editingId}`, toPayload(form));
-      else await apiPost<ProjectBudgetItem, BudgetPayload>(`/projects/${project.id}/budget`, toPayload(form));
+      if (editingId) await apiPatch<ProjectBudgetItem, BudgetPayload>(`/projects/${project.id}/budget/${editingId}`, toPayload(form, selectedCategoryId));
+      else await apiPost<ProjectBudgetItem, BudgetPayload>(`/projects/${project.id}/budget`, toPayload(form, selectedCategoryId));
       setForm(emptyForm);
       setEditingId(null);
       setNotice(editingId ? "Budget item updated." : "Budget item added.");
@@ -210,6 +235,50 @@ export function BudgetTableClientPage() {
   function startEdit(item: ProjectBudgetItem) {
     setEditingId(item.id);
     setForm(formFromItem(item));
+  }
+
+  function startEditCategory(category: ProjectBudgetCategory) {
+    setEditingCategoryId(category.id);
+    setCategoryForm({ name: category.name, description: category.description ?? "", sort_order: String(category.sort_order ?? 0) });
+  }
+
+  async function saveCategory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!project || !canManage || categoryForm.name.trim().length < 2 || processing) return;
+    const payload: CategoryPayload = { name: categoryForm.name.trim(), description: categoryForm.description.trim() || null, sort_order: Number(categoryForm.sort_order || 0) };
+    setProcessing(editingCategoryId ? `category-update-${editingCategoryId}` : "category-create");
+    setNotice(editingCategoryId ? "Saving category..." : "Adding category...");
+    try {
+      if (editingCategoryId) await apiPatch<ProjectBudgetCategory, CategoryPayload>(`/projects/${project.id}/budget/categories/${editingCategoryId}`, payload);
+      else await apiPost<ProjectBudgetCategory, CategoryPayload>(`/projects/${project.id}/budget/categories`, payload);
+      setCategoryForm(emptyCategoryForm);
+      setEditingCategoryId(null);
+      setNotice(editingCategoryId ? "Budget category updated." : "Budget category added.");
+      await loadBudget(project, filters);
+    } catch (error) {
+      setNotice(normalizeApiMessage(error));
+    } finally {
+      setProcessing(null);
+    }
+  }
+
+  async function deleteCategory(categoryId: string) {
+    if (!project || processing || !window.confirm("Delete this budget category? Existing budget items will keep their category name.")) return;
+    setProcessing(`category-delete-${categoryId}`);
+    setNotice("Deleting category...");
+    try {
+      await apiDelete<{ status: string }>(`/projects/${project.id}/budget/categories/${categoryId}`);
+      setNotice("Budget category deleted.");
+      if (editingCategoryId === categoryId) {
+        setEditingCategoryId(null);
+        setCategoryForm(emptyCategoryForm);
+      }
+      await loadBudget(project, filters);
+    } catch (error) {
+      setNotice(normalizeApiMessage(error));
+    } finally {
+      setProcessing(null);
+    }
   }
 
   async function deleteItem(itemId: string) {
@@ -254,9 +323,10 @@ export function BudgetTableClientPage() {
               <div>
                 <p className="helperText">Category breakdown</p>
                 <div className="planningAreaList">
-                  {summary.category_breakdown.map((category) => <span className="badge softBadge" key={category.category}>{category.category}: {formatMoney(category.committed_amount, summary.currency)}</span>)}
+                  {summary.category_breakdown.map((category) => <span className="badge softBadge" key={category.category}>{category.category}: {formatMoney(category.committed_amount, summary.currency)} committed · {formatMoney(category.outstanding_amount, summary.currency)} open</span>)}
                 </div>
               </div>
+              <p>Actuals recorded: {formatMoney(summary.total_actual, summary.currency)}{numericValue(summary.variance_amount) ? ` · variance ${formatMoney(summary.variance_amount, summary.currency)}` : ""}</p>
               {summary.upcoming_payments.length ? (
                 <div className="attentionList">
                   {summary.upcoming_payments.map((payment) => (
@@ -272,24 +342,58 @@ export function BudgetTableClientPage() {
         </article>
 
         <article className="panel actionPanel">
+          <p className="eyebrow">Budget categories</p>
+          <h2>Organize event costs</h2>
+          {canManage ? (
+            <form className="stack" onSubmit={saveCategory}>
+              <label className="formField">Category name<input value={categoryForm.name} onChange={(event) => setCategoryForm((current) => ({ ...current, name: event.target.value }))} placeholder="Photography & Video" /></label>
+              <div className="grid twoColumns compactGrid">
+                <label className="formField">Description<input value={categoryForm.description} onChange={(event) => setCategoryForm((current) => ({ ...current, description: event.target.value }))} placeholder="Optional planning note" /></label>
+                <label className="formField">Sort order<input inputMode="numeric" value={categoryForm.sort_order} onChange={(event) => setCategoryForm((current) => ({ ...current, sort_order: event.target.value }))} /></label>
+              </div>
+              <div className="buttonRow">
+                <button className="primaryButton" data-icon="+" disabled={Boolean(processing) || categoryForm.name.trim().length < 2} type="submit">{editingCategoryId ? "Save category" : "Add category"}</button>
+                {editingCategoryId ? <button className="ghostButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => { setEditingCategoryId(null); setCategoryForm(emptyCategoryForm); }}>Cancel</button> : null}
+              </div>
+            </form>
+          ) : <p>You can view budget categories, but editing is not enabled for your event role.</p>}
+          <div className="planningAreaList">
+            {categories.map((category) => (
+              <span className="badge softBadge" key={category.id}>
+                {category.name}
+                {canManage ? <button className="inlineLinkButton" type="button" onClick={() => startEditCategory(category)}>Edit</button> : null}
+                {canManage ? <button className="inlineLinkButton dangerText" type="button" onClick={() => void deleteCategory(category.id)}>Delete</button> : null}
+              </span>
+            ))}
+            {!categories.length ? <span className="helperText">No saved categories yet. You can still use common event categories or add your own.</span> : null}
+          </div>
+        </article>
+      </section>
+
+      <section className="grid twoColumns">
+        <article className="panel actionPanel">
           <p className="eyebrow">Budget item</p>
           <h2>{editingId ? "Edit budget item" : "Add budget item"}</h2>
           {canManage ? (
             <form className="stack" onSubmit={saveItem}>
               <label className="formField">Item name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Reception catering" aria-invalid={Boolean(nameError)} />{nameError ? <span className="errorText">{nameError}</span> : <span className="helperText">Required. Use a name your planning team will recognize.</span>}</label>
               <div className="grid twoColumns compactGrid">
-                <label className="formField">Category<input list="budget-categories" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))} placeholder="Catering" aria-invalid={Boolean(categoryError)} />{categoryError ? <span className="errorText">{categoryError}</span> : null}</label>
+                <label className="formField">Category<input list="budget-categories" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, category_id: categories.find((category) => category.name === event.target.value)?.id ?? "" }))} placeholder="Catering" aria-invalid={Boolean(categoryError)} />{categoryError ? <span className="errorText">{categoryError}</span> : null}</label>
                 <label className="formField">Vendor<select value={form.vendor_id} onChange={(event) => setForm((current) => ({ ...current, vendor_id: event.target.value }))}><option value="">No vendor linked</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name} · {vendor.category}</option>)}</select></label>
               </div>
-              <datalist id="budget-categories">{categories.map((category) => <option key={category} value={category} />)}</datalist>
+              <datalist id="budget-categories">{categoryNames.map((category) => <option key={category} value={category} />)}</datalist>
               <label className="formField">Description<textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="What is included in this cost?" /></label>
               <div className="grid twoColumns compactGrid">
                 <label className="formField">Planned amount<input inputMode="decimal" value={form.planned_amount} onChange={(event) => setForm((current) => ({ ...current, planned_amount: event.target.value }))} /></label>
                 <label className="formField">Committed amount<input inputMode="decimal" value={form.committed_amount} onChange={(event) => setForm((current) => ({ ...current, committed_amount: event.target.value }))} /></label>
               </div>
               <div className="grid twoColumns compactGrid">
+                <label className="formField">Actual amount<input inputMode="decimal" value={form.actual_amount} onChange={(event) => setForm((current) => ({ ...current, actual_amount: event.target.value }))} /><span className="helperText">Use when the final cost differs from the committed amount.</span></label>
                 <label className="formField">Paid amount<input inputMode="decimal" value={form.paid_amount} onChange={(event) => setForm((current) => ({ ...current, paid_amount: event.target.value }))} aria-invalid={Boolean(amountError)} /><span className="helperText">Outstanding: {formatMoney(outstanding, form.currency)}</span>{amountError ? <span className="errorText">{amountError}</span> : null}</label>
+              </div>
+              <div className="grid twoColumns compactGrid">
                 <label className="formField">Due date<input type="date" value={form.due_date} onChange={(event) => setForm((current) => ({ ...current, due_date: event.target.value }))} /></label>
+                <label className="formField">Currency<input value={form.currency} onChange={(event) => setForm((current) => ({ ...current, currency: event.target.value.toUpperCase() }))} maxLength={3} /></label>
               </div>
               <label className="formField">Status<select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as BudgetStatus }))}>{budgetStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select><span className="helperText">{statusHint(form.status)}</span></label>
               <label className="formField">Notes<textarea value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Payment details, committee notes, or follow-up reminders." /></label>
@@ -310,7 +414,7 @@ export function BudgetTableClientPage() {
         </div>
         <div className="filterGrid">
           <label className="formField">Search<input value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search item, category, notes" /></label>
-          <label className="formField">Category<select value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}><option value="">All categories</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
+          <label className="formField">Category<select value={filters.category} onChange={(event) => setFilters((current) => ({ ...current, category: event.target.value }))}><option value="">All categories</option>{categoryNames.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
           <label className="formField">Status<select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}><option value="">All statuses</option>{budgetStatuses.map((status) => <option key={status.value} value={status.value}>{status.label}</option>)}</select></label>
           <label className="formField">Payment<select value={filters.payment_filter} onChange={(event) => setFilters((current) => ({ ...current, payment_filter: event.target.value }))}><option value="">All payments</option><option value="paid">Paid</option><option value="unpaid">Unpaid balance</option></select></label>
           <label className="formField">Vendor<select value={filters.vendor_id} onChange={(event) => setFilters((current) => ({ ...current, vendor_id: event.target.value }))}><option value="">All vendors</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name}</option>)}</select></label>
@@ -318,7 +422,7 @@ export function BudgetTableClientPage() {
         </div>
         <div className="tableScroller">
           <table className="dataTable">
-            <thead><tr><th>Item</th><th>Vendor</th><th>Status</th><th>Planned</th><th>Committed</th><th>Paid</th><th>Outstanding</th><th>Due</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Item</th><th>Vendor</th><th>Status</th><th>Planned</th><th>Committed</th><th>Actual</th><th>Paid</th><th>Outstanding</th><th>Due</th><th>Actions</th></tr></thead>
             <tbody>
               {items.map((item) => (
                 <tr key={item.id}>
@@ -327,13 +431,14 @@ export function BudgetTableClientPage() {
                   <td><span className={item.status === "PAID" ? "badge successBadge" : item.is_overdue ? "badge warningBadge" : "badge softBadge"}>{statusLabel(item.status)}</span></td>
                   <td>{formatMoney(item.planned_amount, item.currency)}</td>
                   <td>{formatMoney(item.committed_amount, item.currency)}</td>
+                  <td>{formatMoney(item.actual_amount, item.currency)}</td>
                   <td>{formatMoney(item.paid_amount, item.currency)}</td>
                   <td>{formatMoney(item.outstanding_amount, item.currency)}</td>
                   <td>{item.due_date ?? "Not set"}</td>
                   <td><div className="buttonRow tableActions"><button className="ghostButton" data-icon="✎" disabled={!canManage || Boolean(processing)} type="button" onClick={() => startEdit(item)}>Edit</button><button className="ghostButton danger" data-icon="−" disabled={!canManage || Boolean(processing)} type="button" onClick={() => void deleteItem(item.id)}>{processing === `delete-${item.id}` ? "Deleting..." : "Delete"}</button></div></td>
                 </tr>
               ))}
-              {!items.length ? <tr><td colSpan={9}>No budget items yet. Add venue, catering, decor, attire, transport, and other event costs to begin tracking payment readiness.</td></tr> : null}
+              {!items.length ? <tr><td colSpan={10}>No budget items yet. Add venue, catering, decor, attire, transport, and other event costs to begin tracking payment readiness.</td></tr> : null}
             </tbody>
           </table>
         </div>
