@@ -13,7 +13,7 @@ const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
 const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR", "COMMITTEE_MEMBER"];
 
 type Task = { id: string; title: string; status: string; due_date?: string | null; is_overdue?: boolean; is_due_soon?: boolean };
-type Vendor = { id: string; name: string; category: string; status: string; balance_amount?: string | number | null; payment_status?: string | null };
+type Vendor = { id: string; name: string; category: string; status: string; financial_summary?: { outstanding_total?: string | number | null } | null };
 type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
 type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
@@ -119,10 +119,10 @@ export function EventDashboard({ project }: { project: Project }) {
 
   const upcomingMeetings = useMemo(() => overviewData.meetings.filter((meeting) => new Date(meeting.scheduled_time).getTime() >= Date.now()).slice(0, 3), [overviewData.meetings]);
   const overdueTasks = overviewData.tasks.filter(isOverdue);
-  const confirmedVendorStatuses = ["confirmed", "booked", "completed"];
+  const confirmedVendorStatuses = ["BOOKED", "CONFIRMED", "COMPLETED"];
   const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !confirmedVendorStatuses.includes(vendor.status));
   const confirmedVendors = overviewData.vendors.filter((vendor) => confirmedVendorStatuses.includes(vendor.status));
-  const vendorOutstandingBalance = overviewData.vendors.reduce((total, vendor) => total + Number(vendor.balance_amount ?? 0), 0);
+  const vendorOutstandingBalance = overviewData.vendors.reduce((total, vendor) => total + Number(vendor.financial_summary?.outstanding_total ?? 0), 0);
   const budgetBalance = overviewData.budget ? Number(overviewData.budget.total_outstanding ?? 0) : null;
   const dashboardTimelineItem = overviewData.timelineSummary?.current_item ?? overviewData.timelineSummary?.next_item ?? null;
   const guestRsvpResponses = overviewData.guestSummary?.rsvp_responses ?? overviewData.guestSummary?.responded ?? 0;
