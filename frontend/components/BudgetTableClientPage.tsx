@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import type { BudgetItemSummary, Project, ProjectBudgetCategory, ProjectBudgetItem, ProjectVendorOption } from "../lib/types";
@@ -74,6 +75,10 @@ function titleCase(value: string) {
 
 function statusLabel(value: string) {
   return budgetStatuses.find((status) => status.value === value)?.label ?? titleCase(value);
+}
+
+function vendorCategoryLabel(value: string) {
+  return titleCase(value);
 }
 
 function statusHint(value: string) {
@@ -379,7 +384,7 @@ export function BudgetTableClientPage() {
               <label className="formField">Item name<input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Reception catering" aria-invalid={Boolean(nameError)} />{nameError ? <span className="errorText">{nameError}</span> : <span className="helperText">Required. Use a name your planning team will recognize.</span>}</label>
               <div className="grid twoColumns compactGrid">
                 <label className="formField">Category<input list="budget-categories" value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value, category_id: categories.find((category) => category.name === event.target.value)?.id ?? "" }))} placeholder="Catering" aria-invalid={Boolean(categoryError)} />{categoryError ? <span className="errorText">{categoryError}</span> : null}</label>
-                <label className="formField">Vendor<select value={form.vendor_id} onChange={(event) => setForm((current) => ({ ...current, vendor_id: event.target.value }))}><option value="">No vendor linked</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name} · {vendor.category}</option>)}</select></label>
+                <label className="formField">Vendor<select value={form.vendor_id} onChange={(event) => setForm((current) => ({ ...current, vendor_id: event.target.value }))}><option value="">No vendor linked</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.name} · {vendorCategoryLabel(vendor.category)}</option>)}</select><span className="helperText">Link this cost to an event vendor so the vendor page can summarize payments and balances.</span></label>
               </div>
               <datalist id="budget-categories">{categoryNames.map((category) => <option key={category} value={category} />)}</datalist>
               <label className="formField">Description<textarea value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="What is included in this cost?" /></label>
@@ -427,7 +432,7 @@ export function BudgetTableClientPage() {
               {items.map((item) => (
                 <tr key={item.id}>
                   <td><strong>{item.name}</strong><small>{item.category}{item.description ? ` · ${item.description}` : ""}</small></td>
-                  <td>{item.vendor_name ?? "Not linked"}</td>
+                  <td>{item.vendor_id && item.vendor_name ? <Link href={`/vendors?project=${project.id}`}>{item.vendor_name}</Link> : "Not linked"}</td>
                   <td><span className={item.status === "PAID" ? "badge successBadge" : item.is_overdue ? "badge warningBadge" : "badge softBadge"}>{statusLabel(item.status)}</span></td>
                   <td>{formatMoney(item.planned_amount, item.currency)}</td>
                   <td>{formatMoney(item.committed_amount, item.currency)}</td>
