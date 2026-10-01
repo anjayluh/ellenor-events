@@ -3,31 +3,54 @@ from decimal import Decimal
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from app.models.budget import ProjectBudgetItem
 from app.models.customer_account import AccountEntitlement
 from app.models.project import Project
 from app.models.vendor import Vendor
-from app.schemas.vendor import VendorCreate, VendorSummary, VendorUpdate, VendorUsageRead
+from app.schemas.vendor import (
+    VENDOR_CATEGORIES,
+    VENDOR_STATUSES,
+    VendorBudgetItemRead,
+    VendorCreate,
+    VendorFinancialSummary,
+    VendorRead,
+    VendorSummary,
+    VendorUpdate,
+    VendorUsageRead,
+)
 from app.services.entitlement_service import active_entitlements, entitlement_is_active, entitlement_priority
+from app.services.project_budget_service import normalize_money, outstanding_amount
 
 VENDORS_PER_EVENT_ENTITLEMENT_KEY = "vendors_per_event"
-VENDOR_STATUSES = {
-    "shortlisted",
-    "contacted",
-    "confirmed",
-    "declined",
-    "cancelled",
-    "quote_requested",
-    "preferred",
-    "booked",
-    "rejected",
-    "completed",
-}
-CONFIRMED_VENDOR_STATUSES = {"confirmed", "booked", "completed"}
-PAYMENT_STATUSES = {"not_applicable", "unpaid", "partially_paid", "paid"}
+CONFIRMED_VENDOR_STATUSES = {"BOOKED", "CONFIRMED", "COMPLETED"}
+NEEDS_ATTENTION_STATUSES = {"PROSPECT", "SHORTLISTED", "CONTACTED", "QUOTED"}
 ZERO = Decimal("0")
+CATEGORY_ALIASES = {
+    "PA / SOUND": "PA_SOUND",
+    "PA SOUND": "PA_SOUND",
+    "SOUND": "PA_SOUND",
+    "DJ": "DJ_ENTERTAINMENT",
+    "ENTERTAINMENT": "DJ_ENTERTAINMENT",
+    "DJ / ENTERTAINMENT": "DJ_ENTERTAINMENT",
+    "MAKEUP": "MAKEUP_BEAUTY",
+    "HAIR": "MAKEUP_BEAUTY",
+    "BEAUTY": "MAKEUP_BEAUTY",
+    "MAKEUP / BEAUTY": "MAKEUP_BEAUTY",
+    "PLANNER / COORDINATOR": "OTHER",
+    "PLANNER": "OTHER",
+    "COORDINATOR": "OTHER",
+    "INVITATIONS": "STATIONERY",
+    "INVITATIONS & STATIONERY": "STATIONERY",
+}
+STATUS_ALIASES = {
+    "DECLINED": "CANCELLED",
+    "REJECTED": "CANCELLED",
+    "QUOTE_REQUESTED": "QUOTED",
+    "PREFERRED": "BOOKED",
+}
 
 
 def clean_optional(value: str | None) -> str | None:
@@ -37,36 +60,21 @@ def clean_optional(value: str | None) -> str | None:
     return cleaned or None
 
 
-def normalize_money(value: Decimal | int | float | str | None) -> Decimal:
-    if value is None:
-        return ZERO
-    amount = Decimal(str(value))
-    return amount.quantize(Decimal("0.01"))
+def normalize_category(value: str) -> str:
+    normalized = value.strip().upper().replace("-", "_").replace(" ", "_")
+    readable = value.strip().upper()
+    normalized = CATEGORY_ALIASES.get(readable, normalized)
+    if normalized not in VENDOR_CATEGORIES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported vendor category")
+    return normalized
 
 
-def derive_payment_status(agreed_amount: Decimal, amount_paid: Decimal) -> str:
-    if agreed_amount == ZERO:
-        return "not_applicable"
-    if amount_paid == ZERO:
-        return "unpaid"
-    if amount_paid < agreed_amount:
-        return "partially_paid"
-    return "paid"
-
-
-def validate_vendor_financials(agreed_amount: Decimal, amount_paid: Decimal) -> None:
-    if agreed_amount < ZERO or amount_paid < ZERO:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Vendor amounts cannot be negative")
-    if amount_paid > agreed_amount:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Amount paid cannot exceed the agreed amount")
-
-
-def apply_vendor_financials(vendor: Vendor, agreed_amount: Decimal, amount_paid: Decimal) -> None:
-    validate_vendor_financials(agreed_amount, amount_paid)
-    vendor.agreed_amount = agreed_amount
-    vendor.amount_paid = amount_paid
-    vendor.balance_amount = agreed_amount - amount_paid
-    vendor.payment_status = derive_payment_status(agreed_amount, amount_paid)
+def normalize_status(value: str) -> str:
+    normalized = value.strip().upper()
+    normalized = STATUS_ALIASES.get(normalized, normalized)
+    if normalized not in VENDOR_STATUSES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported vendor status")
+    return normalized
 
 
 def project_or_404(db: Session, project_id: UUID, *, lock: bool = False) -> Project:
@@ -138,6 +146,70 @@ def assert_vendor_capacity(db: Session, project: Project) -> None:
     )
 
 
+def vendor_budget_items(db: Session, vendor: Vendor) -> list[ProjectBudgetItem]:
+    return db.query(ProjectBudgetItem).filter(ProjectBudgetItem.project_id == vendor.project_id, ProjectBudgetItem.vendor_id == vendor.id).order_by(ProjectBudgetItem.due_date.asc().nullslast(), ProjectBudgetItem.created_at.desc()).all()
+
+
+def serialize_vendor_budget_item(item: ProjectBudgetItem) -> VendorBudgetItemRead:
+    return VendorBudgetItemRead(
+        id=item.id,
+        name=item.name,
+        category=item.category,
+        planned_amount=normalize_money(item.planned_amount),
+        committed_amount=normalize_money(item.committed_amount),
+        actual_amount=normalize_money(item.actual_amount),
+        paid_amount=normalize_money(item.paid_amount),
+        outstanding_amount=outstanding_amount(item),
+        currency=item.currency,
+        status=item.status,
+        due_date=item.due_date,
+    )
+
+
+def financial_summary_for_items(items: list[ProjectBudgetItem]) -> VendorFinancialSummary:
+    planned = sum((normalize_money(item.planned_amount) for item in items), ZERO)
+    committed = sum((normalize_money(item.committed_amount) for item in items), ZERO)
+    actual = sum((normalize_money(item.actual_amount) for item in items), ZERO)
+    paid = sum((normalize_money(item.paid_amount) for item in items), ZERO)
+    outstanding = sum((outstanding_amount(item) for item in items if item.status != "CANCELLED"), ZERO)
+    payable = actual if actual > ZERO else committed
+    payment_percentage = round((paid / payable) * 100) if payable else 0
+    return VendorFinancialSummary(
+        planned_total=normalize_money(planned),
+        committed_total=normalize_money(committed),
+        actual_total=normalize_money(actual),
+        paid_total=normalize_money(paid),
+        outstanding_total=normalize_money(outstanding),
+        variance_amount=normalize_money(actual - planned if actual > ZERO else ZERO),
+        payment_percentage=payment_percentage,
+        linked_budget_items_count=len(items),
+    )
+
+
+def serialize_vendor(db: Session, vendor: Vendor, *, include_budget_items: bool = False) -> VendorRead:
+    items = vendor_budget_items(db, vendor)
+    return VendorRead(
+        id=vendor.id,
+        project_id=vendor.project_id,
+        name=vendor.name,
+        category=vendor.category,
+        contact_person=vendor.contact_person,
+        phone=vendor.phone,
+        email=vendor.email,
+        address=vendor.address,
+        website=vendor.website,
+        service_description=vendor.service_description,
+        status=vendor.status,
+        notes=vendor.notes,
+        event_day_contact=vendor.event_day_contact,
+        booking_date=vendor.booking_date,
+        financial_summary=financial_summary_for_items(items),
+        budget_items=[serialize_vendor_budget_item(item) for item in items] if include_budget_items else [],
+        created_at=vendor.created_at,
+        updated_at=vendor.updated_at,
+    )
+
+
 def list_project_vendors(
     db: Session,
     project_id: UUID,
@@ -146,20 +218,24 @@ def list_project_vendors(
     category: str | None = None,
     status_filter: str | None = None,
     payment_status: str | None = None,
+    outstanding: bool | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> list[Vendor]:
     query = db.query(Vendor).filter(Vendor.project_id == project_id)
     if search:
         pattern = f"%{search.strip()}%"
-        query = query.filter(or_(Vendor.name.ilike(pattern), Vendor.contact_name.ilike(pattern), Vendor.contact.ilike(pattern), Vendor.email.ilike(pattern), Vendor.phone.ilike(pattern)))
+        query = query.filter(or_(Vendor.name.ilike(pattern), Vendor.contact_person.ilike(pattern), Vendor.email.ilike(pattern), Vendor.phone.ilike(pattern), Vendor.service_description.ilike(pattern)))
     if category:
-        query = query.filter(Vendor.category == category)
+        query = query.filter(Vendor.category == normalize_category(category))
     if status_filter:
-        query = query.filter(Vendor.status == status_filter)
-    if payment_status:
-        query = query.filter(Vendor.payment_status == payment_status)
-    return query.order_by(Vendor.created_at.desc(), Vendor.name.asc()).offset(max(offset, 0)).limit(min(max(limit, 1), 250)).all()
+        query = query.filter(Vendor.status == normalize_status(status_filter))
+    vendors = query.order_by(Vendor.created_at.desc(), Vendor.name.asc()).all()
+    if outstanding is True or payment_status in {"unpaid", "partially_paid"}:
+        vendors = [vendor for vendor in vendors if financial_summary_for_items(vendor_budget_items(db, vendor)).outstanding_total > ZERO]
+    elif payment_status == "paid":
+        vendors = [vendor for vendor in vendors if (summary := financial_summary_for_items(vendor_budget_items(db, vendor))).linked_budget_items_count > 0 and summary.outstanding_total == ZERO]
+    return vendors[max(offset, 0) : max(offset, 0) + min(max(limit, 1), 250)]
 
 
 def get_project_vendor_or_404(db: Session, project_id: UUID, vendor_id: UUID) -> Vendor:
@@ -171,22 +247,21 @@ def get_project_vendor_or_404(db: Session, project_id: UUID, vendor_id: UUID) ->
 
 def create_project_vendor(db: Session, project: Project, payload: VendorCreate) -> Vendor:
     assert_vendor_capacity(db, project)
-    status_value = payload.status.lower()
-    if status_value not in VENDOR_STATUSES:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported vendor status")
     vendor = Vendor(
         project_id=project.id,
         name=payload.name.strip(),
-        category=payload.category.strip(),
-        contact=clean_optional(payload.contact),
-        contact_name=clean_optional(payload.contact_name),
+        category=normalize_category(payload.category),
+        contact_person=clean_optional(payload.contact_person),
         phone=clean_optional(payload.phone),
         email=str(payload.email).lower() if payload.email else None,
-        status=status_value,
+        address=clean_optional(payload.address),
+        website=clean_optional(payload.website),
+        service_description=clean_optional(payload.service_description),
+        status=normalize_status(payload.status),
         notes=clean_optional(payload.notes),
-        external_url=clean_optional(payload.external_url),
+        event_day_contact=clean_optional(payload.event_day_contact),
+        booking_date=payload.booking_date,
     )
-    apply_vendor_financials(vendor, normalize_money(payload.agreed_amount), normalize_money(payload.amount_paid))
     db.add(vendor)
     db.flush()
     return vendor
@@ -194,42 +269,47 @@ def create_project_vendor(db: Session, project: Project, payload: VendorCreate) 
 
 def update_project_vendor(db: Session, vendor: Vendor, payload: VendorUpdate) -> Vendor:
     updates = payload.model_dump(exclude_unset=True)
+    if "category" in updates and updates["category"] is not None:
+        updates["category"] = normalize_category(str(updates["category"]))
     if "status" in updates and updates["status"] is not None:
-        updates["status"] = str(updates["status"]).lower()
-        if updates["status"] not in VENDOR_STATUSES:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported vendor status")
-    for field in {"name", "category"}:
-        if field in updates and updates[field] is not None:
-            updates[field] = str(updates[field]).strip()
-    for field in {"contact", "contact_name", "phone", "notes", "external_url"}:
-        if field in updates:
-            updates[field] = clean_optional(updates[field])
+        updates["status"] = normalize_status(str(updates["status"]))
     if "email" in updates and updates["email"]:
         updates["email"] = str(updates["email"]).lower()
-
-    agreed_amount = normalize_money(updates.pop("agreed_amount", vendor.agreed_amount or ZERO))
-    amount_paid = normalize_money(updates.pop("amount_paid", vendor.amount_paid or ZERO))
+    for field in {"name", "contact_person", "phone", "address", "website", "service_description", "notes", "event_day_contact"}:
+        if field in updates and updates[field] is not None:
+            updates[field] = clean_optional(str(updates[field]))
     for field, value in updates.items():
-        if field == "payment_status":
-            continue
         setattr(vendor, field, value)
-    apply_vendor_financials(vendor, agreed_amount, amount_paid)
     vendor.updated_at = datetime.now(timezone.utc)
     db.flush()
     return vendor
 
 
+def assert_vendor_can_be_deleted(db: Session, vendor: Vendor) -> None:
+    linked_count = db.query(ProjectBudgetItem).filter(ProjectBudgetItem.project_id == vendor.project_id, ProjectBudgetItem.vendor_id == vendor.id).count()
+    if linked_count:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Remove or reassign linked budget items before deleting this vendor")
+
+
 def vendor_summary(db: Session, project: Project) -> VendorSummary:
     vendors = db.query(Vendor).filter(Vendor.project_id == project.id).all()
     total = len(vendors)
-    confirmed = sum(1 for vendor in vendors if vendor.status in CONFIRMED_VENDOR_STATUSES)
-    needs_attention = total - confirmed
-    outstanding_balance = sum((normalize_money(vendor.balance_amount) for vendor in vendors), ZERO)
+    confirmed = sum(1 for vendor in vendors if vendor.status in {"CONFIRMED", "COMPLETED"})
+    booked = sum(1 for vendor in vendors if vendor.status in CONFIRMED_VENDOR_STATUSES)
+    needs_attention = sum(1 for vendor in vendors if vendor.status in NEEDS_ATTENTION_STATUSES)
+    summaries = [financial_summary_for_items(vendor_budget_items(db, vendor)) for vendor in vendors]
     return VendorSummary(
         project_id=project.id,
         total=total,
         confirmed=confirmed,
+        booked=booked,
         needs_attention=needs_attention,
-        outstanding_balance=outstanding_balance,
+        with_outstanding_balance=sum(1 for summary in summaries if summary.outstanding_total > ZERO),
+        outstanding_balance=sum((summary.outstanding_total for summary in summaries), ZERO),
+        planned_total=sum((summary.planned_total for summary in summaries), ZERO),
+        committed_total=sum((summary.committed_total for summary in summaries), ZERO),
+        actual_total=sum((summary.actual_total for summary in summaries), ZERO),
+        paid_total=sum((summary.paid_total for summary in summaries), ZERO),
+        variance_amount=sum((summary.variance_amount for summary in summaries), ZERO),
         vendor_usage=vendor_usage(db, project),
     )

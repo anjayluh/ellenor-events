@@ -9,10 +9,12 @@ from app.db.session import get_db
 from app.schemas.vendor import VendorCreate, VendorRead, VendorSummary, VendorUpdate
 from app.services.audit_service import write_audit_log
 from app.services.project_vendor_service import (
+    assert_vendor_can_be_deleted,
     create_project_vendor,
     get_project_vendor_or_404,
     list_project_vendors,
     project_or_404,
+    serialize_vendor,
     update_project_vendor,
     vendor_summary,
 )
@@ -25,10 +27,6 @@ def require_vendor_manager(membership):
     require_permission(membership_role(membership), getattr(membership, "permissions_json", None), VENDOR_WRITE_ROLES, VENDORS_MANAGE_PERMISSION)
 
 
-def serialize_vendor(vendor) -> VendorRead:
-    return VendorRead.model_validate(vendor)
-
-
 @router.get("", response_model=list[VendorRead])
 def list_vendors(
     project_id: UUID,
@@ -36,13 +34,14 @@ def list_vendors(
     category: str | None = None,
     status_filter: str | None = Query(default=None, alias="status"),
     payment_status: str | None = None,
+    outstanding: bool | None = None,
     limit: int = Query(default=100, ge=1, le=250),
     offset: int = Query(default=0, ge=0),
     membership=Depends(get_project_membership),
     db: Session = Depends(get_db),
 ):
     return [
-        serialize_vendor(vendor)
+        serialize_vendor(db, vendor)
         for vendor in list_project_vendors(
             db,
             project_id,
@@ -50,6 +49,7 @@ def list_vendors(
             category=category,
             status_filter=status_filter,
             payment_status=payment_status,
+            outstanding=outstanding,
             limit=limit,
             offset=offset,
         )
@@ -70,12 +70,12 @@ def create_vendor(project_id: UUID, payload: VendorCreate, membership=Depends(ge
     write_audit_log(db, "vendor.created", actor_user_id=membership.user_id, project_id=project_id, metadata={"vendor_id": str(vendor.id)})
     db.commit()
     db.refresh(vendor)
-    return serialize_vendor(vendor)
+    return serialize_vendor(db, vendor, include_budget_items=True)
 
 
 @router.get("/{vendor_id}", response_model=VendorRead)
 def get_vendor(project_id: UUID, vendor_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
-    return serialize_vendor(get_project_vendor_or_404(db, project_id, vendor_id))
+    return serialize_vendor(db, get_project_vendor_or_404(db, project_id, vendor_id), include_budget_items=True)
 
 
 @router.patch("/{vendor_id}", response_model=VendorRead)
@@ -86,13 +86,14 @@ def update_vendor(project_id: UUID, vendor_id: UUID, payload: VendorUpdate, memb
     write_audit_log(db, "vendor.updated", actor_user_id=membership.user_id, project_id=project_id, metadata={"vendor_id": str(vendor_id)})
     db.commit()
     db.refresh(vendor)
-    return serialize_vendor(vendor)
+    return serialize_vendor(db, vendor, include_budget_items=True)
 
 
 @router.delete("/{vendor_id}")
 def delete_vendor(project_id: UUID, vendor_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
     require_vendor_manager(membership)
     vendor = get_project_vendor_or_404(db, project_id, vendor_id)
+    assert_vendor_can_be_deleted(db, vendor)
     db.delete(vendor)
     write_audit_log(db, "vendor.deleted", actor_user_id=membership.user_id, project_id=project_id, metadata={"vendor_id": str(vendor_id)})
     db.commit()

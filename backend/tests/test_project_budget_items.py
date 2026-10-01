@@ -27,7 +27,7 @@ def test_authorized_member_can_list_budget_items_and_outsider_is_denied(client, 
 def test_budget_item_crud_search_filter_vendor_link_and_summary(client, db_session: Session):
     owner = create_user(db_session, name="Owner")
     project = create_project_with_member(db_session, owner, title="Budget Flow Wedding")
-    vendor = Vendor(project_id=project.id, name="Elegant Decor", category="Decor", status="confirmed", agreed_amount=1000000, amount_paid=300000, balance_amount=700000)
+    vendor = Vendor(project_id=project.id, name="Elegant Decor", category="DECOR", status="CONFIRMED")
     db_session.add(vendor)
     db_session.commit()
     headers = auth_headers(owner)
@@ -243,7 +243,7 @@ def test_budget_item_rejects_vendor_from_another_project(client, db_session: Ses
     other_owner = create_user(db_session, name="Other Owner")
     project = create_project_with_member(db_session, owner, title="Budget Vendor Wedding")
     other_project = create_project_with_member(db_session, other_owner, title="Other Vendor Wedding")
-    vendor = Vendor(project_id=other_project.id, name="Hidden Vendor", category="Decor", status="confirmed")
+    vendor = Vendor(project_id=other_project.id, name="Hidden Vendor", category="DECOR", status="CONFIRMED")
     db_session.add(vendor)
     db_session.commit()
 
