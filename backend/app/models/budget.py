@@ -58,7 +58,7 @@ class ProjectBudgetItem(Base):
     category_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("project_budget_categories.id", ondelete="SET NULL"), nullable=True, index=True)
     category: Mapped[str] = mapped_column(String)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    vendor_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL"), nullable=True, index=True)
+    vendor_id: Mapped[UUID | None] = mapped_column(PG_UUID(as_uuid=True), ForeignKey("project_vendors.id"), nullable=True, index=True)
     planned_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     committed_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)
     actual_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0)

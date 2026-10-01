@@ -358,6 +358,33 @@ on public.vendors
 for each row
 execute function public.set_vendor_financials();
 
+create table project_vendors (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  name text not null,
+  category text not null,
+  contact_person text,
+  phone text,
+  email text,
+  address text,
+  website text,
+  service_description text,
+  status text not null default 'SHORTLISTED',
+  notes text,
+  event_day_contact text,
+  booking_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  constraint ck_project_vendors_name_not_blank check (length(trim(name)) >= 2),
+  constraint ck_project_vendors_category_not_blank check (length(trim(category)) >= 2),
+  constraint ck_project_vendors_status check (status in ('PROSPECT','SHORTLISTED','CONTACTED','QUOTED','BOOKED','CONFIRMED','COMPLETED','CANCELLED'))
+);
+
+create index idx_project_vendors_project on project_vendors(project_id);
+create index idx_project_vendors_project_category on project_vendors(project_id, category);
+create index idx_project_vendors_project_status on project_vendors(project_id, status);
+create index idx_project_vendors_project_name on project_vendors(project_id, lower(name));
+
 create table project_budget_categories (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
@@ -377,7 +404,7 @@ create table project_budget_items (
   category_id uuid references project_budget_categories(id) on delete set null,
   category text not null,
   description text,
-  vendor_id uuid references vendors(id) on delete set null,
+  vendor_id uuid references project_vendors(id),
   planned_amount numeric(12,2) not null default 0,
   committed_amount numeric(12,2) not null default 0,
   actual_amount numeric(12,2) not null default 0,
@@ -1016,6 +1043,24 @@ create policy project_guest_invitations_mutate_guest_managers on project_guest_i
 
 alter table project_budget_categories enable row level security;
 alter table project_budget_items enable row level security;
+alter table project_vendors enable row level security;
+
+create policy project_vendors_select_members on project_vendors
+  for select
+  using (public.is_project_member(project_id));
+
+create policy project_vendors_insert_vendor_managers on project_vendors
+  for insert
+  with check (public.has_project_permission(project_id, 'vendors.manage'));
+
+create policy project_vendors_update_vendor_managers on project_vendors
+  for update
+  using (public.has_project_permission(project_id, 'vendors.manage'))
+  with check (public.has_project_permission(project_id, 'vendors.manage'));
+
+create policy project_vendors_delete_vendor_managers on project_vendors
+  for delete
+  using (public.has_project_permission(project_id, 'vendors.manage'));
 
 create policy project_budget_categories_select_members on project_budget_categories
   for select
