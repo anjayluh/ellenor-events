@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import type { Project, TimelineAssignee, TimelineItem, TimelineStatus, TimelineSummary } from "../lib/types";
@@ -20,6 +21,8 @@ type TimelineForm = {
   sort_order: string;
 };
 type TimelineFilters = { search: string; category: string; status: string; assignee: string; date: string; mode: "all" | "today" | "upcoming" | "completed" | "cancelled" | "conflicts" };
+type TaskSummary = { total: number; overdue: number; due_today: number; due_soon: number; high_priority_outstanding: number };
+
 type TimelinePayload = {
   title: string;
   description: string | null;
@@ -126,6 +129,7 @@ export function TimelineClientPage() {
   const { projects, project, state, message, selectProject, reload } = useActiveProject();
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [summary, setSummary] = useState<TimelineSummary | null>(null);
+  const [taskSummary, setTaskSummary] = useState<TaskSummary | null>(null);
   const [assignees, setAssignees] = useState<TimelineAssignee[]>([]);
   const [filters, setFilters] = useState<TimelineFilters>(emptyFilters);
   const [form, setForm] = useState<TimelineForm>(emptyForm);
@@ -134,26 +138,30 @@ export function TimelineClientPage() {
   const [processing, setProcessing] = useState<string | null>(null);
 
   const loadTimeline = useCallback(async (activeProject: Project, nextFilters: TimelineFilters) => {
-    const [nextItems, nextSummary, nextAssignees] = await Promise.all([
+    const [nextItems, nextSummary, nextAssignees, nextTaskSummary] = await Promise.all([
       apiGet<TimelineItem[]>(`/projects/${activeProject.id}/timeline${buildQuery(nextFilters)}`),
       apiGet<TimelineSummary>(`/projects/${activeProject.id}/timeline/summary`),
-      apiGet<TimelineAssignee[]>(`/projects/${activeProject.id}/timeline/assignees`)
+      apiGet<TimelineAssignee[]>(`/projects/${activeProject.id}/timeline/assignees`),
+      apiGet<TaskSummary>(`/projects/${activeProject.id}/tasks/summary`)
     ]);
     setItems(nextItems);
     setSummary(nextSummary);
     setAssignees(nextAssignees);
+    setTaskSummary(nextTaskSummary);
   }, []);
 
   useEffect(() => {
     if (!project) {
       setItems([]);
       setSummary(null);
+      setTaskSummary(null);
       setAssignees([]);
       return;
     }
     void loadTimeline(project, filters).catch((error) => {
       setItems([]);
       setSummary(null);
+      setTaskSummary(null);
       setNotice(normalizeApiMessage(error));
     });
   }, [project, filters, loadTimeline]);
@@ -250,6 +258,13 @@ export function TimelineClientPage() {
             </div>
           ) : <p>No current or upcoming timeline item is visible yet. Add the first activity to start building the event-day rhythm.</p>}
           {summary?.conflicts ? <p className="errorText">{summary.conflicts} schedule item{summary.conflicts === 1 ? "" : "s"} overlap. Overlaps are allowed, but review them intentionally.</p> : null}
+          {taskSummary && taskSummary.total > 0 ? (
+            <div className="stack">
+              <p className="helperText">Tasks are for responsibilities; Timeline is for schedule timing.</p>
+              <p>{taskSummary.overdue} overdue · {taskSummary.due_today} due today · {taskSummary.high_priority_outstanding} high priority</p>
+              <Link className="ghostButton" data-icon="↗" href={`/tasks?project=${project.id}`}>View Tasks</Link>
+            </div>
+          ) : null}
         </article>
 
         <article className="panel actionPanel">
