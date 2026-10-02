@@ -12,6 +12,7 @@ from app.models.user import User
 from app.schemas.task import TaskAssigneeRead, TaskCreate, TaskRead, TaskSummary, TaskUpdate
 
 ASSIGNED_STATUS_ONLY_FIELDS = {"status"}
+CLOSED_TASK_STATUSES = {"DONE", "CANCELLED"}
 
 
 def clean_optional(value: str | None) -> str | None:
@@ -29,15 +30,23 @@ def now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def is_closed(task_status: str) -> bool:
+    return task_status in CLOSED_TASK_STATUSES
+
+
+def is_due_today(due_date: date | None, task_status: str) -> bool:
+    return bool(due_date and due_date == today_utc() and not is_closed(task_status))
+
+
 def is_due_soon(due_date: date | None, task_status: str) -> bool:
-    if not due_date or task_status == "DONE":
+    if not due_date or is_closed(task_status):
         return False
     current = today_utc()
     return current <= due_date <= current + timedelta(days=7)
 
 
 def is_overdue(due_date: date | None, task_status: str) -> bool:
-    return bool(due_date and due_date < today_utc() and task_status != "DONE")
+    return bool(due_date and due_date < today_utc() and not is_closed(task_status))
 
 
 def can_manage_tasks(membership: ProjectMember) -> bool:
@@ -114,6 +123,7 @@ def list_project_tasks(
     category: str | None = None,
     assignee: UUID | None = None,
     overdue: bool | None = None,
+    due_today: bool | None = None,
     due_soon: bool | None = None,
     my_tasks: bool = False,
     limit: int = 100,
@@ -135,9 +145,11 @@ def list_project_tasks(
         query = query.filter(Task.assigned_to == current_user_id)
     current = today_utc()
     if overdue is True:
-        query = query.filter(Task.due_date.isnot(None), Task.due_date < current, Task.status != "DONE")
+        query = query.filter(Task.due_date.isnot(None), Task.due_date < current, Task.status.notin_(CLOSED_TASK_STATUSES))
+    if due_today is True:
+        query = query.filter(Task.due_date == current, Task.status.notin_(CLOSED_TASK_STATUSES))
     if due_soon is True:
-        query = query.filter(Task.due_date.isnot(None), Task.due_date >= current, Task.due_date <= current + timedelta(days=7), Task.status != "DONE")
+        query = query.filter(Task.due_date.isnot(None), Task.due_date >= current, Task.due_date <= current + timedelta(days=7), Task.status.notin_(CLOSED_TASK_STATUSES))
     return query.order_by(Task.due_date.asc().nullslast(), Task.created_at.desc()).offset(max(offset, 0)).limit(min(max(limit, 1), 250)).all()
 
 
@@ -184,23 +196,34 @@ def task_summary(db: Session, project_id: UUID, *, current_user_id: UUID) -> Tas
     tasks = db.query(Task).filter(Task.project_id == project_id).all()
     total = len(tasks)
     completed = sum(1 for task in tasks if task.status == "DONE")
+    cancelled = sum(1 for task in tasks if task.status == "CANCELLED")
     in_progress = sum(1 for task in tasks if task.status == "IN_PROGRESS")
     todo = sum(1 for task in tasks if task.status == "TODO")
     overdue = sum(1 for task in tasks if is_overdue(task.due_date, task.status))
+    due_today = sum(1 for task in tasks if is_due_today(task.due_date, task.status))
     due_soon = sum(1 for task in tasks if is_due_soon(task.due_date, task.status))
+    high_priority_outstanding = sum(1 for task in tasks if task.priority in {"HIGH", "URGENT"} and not is_closed(task.status))
     my_tasks = sum(1 for task in tasks if task.assigned_to == current_user_id)
-    completion_percentage = round((completed / total) * 100) if total else 0
+    actionable_total = total - cancelled
+    completion_percentage = round((completed / actionable_total) * 100) if actionable_total else 0
     return TaskSummary(
         project_id=project_id,
         total=total,
         todo=todo,
         in_progress=in_progress,
         completed=completed,
+        cancelled=cancelled,
         overdue=overdue,
+        due_today=due_today,
         due_soon=due_soon,
+        high_priority_outstanding=high_priority_outstanding,
         completion_percentage=completion_percentage,
         my_tasks=my_tasks,
     )
+
+
+def set_task_status(db: Session, task: Task, membership: ProjectMember, next_status: str) -> Task:
+    return update_project_task(db, task, TaskUpdate(status=next_status), membership)
 
 
 def list_task_assignees(db: Session, project_id: UUID) -> list[TaskAssigneeRead]:

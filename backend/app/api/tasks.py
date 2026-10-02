@@ -16,6 +16,7 @@ from app.services.project_task_service import (
     serialize_task,
     task_summary,
     update_project_task,
+    set_task_status,
 )
 
 router = APIRouter()
@@ -31,6 +32,7 @@ def list_tasks(
     assignee: UUID | None = None,
     assigned_to: UUID | None = None,
     overdue: bool | None = None,
+    due_today: bool | None = None,
     due_soon: bool | None = None,
     my_tasks: bool = False,
     limit: int = Query(default=100, ge=1, le=250),
@@ -49,6 +51,7 @@ def list_tasks(
         category=category,
         assignee=effective_assignee,
         overdue=overdue,
+        due_today=due_today,
         due_soon=due_soon,
         my_tasks=my_tasks,
         limit=limit,
@@ -98,6 +101,37 @@ def update_task(project_id: UUID, task_id: UUID, payload: TaskUpdate, membership
     from app.services.project_task_service import assignee_map
 
     return serialize_task(task, assignee_map(db, [task]))
+
+
+def update_task_status_action(project_id: UUID, task_id: UUID, next_status: str, action_name: str, membership, db: Session) -> TaskRead:
+    task = get_task_or_404(db, project_id, task_id)
+    set_task_status(db, task, membership, next_status)
+    write_audit_log(db, f"task.{action_name}", actor_user_id=membership.user_id, project_id=project_id, metadata={"task_id": str(task_id)})
+    db.commit()
+    db.refresh(task)
+    from app.services.project_task_service import assignee_map
+
+    return serialize_task(task, assignee_map(db, [task]))
+
+
+@router.post("/{task_id}/start", response_model=TaskRead)
+def start_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return update_task_status_action(project_id, task_id, "IN_PROGRESS", "started", membership, db)
+
+
+@router.post("/{task_id}/complete", response_model=TaskRead)
+def complete_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return update_task_status_action(project_id, task_id, "DONE", "completed", membership, db)
+
+
+@router.post("/{task_id}/reopen", response_model=TaskRead)
+def reopen_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return update_task_status_action(project_id, task_id, "TODO", "reopened", membership, db)
+
+
+@router.post("/{task_id}/cancel", response_model=TaskRead)
+def cancel_task(project_id: UUID, task_id: UUID, membership=Depends(get_project_membership), db: Session = Depends(get_db)):
+    return update_task_status_action(project_id, task_id, "CANCELLED", "cancelled", membership, db)
 
 
 @router.delete("/{task_id}")

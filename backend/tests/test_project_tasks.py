@@ -173,3 +173,80 @@ def test_authorized_deletion_and_read_only_rejection(client, db_session: Session
     assert denied.status_code == 403
     assert deleted.status_code == 200
     assert db_session.query(Task).filter_by(id=task.id).first() is None
+
+
+def test_task_action_endpoints_cover_start_complete_reopen_and_cancel(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    project = create_project_with_member(db_session, owner, title="Task Actions Wedding")
+    task = create_task_record(db_session, project, title="Confirm MC")
+    db_session.commit()
+    headers = auth_headers(owner)
+
+    started = client.post(f"/projects/{project.id}/tasks/{task.id}/start", headers=headers)
+    assert started.status_code == 200
+    assert started.json()["status"] == "IN_PROGRESS"
+    assert started.json()["completed_at"] is None
+
+    completed = client.post(f"/projects/{project.id}/tasks/{task.id}/complete", headers=headers)
+    assert completed.status_code == 200
+    assert completed.json()["status"] == "DONE"
+    assert completed.json()["completed_at"] is not None
+
+    reopened = client.post(f"/projects/{project.id}/tasks/{task.id}/reopen", headers=headers)
+    assert reopened.status_code == 200
+    assert reopened.json()["status"] == "TODO"
+    assert reopened.json()["completed_at"] is None
+
+    cancelled = client.post(f"/projects/{project.id}/tasks/{task.id}/cancel", headers=headers)
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "CANCELLED"
+    assert cancelled.json()["completed_at"] is None
+
+
+def test_completed_alias_and_cancelled_tasks_do_not_count_as_overdue(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    project = create_project_with_member(db_session, owner, title="Cancelled Task Wedding")
+    headers = auth_headers(owner)
+
+    completed_alias = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Finalize readings", "status": "COMPLETED"})
+    cancelled = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Old vendor chase", "status": "CANCELLED", "due_date": str(date.today() - timedelta(days=3)), "priority": "HIGH"})
+    overdue = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Pay deposit", "due_date": str(date.today() - timedelta(days=1)), "priority": "HIGH"})
+    due_today = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Call tailor", "due_date": str(date.today()), "priority": "HIGH"})
+
+    assert completed_alias.status_code == 200
+    assert completed_alias.json()["status"] == "DONE"
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "CANCELLED"
+    assert overdue.status_code == 200
+    assert due_today.status_code == 200
+
+    summary = client.get(f"/projects/{project.id}/tasks/summary", headers=headers)
+    assert summary.status_code == 200
+    payload = summary.json()
+    assert payload["total"] == 4
+    assert payload["completed"] == 1
+    assert payload["cancelled"] == 1
+    assert payload["overdue"] == 1
+    assert payload["due_today"] == 1
+    assert payload["high_priority_outstanding"] == 2
+    assert payload["completion_percentage"] == 33
+
+    today_results = client.get(f"/projects/{project.id}/tasks?due_today=true", headers=headers)
+    overdue_results = client.get(f"/projects/{project.id}/tasks?overdue=true", headers=headers)
+    cancelled_results = client.get(f"/projects/{project.id}/tasks?status=CANCELLED", headers=headers)
+
+    assert [task["title"] for task in today_results.json()] == ["Call tailor"]
+    assert [task["title"] for task in overdue_results.json()] == ["Pay deposit"]
+    assert [task["title"] for task in cancelled_results.json()] == ["Old vendor chase"]
+
+
+def test_task_create_rejects_invalid_status_and_priority(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    project = create_project_with_member(db_session, owner, title="Invalid Task Wedding")
+    headers = auth_headers(owner)
+
+    invalid_status = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Bad status", "status": "BLOCKED"})
+    invalid_priority = client.post(f"/projects/{project.id}/tasks", headers=headers, json={"title": "Bad priority", "priority": "CRITICAL"})
+
+    assert invalid_status.status_code == 422
+    assert invalid_priority.status_code == 422

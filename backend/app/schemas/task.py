@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE"}
+TASK_STATUSES = {"TODO", "IN_PROGRESS", "DONE", "CANCELLED"}
 TASK_PRIORITIES = {"LOW", "MEDIUM", "HIGH", "URGENT"}
 TASK_CATEGORIES = {"GENERAL", "PROGRAM", "FINANCE", "GUESTS", "VENDORS", "LOGISTICS", "VENUE", "DECOR", "COMMUNICATION", "FAMILY", "COMMITTEE"}
 
@@ -21,7 +21,7 @@ class TaskCreate(BaseModel):
     @classmethod
     def normalize_status(cls, value: str) -> str:
         normalized = value.upper()
-        aliases = {"TODO": "TODO", "TO_DO": "TODO", "IN_PROGRESS": "IN_PROGRESS", "DONE": "DONE"}
+        aliases = {"TODO": "TODO", "TO_DO": "TODO", "IN_PROGRESS": "IN_PROGRESS", "DONE": "DONE", "COMPLETED": "DONE", "CANCELLED": "CANCELLED", "CANCELED": "CANCELLED"}
         normalized = aliases.get(normalized, normalized)
         if normalized not in TASK_STATUSES:
             raise ValueError("Unsupported task status")
@@ -59,7 +59,7 @@ class TaskUpdate(BaseModel):
         if value is None:
             return None
         normalized = value.upper()
-        aliases = {"TODO": "TODO", "TO_DO": "TODO", "IN_PROGRESS": "IN_PROGRESS", "DONE": "DONE"}
+        aliases = {"TODO": "TODO", "TO_DO": "TODO", "IN_PROGRESS": "IN_PROGRESS", "DONE": "DONE", "COMPLETED": "DONE", "CANCELLED": "CANCELLED", "CANCELED": "CANCELLED"}
         normalized = aliases.get(normalized, normalized)
         if normalized not in TASK_STATUSES:
             raise ValueError("Unsupported task status")
@@ -114,8 +114,11 @@ class TaskSummary(BaseModel):
     todo: int
     in_progress: int
     completed: int
+    cancelled: int
     overdue: int
+    due_today: int
     due_soon: int
+    high_priority_outstanding: int
     completion_percentage: int
     my_tasks: int
 
