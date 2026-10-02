@@ -8,7 +8,7 @@ import { useActiveProject } from "../lib/useActiveProject";
 import { EventScopedHeader, EventWorkspaceGuard } from "./EventWorkspaceGuard";
 import { StateBlock } from "./StateBlock";
 
-type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE" | "CANCELLED";
 type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 type TaskCategory = "GENERAL" | "PROGRAM" | "FINANCE" | "GUESTS" | "VENDORS" | "LOGISTICS" | "VENUE" | "DECOR" | "COMMUNICATION" | "FAMILY" | "COMMITTEE";
 type Task = {
@@ -28,7 +28,7 @@ type Task = {
   is_overdue: boolean;
   is_due_soon: boolean;
 };
-type TaskSummary = { project_id: string; total: number; todo: number; in_progress: number; completed: number; overdue: number; due_soon: number; completion_percentage: number; my_tasks: number };
+type TaskSummary = { project_id: string; total: number; todo: number; in_progress: number; completed: number; cancelled: number; overdue: number; due_today: number; due_soon: number; high_priority_outstanding: number; completion_percentage: number; my_tasks: number };
 type TaskAssignee = { user_id: string; name?: string | null; email?: string | null; role: string };
 type TaskForm = { title: string; description: string; status: TaskStatus; priority: TaskPriority; category: TaskCategory; assigned_to: string; due_date: string };
 type TaskFilters = { search: string; status: string; priority: string; category: string; assignee: string; preset: string };
@@ -36,7 +36,7 @@ type TaskPayload = { title: string; description: string | null; status: TaskStat
 
 const emptyForm: TaskForm = { title: "", description: "", status: "TODO", priority: "MEDIUM", category: "GENERAL", assigned_to: "", due_date: "" };
 const emptyFilters: TaskFilters = { search: "", status: "", priority: "", category: "", assignee: "", preset: "all" };
-const statuses: Array<{ value: TaskStatus; label: string }> = [{ value: "TODO", label: "To Do" }, { value: "IN_PROGRESS", label: "In Progress" }, { value: "DONE", label: "Completed" }];
+const statuses: Array<{ value: TaskStatus; label: string }> = [{ value: "TODO", label: "To Do" }, { value: "IN_PROGRESS", label: "In Progress" }, { value: "DONE", label: "Completed" }, { value: "CANCELLED", label: "Cancelled" }];
 const priorities: Array<{ value: TaskPriority; label: string }> = [{ value: "LOW", label: "Low" }, { value: "MEDIUM", label: "Medium" }, { value: "HIGH", label: "High" }, { value: "URGENT", label: "Urgent" }];
 const categories: Array<{ value: TaskCategory; label: string }> = [
   { value: "GENERAL", label: "General" },
@@ -57,8 +57,11 @@ const presets = [
   { value: "todo", label: "To Do" },
   { value: "in_progress", label: "In Progress" },
   { value: "done", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
   { value: "overdue", label: "Overdue" },
-  { value: "due_soon", label: "Due Soon" }
+  { value: "due_today", label: "Due Today" },
+  { value: "due_soon", label: "Due Soon" },
+  { value: "high", label: "High Priority" }
 ];
 
 function canManageTasks(project?: Project | null) {
@@ -116,8 +119,11 @@ function buildQuery(filters: TaskFilters) {
   if (filters.preset === "todo") params.set("status", "TODO");
   if (filters.preset === "in_progress") params.set("status", "IN_PROGRESS");
   if (filters.preset === "done") params.set("status", "DONE");
+  if (filters.preset === "cancelled") params.set("status", "CANCELLED");
   if (filters.preset === "overdue") params.set("overdue", "true");
+  if (filters.preset === "due_today") params.set("due_today", "true");
   if (filters.preset === "due_soon") params.set("due_soon", "true");
+  if (filters.preset === "high") params.set("priority", "HIGH");
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -195,6 +201,20 @@ export function TasksClientPage() {
     }
   }
 
+  async function updateTaskStatus(taskId: string, action: "start" | "complete" | "reopen" | "cancel") {
+    if (!project || processing) return;
+    setProcessing(`${action}-${taskId}`);
+    try {
+      await apiPost<Task, Record<string, never>>(`/projects/${project.id}/tasks/${taskId}/${action}`, {});
+      setNotice(action === "complete" ? "Task completed." : action === "cancel" ? "Task cancelled." : action === "reopen" ? "Task reopened." : "Task started.");
+      await loadTasks(project, filters);
+    } catch (error) {
+      setNotice(normalizeApiMessage(error));
+    } finally {
+      setProcessing(null);
+    }
+  }
+
   async function deleteTask(taskId: string) {
     if (!project || processing || !window.confirm("Delete this task from the event plan?")) return;
     setProcessing(`delete-${taskId}`);
@@ -217,15 +237,15 @@ export function TasksClientPage() {
       <EventScopedHeader projects={projects} project={project} onSelect={selectProject} />
       <section className="grid fourColumns">
         <article className="metric"><span>Total tasks</span><strong>{summary?.total ?? 0}</strong><p>{summary?.my_tasks ?? 0} assigned to you</p></article>
-        <article className="metric"><span>To do</span><strong>{summary?.todo ?? 0}</strong><p>{summary?.in_progress ?? 0} in progress</p></article>
-        <article className="metric"><span>Completed</span><strong>{summary?.completed ?? 0}</strong><p>{summary?.completion_percentage ?? 0}% complete</p></article>
-        <article className="metric"><span>Needs attention</span><strong>{summary?.overdue ?? 0}</strong><p>{summary?.due_soon ?? 0} due in the next 7 days</p></article>
+        <article className="metric"><span>In progress</span><strong>{summary?.in_progress ?? 0}</strong><p>{summary?.todo ?? 0} still to do</p></article>
+        <article className="metric"><span>Completed</span><strong>{summary?.completed ?? 0}</strong><p>{summary?.completion_percentage ?? 0}% complete · {summary?.cancelled ?? 0} cancelled</p></article>
+        <article className="metric"><span>Needs attention</span><strong>{summary?.overdue ?? 0}</strong><p>{summary?.due_today ?? 0} due today · {summary?.high_priority_outstanding ?? 0} high priority</p></article>
       </section>
 
       <section className="panel resourceCard">
         <div className="cardTitleRow"><div><p className="eyebrow">Planning progress</p><h2>Task completion</h2></div><span className="badge softBadge">Live event data</span></div>
         <div className="progressTrack" aria-label="Task completion"><div className="progressFill" style={{ width: completedWidth }} /></div>
-        <p>{summary?.completion_percentage ?? 0}% complete · {summary?.overdue ?? 0} overdue · {summary?.due_soon ?? 0} due soon</p>
+        <p>{summary?.completion_percentage ?? 0}% complete · {summary?.overdue ?? 0} overdue · {summary?.due_today ?? 0} due today · {summary?.due_soon ?? 0} due soon</p>
       </section>
 
       <section className="grid twoColumns">
@@ -276,10 +296,10 @@ export function TasksClientPage() {
                 {tasks.map((task) => (
                   <tr key={task.id}>
                     <td>{editingTaskId === task.id ? <div className="stack"><input value={editForm.title} onChange={(event) => setEditForm((current) => ({ ...current, title: event.target.value }))} /><input value={editForm.description} onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} /></div> : <><strong>{task.title}</strong>{task.description ? <small>{task.description}</small> : null}</>}</td>
-                    <td>{editingTaskId === task.id ? <div className="stack"><select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value as TaskStatus }))}>{statuses.map((status) => <option value={status.value} key={status.value}>{status.label}</option>)}</select><select value={editForm.priority} onChange={(event) => setEditForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))}>{priorities.map((priority) => <option value={priority.value} key={priority.value}>{priority.label}</option>)}</select><select value={editForm.category} onChange={(event) => setEditForm((current) => ({ ...current, category: event.target.value as TaskCategory }))}>{categories.map((category) => <option value={category.value} key={category.value}>{category.label}</option>)}</select></div> : <><span className={task.status === "DONE" ? "badge successBadge" : "badge softBadge"}>{statuses.find((status) => status.value === task.status)?.label ?? titleCase(task.status)}</span><small>{titleCase(task.priority)} priority · {titleCase(task.category)}</small></>}</td>
+                    <td>{editingTaskId === task.id ? <div className="stack"><select value={editForm.status} onChange={(event) => setEditForm((current) => ({ ...current, status: event.target.value as TaskStatus }))}>{statuses.map((status) => <option value={status.value} key={status.value}>{status.label}</option>)}</select><select value={editForm.priority} onChange={(event) => setEditForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))}>{priorities.map((priority) => <option value={priority.value} key={priority.value}>{priority.label}</option>)}</select><select value={editForm.category} onChange={(event) => setEditForm((current) => ({ ...current, category: event.target.value as TaskCategory }))}>{categories.map((category) => <option value={category.value} key={category.value}>{category.label}</option>)}</select></div> : <><span className={task.status === "DONE" ? "badge successBadge" : task.status === "CANCELLED" ? "badge warningBadge" : "badge softBadge"}>{statuses.find((status) => status.value === task.status)?.label ?? titleCase(task.status)}</span><small>{titleCase(task.priority)} priority · {titleCase(task.category)}</small></>}</td>
                     <td>{editingTaskId === task.id ? <select value={editForm.assigned_to} onChange={(event) => setEditForm((current) => ({ ...current, assigned_to: event.target.value }))}><option value="">Unassigned</option>{assignees.map((assignee) => <option value={assignee.user_id} key={assignee.user_id}>{assigneeLabel(assignee)}</option>)}</select> : taskAssignee(task)}</td>
                     <td>{editingTaskId === task.id ? <input type="date" value={editForm.due_date} onChange={(event) => setEditForm((current) => ({ ...current, due_date: event.target.value }))} /> : <><strong>{task.due_date ? formatDate(task.due_date) : "No date"}</strong>{task.is_overdue ? <small className="errorText">Overdue</small> : task.is_due_soon ? <small>Due soon</small> : null}</>}</td>
-                    <td><div className="buttonRow tableActions">{editingTaskId === task.id ? <><button className="primaryButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void updateTask(task.id)}>{processing === `update-${task.id}` ? "Saving..." : "Save"}</button><button className="ghostButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => setEditingTaskId(null)}>Cancel</button></> : <>{canManage ? <button className="ghostButton" data-icon="✎" disabled={Boolean(processing)} type="button" onClick={() => startEdit(task)}>Edit</button> : null}{canManage ? (task.status === "DONE" ? <button className="ghostButton" data-icon="↺" disabled={Boolean(processing)} type="button" onClick={() => void updateTask(task.id, { status: "IN_PROGRESS" })}>Reopen</button> : <button className="ghostButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void updateTask(task.id, { status: "DONE" })}>Complete</button>) : null}{canManage ? <button className="ghostButton danger" data-icon="−" disabled={Boolean(processing)} type="button" onClick={() => void deleteTask(task.id)}>{processing === `delete-${task.id}` ? "Deleting..." : "Delete"}</button> : null}</>}</div></td>
+                    <td><div className="buttonRow tableActions">{editingTaskId === task.id ? <><button className="primaryButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void updateTask(task.id)}>{processing === `update-${task.id}` ? "Saving..." : "Save"}</button><button className="ghostButton" data-icon="×" disabled={Boolean(processing)} type="button" onClick={() => setEditingTaskId(null)}>Cancel</button></> : <>{canManage ? <button className="ghostButton" data-icon="✎" disabled={Boolean(processing)} type="button" onClick={() => startEdit(task)}>Edit</button> : null}{canManage && task.status === "TODO" ? <button className="ghostButton" data-icon="→" disabled={Boolean(processing)} type="button" onClick={() => void updateTaskStatus(task.id, "start")}>Start</button> : null}{canManage && task.status !== "DONE" && task.status !== "CANCELLED" ? <button className="ghostButton" data-icon="✓" disabled={Boolean(processing)} type="button" onClick={() => void updateTaskStatus(task.id, "complete")}>Complete</button> : null}{canManage && (task.status === "DONE" || task.status === "CANCELLED") ? <button className="ghostButton" data-icon="↺" disabled={Boolean(processing)} type="button" onClick={() => void updateTaskStatus(task.id, "reopen")}>Reopen</button> : null}{canManage && task.status !== "DONE" && task.status !== "CANCELLED" ? <button className="ghostButton" data-icon="⊘" disabled={Boolean(processing)} type="button" onClick={() => void updateTaskStatus(task.id, "cancel")}>Cancel</button> : null}{canManage ? <button className="ghostButton danger" data-icon="−" disabled={Boolean(processing)} type="button" onClick={() => void deleteTask(task.id)}>{processing === `delete-${task.id}` ? "Deleting..." : "Delete"}</button> : null}</>}</div></td>
                   </tr>
                 ))}
               </tbody>
