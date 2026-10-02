@@ -18,7 +18,7 @@ type Meeting = { id: string; title: string; scheduled_time: string; status: stri
 type Member = { id: string; role: ProjectRole };
 type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
-type TaskSummary = { total: number; todo: number; in_progress: number; completed: number; overdue: number; due_soon: number; completion_percentage: number; my_tasks: number };
+type TaskSummary = { total: number; todo: number; in_progress: number; completed: number; cancelled: number; overdue: number; due_today: number; due_soon: number; high_priority_outstanding: number; completion_percentage: number; my_tasks: number };
 type EventOverviewData = {
   budget: BudgetItemSummary | null;
   guestSummary: GuestInviteSummary | null;
@@ -139,6 +139,8 @@ export function EventDashboard({ project }: { project: Project }) {
   const activePlanningAreas = planningAreas.filter((area) => area.hasData);
   const attentionItems = [
     ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/tasks?project=${currentProject.id}` })),
+    ...(overviewData.taskSummary?.due_today ? [{ title: `${overviewData.taskSummary.due_today} task${overviewData.taskSummary.due_today === 1 ? "" : "s"} due today`, detail: "Review today’s event planning responsibilities.", href: `/tasks?project=${currentProject.id}` }] : []),
+    ...(overviewData.taskSummary?.high_priority_outstanding ? [{ title: `${overviewData.taskSummary.high_priority_outstanding} high-priority task${overviewData.taskSummary.high_priority_outstanding === 1 ? "" : "s"} open`, detail: "Resolve the most important planning actions first.", href: `/tasks?project=${currentProject.id}` }] : []),
     ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
     ...(overviewData.timelineSummary?.current_item ? [{ title: `Now: ${overviewData.timelineSummary.current_item.title}`, detail: `${formatDate(overviewData.timelineSummary.current_item.start_at)} · ${overviewData.timelineSummary.current_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.timelineSummary?.next_item ? [{ title: `Next up: ${overviewData.timelineSummary.next_item.title}`, detail: `${formatDate(overviewData.timelineSummary.next_item.start_at)} · ${overviewData.timelineSummary.next_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
@@ -224,7 +226,7 @@ export function EventDashboard({ project }: { project: Project }) {
         <article className="metric eventMetric">
           <span>Tasks</span>
           <strong>{overviewData.tasks.length}</strong>
-          <p>{overviewData.taskSummary ? `${overviewData.taskSummary.completion_percentage}% complete · ${overviewData.taskSummary.overdue} overdue` : "Planning tasks will appear once added."}</p>
+          <p>{overviewData.taskSummary ? `${overviewData.taskSummary.in_progress} in progress · ${overviewData.taskSummary.overdue} overdue` : "Planning tasks will appear once added."}</p>
         </article>
         <article className="metric eventMetric">
           <span>Budget</span>
@@ -254,7 +256,7 @@ export function EventDashboard({ project }: { project: Project }) {
             <div>
               <p className="helperText">Task completion</p>
               <div className="progressTrack" aria-label="Task completion"><div className="progressFill" style={{ width: `${overviewData.taskSummary.completion_percentage}%` }} /></div>
-              <p>{overviewData.taskSummary.completed} complete · {overviewData.taskSummary.due_soon} due soon · {overviewData.taskSummary.completion_percentage}% complete</p>
+              <p>{overviewData.taskSummary.completed} complete · {overviewData.taskSummary.due_today} due today · {overviewData.taskSummary.high_priority_outstanding} high priority</p>
             </div>
           ) : null}
           {overviewData.timelineSummary ? (
