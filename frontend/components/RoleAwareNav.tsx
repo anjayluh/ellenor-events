@@ -11,7 +11,8 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guests", label: "Guests" }
+    { href: "guests", label: "Guests" },
+    { href: "communications", label: "Communications" }
   ],
   PARTNER: [
     { href: "overview", label: "Overview" },
@@ -22,7 +23,8 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guests", label: "Guests" }
+    { href: "guests", label: "Guests" },
+    { href: "communications", label: "Communications" }
   ],
   COMMITTEE_CHAIR: [
     { href: "overview", label: "Overview" },
@@ -33,7 +35,8 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "invites", label: "Team Access" },
-    { href: "guests", label: "Guests" }
+    { href: "guests", label: "Guests" },
+    { href: "communications", label: "Communications" }
   ],
   COMMITTEE_MEMBER: [
     { href: "overview", label: "Overview" },
@@ -41,14 +44,16 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "meetings", label: "Meetings" },
     { href: "timeline", label: "Timeline" },
     { href: "tasks", label: "Tasks" },
-    { href: "vendors", label: "Vendors" }
+    { href: "vendors", label: "Vendors" },
+    { href: "communications", label: "Communications" }
   ],
   FAMILY_VIEWER: [
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
     { href: "timeline", label: "Timeline" },
-    { href: "budget", label: "Contributions" }
+    { href: "budget", label: "Contributions" },
+    { href: "communications", label: "Communications" }
   ],
   GUEST_VIEWER: [
     { href: "overview", label: "Overview" },

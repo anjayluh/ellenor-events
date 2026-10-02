@@ -202,6 +202,39 @@ export type TimelineAssignee = {
   role: ProjectRole;
 };
 
+export type CommunicationType = "ANNOUNCEMENT" | "UPDATE" | "REMINDER" | "PLANNING_NOTE";
+export type CommunicationPriority = "NORMAL" | "IMPORTANT" | "URGENT";
+export type CommunicationAudience = "ALL_MEMBERS" | "SELECTED_MEMBERS";
+
+export type Communication = {
+  id: string;
+  project_id: string;
+  author_user_id: string;
+  author_name?: string | null;
+  author_email?: string | null;
+  title: string;
+  body: string;
+  communication_type: CommunicationType;
+  priority: CommunicationPriority;
+  audience_mode: CommunicationAudience;
+  recipient_user_ids: string[];
+  is_pinned: boolean;
+  is_archived: boolean;
+  published_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  archived_at?: string | null;
+  is_read: boolean;
+};
+
+export type CommunicationSummary = {
+  project_id: string;
+  total_active: number;
+  unread_count: number;
+  pinned_count: number;
+  recent: Communication[];
+};
+
 export type Contribution = {
   id: string;
   project_id: string;

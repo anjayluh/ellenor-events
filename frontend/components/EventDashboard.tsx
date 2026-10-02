@@ -6,7 +6,7 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
 import { formatDate } from "../lib/customer-display";
-import type { BudgetItemSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
+import type { BudgetItemSummary, CommunicationSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
 
 const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
@@ -25,6 +25,7 @@ type EventOverviewData = {
   inviteAnalytics: InviteAnalytics | null;
   taskSummary: TaskSummary | null;
   timelineSummary: TimelineSummary | null;
+  communicationSummary: CommunicationSummary | null;
   meetings: Meeting[];
   members: Member[];
   tasks: Task[];
@@ -37,6 +38,7 @@ const emptyOverviewData: EventOverviewData = {
   inviteAnalytics: null,
   taskSummary: null,
   timelineSummary: null,
+  communicationSummary: null,
   meetings: [],
   members: [],
   tasks: [],
@@ -96,19 +98,20 @@ export function EventDashboard({ project }: { project: Project }) {
     let isMounted = true;
     const projectId = currentProject.id;
     async function loadOverview() {
-      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, meetings, members, tasks, vendors] = await Promise.all([
+      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, meetings, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetItemSummary | null>(`/projects/${projectId}/budget/summary`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
         safeGet<TaskSummary | null>(`/projects/${projectId}/tasks/summary`, null),
         safeGet<TimelineSummary | null>(`/projects/${projectId}/timeline/summary`, null),
+        safeGet<CommunicationSummary | null>(`/projects/${projectId}/communications/summary`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
         safeGet<Task[]>(`/projects/${projectId}/tasks`, []),
         safeGet<Vendor[]>(`/projects/${projectId}/vendors`, [])
       ]);
       if (isMounted) {
-        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, meetings, members, tasks, vendors });
+        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, meetings, members, tasks, vendors });
       }
     }
     void loadOverview();
@@ -135,6 +138,7 @@ export function EventDashboard({ project }: { project: Project }) {
     { label: "Budget", hasData: Boolean((overviewData.budget?.total_items ?? 0) > 0) },
     { label: "Meetings", hasData: overviewData.meetings.length > 0 },
     { label: "Team", hasData: overviewData.members.length > 0 || Boolean(overviewData.inviteAnalytics?.pending || overviewData.inviteAnalytics?.accepted) }
+    ,{ label: "Communications", hasData: Boolean(overviewData.communicationSummary?.total_active) }
   ];
   const activePlanningAreas = planningAreas.filter((area) => area.hasData);
   const attentionItems = [
@@ -146,6 +150,7 @@ export function EventDashboard({ project }: { project: Project }) {
     ...(overviewData.timelineSummary?.next_item ? [{ title: `Next up: ${overviewData.timelineSummary.next_item.title}`, detail: `${formatDate(overviewData.timelineSummary.next_item.start_at)} · ${overviewData.timelineSummary.next_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.timelineSummary?.conflicts ? [{ title: `${overviewData.timelineSummary.conflicts} schedule conflict${overviewData.timelineSummary.conflicts === 1 ? "" : "s"}`, detail: "Review overlapping timeline items.", href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.guestSummary && overviewData.guestSummary.pending_rsvp > 0 ? [{ title: `${overviewData.guestSummary.pending_rsvp} guest response${overviewData.guestSummary.pending_rsvp === 1 ? "" : "s"} pending`, detail: "Review invitation responses.", href: `/guests?project=${currentProject.id}` }] : []),
+    ...(overviewData.communicationSummary?.unread_count ? [{ title: `${overviewData.communicationSummary.unread_count} unread communication${overviewData.communicationSummary.unread_count === 1 ? "" : "s"}`, detail: "Review the latest event updates.", href: `/communications?project=${currentProject.id}` }] : []),
     ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review providers not yet confirmed.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(vendorOutstandingBalance > 0 ? [{ title: `${formatMoney(vendorOutstandingBalance)} outstanding with vendors`, detail: "Review vendor deposits and balances.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(budgetBalance && budgetBalance > 0 ? [{ title: `${formatMoney(budgetBalance)} still awaiting payment`, detail: "Review budget deposits and balances.", href: `/budget?project=${currentProject.id}` }] : [])
@@ -280,6 +285,7 @@ export function EventDashboard({ project }: { project: Project }) {
             {canManageVendors ? <Link className="ghostButton" data-icon="↗" href={`/vendors?project=${currentProject.id}`}>Manage Vendors</Link> : null}
             {canCoordinate ? <Link className="ghostButton" data-icon="↗" href={`/tasks?project=${currentProject.id}`}>Manage Tasks</Link> : null}
             <Link className="ghostButton" data-icon="↗" href={`/timeline?project=${currentProject.id}`}>View Timeline</Link>
+            <Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Communications</Link>
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
           </div>
         </article>
@@ -300,6 +306,11 @@ export function EventDashboard({ project }: { project: Project }) {
             <p>No urgent planning items are visible yet. Upcoming meetings, overdue tasks, pending guests, vendor decisions, and payment balances will appear here when those records exist.</p>
           )}
         </article>
+      </section>
+
+      <section className="panel resourceCard communicationDashboardCard">
+        <div className="sectionHeaderRow"><div><p className="eyebrow">Communications</p><h2>Recent event updates</h2></div><Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Open communications</Link></div>
+        {overviewData.communicationSummary?.recent.length ? <div className="attentionList">{overviewData.communicationSummary.recent.slice(0, 3).map((item) => <Link className="attentionItem" href={`/communications?project=${currentProject.id}`} key={item.id}><strong>{item.title}</strong><span>{item.is_read ? "Read" : "Unread"} · {item.priority.toLowerCase()} · {formatDate(item.created_at)}</span></Link>)}</div> : <p>No event updates yet. Communications shared with this event will appear here.</p>}
       </section>
 
       <section className="grid twoColumns">

@@ -12,6 +12,7 @@ const requiredRoutes = [
   'app/budget/page.tsx',
   'app/committee/page.tsx',
   'app/vendors/page.tsx',
+  'app/communications/page.tsx',
   'app/invites/page.tsx',
   'app/staff/page.tsx',
   'app/invite/[token]/page.tsx',
