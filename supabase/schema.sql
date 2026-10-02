@@ -630,13 +630,14 @@ create table tasks (
   description text,
   assigned_to uuid references users(id),
   created_by_user_id uuid references users(id),
-  status text not null default 'TODO' check (status in ('TODO','IN_PROGRESS','DONE')),
+  status text not null default 'TODO' check (status in ('TODO','IN_PROGRESS','DONE','CANCELLED')),
   priority text not null default 'MEDIUM' check (priority in ('LOW','MEDIUM','HIGH','URGENT')),
   category text not null default 'GENERAL' check (category in ('GENERAL','PROGRAM','FINANCE','GUESTS','VENDORS','LOGISTICS','VENUE','DECOR','COMMUNICATION','FAMILY','COMMITTEE')),
   due_date date,
   completed_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz
+  updated_at timestamptz,
+  constraint ck_tasks_completed_at_status check (status = 'DONE' or completed_at is null)
 );
 
 create or replace function public.set_task_timestamps()
@@ -645,18 +646,22 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if new.status = 'DONE' and old.status is distinct from 'DONE' then
+  if new.status = 'DONE' and (tg_op = 'INSERT' or old.status is distinct from 'DONE') then
     new.completed_at := coalesce(new.completed_at, now());
   elsif new.status <> 'DONE' then
     new.completed_at := null;
   end if;
-  new.updated_at := now();
+
+  if tg_op = 'UPDATE' then
+    new.updated_at := now();
+  end if;
+
   return new;
 end;
 $$;
 
 create trigger trg_tasks_set_timestamps
-before update of status, title, description, priority, category, assigned_to, due_date
+before insert or update of status, title, description, priority, category, assigned_to, due_date
 on public.tasks
 for each row
 execute function public.set_task_timestamps();
