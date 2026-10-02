@@ -24,5 +24,7 @@ class MemberRead(MemberCreate):
     project_id: UUID
     permissions_level: str | None = None
     permissions: list[str] = Field(default_factory=list)
+    user_name: str | None = None
+    user_email: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
