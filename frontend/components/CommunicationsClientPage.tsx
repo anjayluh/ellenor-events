@@ -1,18 +1,18 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { apiGet, apiPatch, apiPost } from "../lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import type { Communication, CommunicationAudience, CommunicationPriority, CommunicationSummary, CommunicationType, Project, ProjectRole } from "../lib/types";
 import { useActiveProject } from "../lib/useActiveProject";
 import { EventScopedHeader, EventWorkspaceGuard } from "./EventWorkspaceGuard";
 import { StateBlock } from "./StateBlock";
 
 type Member = { id: string; user_id: string; role: ProjectRole; user_name?: string | null; user_email?: string | null; permissions?: string[] };
-type CommunicationFilters = { search: string; type: string; priority: string; author_user_id: string; status: "ACTIVE" | "ARCHIVED" | "ALL" };
-type CommunicationForm = { title: string; body: string; communication_type: CommunicationType; priority: CommunicationPriority; audience_mode: CommunicationAudience; recipient_user_ids: string[] };
+type CommunicationFilters = { search: string; type: string; priority: string; author_user_id: string; status: "ACTIVE" | "ARCHIVED" | "ALL"; read: "" | "READ" | "UNREAD" };
+type CommunicationForm = { title: string; body: string; communication_type: CommunicationType; priority: CommunicationPriority; audience_mode: CommunicationAudience; recipient_user_ids: string[]; expires_at: string };
 
-const emptyForm: CommunicationForm = { title: "", body: "", communication_type: "ANNOUNCEMENT", priority: "NORMAL", audience_mode: "ALL_MEMBERS", recipient_user_ids: [] };
-const emptyFilters: CommunicationFilters = { search: "", type: "", priority: "", author_user_id: "", status: "ACTIVE" };
+const emptyForm: CommunicationForm = { title: "", body: "", communication_type: "ANNOUNCEMENT", priority: "NORMAL", audience_mode: "ALL_MEMBERS", recipient_user_ids: [], expires_at: "" };
+const emptyFilters: CommunicationFilters = { search: "", type: "", priority: "", author_user_id: "", status: "ACTIVE", read: "" };
 const types: Array<{ value: CommunicationType; label: string }> = [
   { value: "ANNOUNCEMENT", label: "Announcement" },
   { value: "UPDATE", label: "Update" },
@@ -34,6 +34,13 @@ function formatDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-UG", { dateStyle: "medium", timeStyle: "short", timeZone: "Africa/Kampala" }).format(new Date(value));
 }
 
+function toLocalDateTime(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  const pad = (part: number) => String(part).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function canManage(project?: Project | null) {
   return Boolean(project && (["OWNER", "PARTNER", "COMMITTEE_CHAIR"] as ProjectRole[]).includes(project.role ?? "FAMILY_VIEWER") || project?.permissions?.includes("communications.manage"));
 }
@@ -45,6 +52,7 @@ function buildQuery(filters: CommunicationFilters) {
   if (filters.priority) params.set("priority", filters.priority);
   if (filters.author_user_id) params.set("author_user_id", filters.author_user_id);
   if (filters.status !== "ACTIVE") params.set("status", filters.status);
+  if (filters.read) params.set("read", filters.read);
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -108,7 +116,7 @@ export function CommunicationsClientPage() {
 
   function startEdit(item: Communication) {
     setEditingId(item.id);
-    setForm({ title: item.title, body: item.body, communication_type: item.communication_type, priority: item.priority, audience_mode: item.audience_mode, recipient_user_ids: item.recipient_user_ids });
+    setForm({ title: item.title, body: item.body, communication_type: item.communication_type, priority: item.priority, audience_mode: item.audience_mode, recipient_user_ids: item.recipient_user_ids, expires_at: toLocalDateTime(item.expires_at) });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -124,9 +132,9 @@ export function CommunicationsClientPage() {
     setNotice(editingId ? "Saving communication..." : "Publishing communication...");
     try {
       if (editingId) {
-        await apiPatch<Communication, Pick<CommunicationForm, "title" | "body" | "communication_type" | "priority">>(`/projects/${project.id}/communications/${editingId}`, { title: form.title.trim(), body: form.body.trim(), communication_type: form.communication_type, priority: form.priority });
+        await apiPatch<Communication, Pick<CommunicationForm, "title" | "body" | "communication_type" | "priority"> & { expires_at: string | null }>(`/projects/${project.id}/communications/${editingId}`, { title: form.title.trim(), body: form.body.trim(), communication_type: form.communication_type, priority: form.priority, expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null });
       } else {
-        await apiPost<Communication, CommunicationForm>(`/projects/${project.id}/communications`, { ...form, title: form.title.trim(), body: form.body.trim() });
+        await apiPost<Communication, Omit<CommunicationForm, "expires_at"> & { expires_at: string | null }>(`/projects/${project.id}/communications`, { ...form, title: form.title.trim(), body: form.body.trim(), expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null });
       }
       resetForm();
       setNotice(editingId ? "Communication updated." : "Communication published for the selected audience.");
@@ -138,13 +146,14 @@ export function CommunicationsClientPage() {
     }
   }
 
-  async function mutate(item: Communication, action: "read" | "pin" | "unpin" | "archive") {
+  async function mutate(item: Communication, action: "read" | "unread" | "pin" | "unpin" | "archive" | "unarchive") {
     if (!project || processing) return;
     if (action === "archive" && !window.confirm("Archive this communication? It will remain available in history.")) return;
     setProcessing(`${action}-${item.id}`);
     try {
-      await apiPost<Communication, Record<string, never>>(`/projects/${project.id}/communications/${item.id}/${action}`, {});
-      setNotice(action === "read" ? "Marked as read." : action === "archive" ? "Communication archived." : action === "pin" ? "Communication pinned." : "Communication unpinned.");
+      if (action === "unread") await apiDelete<Communication>(`/projects/${project.id}/communications/${item.id}/read`);
+      else await apiPost<Communication, Record<string, never>>(`/projects/${project.id}/communications/${item.id}/${action}`, {});
+      setNotice(action === "read" ? "Marked as read." : action === "unread" ? "Marked as unread." : action === "archive" ? "Communication archived." : action === "unarchive" ? "Communication restored." : action === "pin" ? "Communication pinned." : "Communication unpinned.");
       await load(project, filters);
     } catch (error) {
       setNotice(normalizeError(error));
@@ -178,6 +187,7 @@ export function CommunicationsClientPage() {
                 <label className="formField">Type<select value={form.communication_type} onChange={(event) => { const nextType = event.target.value as CommunicationType; updateForm("communication_type", nextType); if (nextType === "PLANNING_NOTE" && form.recipient_user_ids.some((id) => !planningMembers.some((member) => member.user_id === id))) updateForm("recipient_user_ids", []); }}>{types.map((type) => <option value={type.value} key={type.value}>{type.label}</option>)}</select></label>
                 <label className="formField">Priority<select value={form.priority} onChange={(event) => updateForm("priority", event.target.value as CommunicationPriority)}>{priorities.map((priority) => <option value={priority.value} key={priority.value}>{priority.label}</option>)}</select></label>
               </div>
+              <label className="formField">Expiry (optional)<input type="datetime-local" value={form.expires_at} onChange={(event) => updateForm("expires_at", event.target.value)} /><span className="helperText">After this time, regular members will no longer see the update. Event managers can still find it in history.</span></label>
               {!editingId ? <>
                 <label className="formField">Audience<select value={form.audience_mode} onChange={(event) => updateForm("audience_mode", event.target.value as CommunicationAudience)}><option value="ALL_MEMBERS">Eligible event members</option><option value="SELECTED_MEMBERS">Selected members only</option></select></label>
                 {form.audience_mode === "SELECTED_MEMBERS" ? <div className="stack"><span className="helperText">{form.communication_type === "PLANNING_NOTE" ? "Planning notes are limited to the planning team." : "Choose members from this event only."}</span>{selectableMembers.map((member) => <label className="checkboxField" key={member.user_id}><input type="checkbox" checked={form.recipient_user_ids.includes(member.user_id)} onChange={() => toggleRecipient(member.user_id)} /><span>{member.user_name || member.user_email || member.user_id} · {titleCase(member.role)}</span></label>)}{selectionError ? <span className="errorText">{selectionError}</span> : null}</div> : <p className="helperText">Family viewers can see regular announcements; guest viewers do not receive internal communications.</p>}
@@ -203,9 +213,10 @@ export function CommunicationsClientPage() {
           <label className="formField">Priority<select value={filters.priority} onChange={(event) => setFilters((current) => ({ ...current, priority: event.target.value }))}><option value="">All priorities</option>{priorities.map((priority) => <option value={priority.value} key={priority.value}>{priority.label}</option>)}</select></label>
           <label className="formField">Author<select value={filters.author_user_id} onChange={(event) => setFilters((current) => ({ ...current, author_user_id: event.target.value }))}><option value="">All authors</option>{members.filter((member) => member.role !== "GUEST_VIEWER").map((member) => <option value={member.user_id} key={member.user_id}>{member.user_name || member.user_email || member.user_id}</option>)}</select></label>
           <label className="formField">View<select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value as CommunicationFilters["status"] }))}><option value="ACTIVE">Active updates</option><option value="ARCHIVED">Archived history</option><option value="ALL">All history</option></select></label>
+          <label className="formField">Read status<select value={filters.read} onChange={(event) => setFilters((current) => ({ ...current, read: event.target.value as CommunicationFilters["read"] }))}><option value="">All read states</option><option value="UNREAD">Unread</option><option value="READ">Read</option></select></label>
           <button className="ghostButton" type="button" onClick={() => setFilters(emptyFilters)}>Clear filters</button>
         </div>
-        {communications.length ? <div className="stack communicationList">{communications.map((item) => <article className={`panel communicationCard${item.is_read ? "" : " unreadCommunication"}`} key={item.id}><div className="sectionHeaderRow"><div><div className="planningAreaList"><span className={item.priority === "URGENT" ? "badge warningBadge" : item.priority === "IMPORTANT" ? "badge successBadge" : "badge softBadge"}>{titleCase(item.priority)}</span><span className="badge softBadge">{titleCase(item.communication_type)}</span>{item.audience_mode === "SELECTED_MEMBERS" ? <span className="badge softBadge">Targeted</span> : null}{item.is_pinned ? <span className="badge successBadge">Pinned</span> : null}{item.is_archived ? <span className="badge warningBadge">Archived</span> : null}</div><h3>{item.title}</h3></div><span className="helperText">{formatDate(item.created_at)}</span></div><p className="communicationBody">{item.body}</p><p className="helperText">By {item.author_name || item.author_email || "Event team"} · Updated {formatDate(item.updated_at)}</p><div className="buttonRow tableActions">{!item.is_read ? <button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "read")}>Mark as read</button> : null}{manageable && !item.is_archived ? <><button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => startEdit(item)}>Edit</button><button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, item.is_pinned ? "unpin" : "pin")}>{item.is_pinned ? "Unpin" : "Pin"}</button><button className="ghostButton danger" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "archive")}>Archive</button></> : null}</div></article>)}</div> : <StateBlock title={filters.status === "ARCHIVED" ? "No archived communications" : "No communications yet"} message={filters.status === "ARCHIVED" ? "Archived updates will remain available here as part of the event history." : manageable ? "Publish the first update to keep your planning team aligned." : "Updates shared with your event role will appear here."} />}
+        {communications.length ? <div className="stack communicationList">{communications.map((item) => <article className={`panel communicationCard${item.is_read ? "" : " unreadCommunication"}`} key={item.id}><div className="sectionHeaderRow"><div><div className="planningAreaList"><span className={item.priority === "URGENT" ? "badge warningBadge" : item.priority === "IMPORTANT" ? "badge successBadge" : "badge softBadge"}>{titleCase(item.priority)}</span><span className="badge softBadge">{titleCase(item.communication_type)}</span>{item.audience_mode === "SELECTED_MEMBERS" ? <span className="badge softBadge">Targeted</span> : null}{item.is_pinned ? <span className="badge successBadge">Pinned</span> : null}{item.is_archived ? <span className="badge warningBadge">Archived</span> : null}{item.expires_at ? <span className="badge softBadge">Expires {formatDate(item.expires_at)}</span> : null}</div><h3>{item.title}</h3></div><span className="helperText">{formatDate(item.created_at)}</span></div><p className="communicationBody">{item.body}</p><p className="helperText">By {item.author_name || item.author_email || "Event team"} · Updated {formatDate(item.updated_at)}</p>{manageable && item.recipient_count > 0 ? <p className="helperText">Audience read status: {item.read_recipient_count} of {item.recipient_count} recipients have read this.</p> : null}<div className="buttonRow tableActions">{item.is_read ? <button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "unread")}>Mark as unread</button> : <button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "read")}>Mark as read</button>}{manageable ? <>{!item.is_archived ? <><button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => startEdit(item)}>Edit</button><button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, item.is_pinned ? "unpin" : "pin")}>{item.is_pinned ? "Unpin" : "Pin"}</button><button className="ghostButton danger" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "archive")}>Archive</button></> : <button className="ghostButton" type="button" disabled={Boolean(processing)} onClick={() => void mutate(item, "unarchive")}>Restore</button>}</> : null}</div></article>)}</div> : <StateBlock title={filters.status === "ARCHIVED" ? "No archived communications" : "No communications yet"} message={filters.status === "ARCHIVED" ? "Archived updates will remain available here as part of the event history." : manageable ? "Publish the first update to keep your planning team aligned." : "Updates shared with your event role will appear here."} />}
       </section>
     </>
   );

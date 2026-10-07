@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -43,6 +44,8 @@ def test_communications_create_list_summary_read_and_archive(client, db_session:
     communication = created.json()
     assert communication["is_read"] is False
     assert communication["author_name"] == "Owner"
+    assert communication["recipient_count"] == 3
+    assert communication["read_recipient_count"] == 0
 
     listed = client.get(f"/projects/{project.id}/communications", headers=auth_headers(member))
     assert listed.status_code == 200
@@ -67,6 +70,13 @@ def test_communications_create_list_summary_read_and_archive(client, db_session:
     assert owner_summary.json()["unread_count"] == 1
     assert db_session.query(ProjectCommunicationRead).filter_by(user_id=member.id).count() == 1
 
+    owner_detail = client.get(f"/projects/{project.id}/communications/{communication['id']}", headers=auth_headers(owner))
+    assert owner_detail.status_code == 200
+    assert owner_detail.json()["read_recipient_count"] == 1
+    marked_unread = client.delete(f"/projects/{project.id}/communications/{communication['id']}/read", headers=auth_headers(member))
+    assert marked_unread.status_code == 200
+    assert marked_unread.json()["is_read"] is False
+
     archived = client.post(f"/projects/{project.id}/communications/{communication['id']}/archive", headers=auth_headers(owner), json={})
     assert archived.status_code == 200
     assert archived.json()["is_archived"] is True
@@ -75,6 +85,9 @@ def test_communications_create_list_summary_read_and_archive(client, db_session:
     history = client.get(f"/projects/{project.id}/communications?status=ARCHIVED", headers=auth_headers(owner))
     assert history.status_code == 200
     assert history.json()[0]["id"] == communication["id"]
+    restored = client.post(f"/projects/{project.id}/communications/{communication['id']}/unarchive", headers=auth_headers(owner), json={})
+    assert restored.status_code == 200
+    assert restored.json()["is_archived"] is False
 
 
 def test_targeted_communications_validate_recipients_and_isolate_visibility(client, db_session: Session):
@@ -108,6 +121,8 @@ def test_targeted_communications_validate_recipients_and_isolate_visibility(clie
     non_recipient_list = client.get(f"/projects/{project.id}/communications", headers=auth_headers(non_recipient))
     outsider_list = client.get(f"/projects/{other_project.id}/communications", headers=auth_headers(outsider))
     assert len(recipient_list.json()) == 1
+    assert recipient_list.json()[0]["recipient_user_ids"] == []
+    assert recipient_list.json()[0]["recipient_read_states"] == []
     assert non_recipient_list.json() == []
     assert outsider_list.json() == []
 
@@ -144,3 +159,24 @@ def test_planning_notes_and_mutation_permissions(client, db_session: Session):
     pinned = client.post(f"/projects/{project.id}/communications/{note_id}/pin", headers=auth_headers(owner), json={})
     assert pinned.status_code == 200
     assert pinned.json()["is_pinned"] is True
+
+
+def test_expired_communications_leave_regular_members_view_but_remain_manager_history(client, db_session: Session):
+    owner = create_user(db_session, name="Owner")
+    member = create_user(db_session, name="Member")
+    project = create_project_with_member(db_session, owner, title="Expiry Wedding")
+    add_member(db_session, project.id, member)
+    db_session.commit()
+
+    expired = client.post(
+        f"/projects/{project.id}/communications",
+        headers=auth_headers(owner),
+        json=create_payload(expires_at=(datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()),
+    )
+    assert expired.status_code == 200
+    communication_id = expired.json()["id"]
+
+    assert client.get(f"/projects/{project.id}/communications", headers=auth_headers(member)).json() == []
+    manager_history = client.get(f"/projects/{project.id}/communications?status=ALL", headers=auth_headers(owner))
+    assert manager_history.status_code == 200
+    assert manager_history.json()[0]["id"] == communication_id

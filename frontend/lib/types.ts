@@ -205,6 +205,12 @@ export type TimelineAssignee = {
 export type CommunicationType = "ANNOUNCEMENT" | "UPDATE" | "REMINDER" | "PLANNING_NOTE";
 export type CommunicationPriority = "NORMAL" | "IMPORTANT" | "URGENT";
 export type CommunicationAudience = "ALL_MEMBERS" | "SELECTED_MEMBERS";
+export type CommunicationRecipientRead = {
+  user_id: string;
+  user_name?: string | null;
+  user_email?: string | null;
+  read_at?: string | null;
+};
 
 export type Communication = {
   id: string;
@@ -218,9 +224,13 @@ export type Communication = {
   priority: CommunicationPriority;
   audience_mode: CommunicationAudience;
   recipient_user_ids: string[];
+  recipient_read_states: CommunicationRecipientRead[];
+  recipient_count: number;
+  read_recipient_count: number;
   is_pinned: boolean;
   is_archived: boolean;
   published_at?: string | null;
+  expires_at?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
   archived_at?: string | null;

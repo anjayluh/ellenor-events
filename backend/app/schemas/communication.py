@@ -17,6 +17,7 @@ class CommunicationCreate(BaseModel):
     priority: str = "NORMAL"
     audience_mode: str = "ALL_MEMBERS"
     recipient_user_ids: list[UUID] = Field(default_factory=list, max_length=100)
+    expires_at: datetime | None = None
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -45,6 +46,7 @@ class CommunicationUpdate(BaseModel):
     body: str | None = Field(default=None, min_length=1, max_length=10000)
     communication_type: str | None = None
     priority: str | None = None
+    expires_at: datetime | None = None
 
     @model_validator(mode="after")
     def validate_values(self):
@@ -67,6 +69,13 @@ class CommunicationUpdate(BaseModel):
         return self
 
 
+class CommunicationRecipientRead(BaseModel):
+    user_id: UUID
+    user_name: str | None = None
+    user_email: str | None = None
+    read_at: datetime | None = None
+
+
 class CommunicationRead(BaseModel):
     id: UUID
     project_id: UUID
@@ -79,9 +88,13 @@ class CommunicationRead(BaseModel):
     priority: str
     audience_mode: str
     recipient_user_ids: list[UUID] = Field(default_factory=list)
+    recipient_read_states: list[CommunicationRecipientRead] = Field(default_factory=list)
+    recipient_count: int = 0
+    read_recipient_count: int = 0
     is_pinned: bool
     is_archived: bool
     published_at: datetime | None = None
+    expires_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
     archived_at: datetime | None = None

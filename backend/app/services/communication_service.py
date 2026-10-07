@@ -2,14 +2,14 @@ from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
 from app.core.permissions import COMMUNICATIONS_MANAGE_PERMISSION, PROJECT_ADMIN_ROLES, ProjectRole, has_permission
 from app.models.communication import ProjectCommunication, ProjectCommunicationRead, ProjectCommunicationRecipient
 from app.models.project_member import ProjectMember
 from app.models.user import User
-from app.schemas.communication import CommunicationCreate, CommunicationRead, CommunicationSummary, CommunicationUpdate
+from app.schemas.communication import COMMUNICATION_STATUSES, CommunicationCreate, CommunicationRead, CommunicationRecipientRead, CommunicationSummary, CommunicationUpdate
 
 PLANNING_ROLES = {ProjectRole.OWNER.value, ProjectRole.PARTNER.value, ProjectRole.COMMITTEE_CHAIR.value, ProjectRole.COMMITTEE_MEMBER.value}
 VISIBLE_ROLES = PLANNING_ROLES | {ProjectRole.FAMILY_VIEWER.value}
@@ -17,6 +17,10 @@ VISIBLE_ROLES = PLANNING_ROLES | {ProjectRole.FAMILY_VIEWER.value}
 
 def now_utc() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def is_expired(communication: ProjectCommunication, at: datetime | None = None) -> bool:
+    return communication.expires_at is not None and communication.expires_at <= (at or now_utc())
 
 
 def can_manage_communications(membership: ProjectMember) -> bool:
@@ -39,6 +43,10 @@ def is_visible_to_user(db: Session, communication: ProjectCommunication, user_id
     member = db.query(ProjectMember).filter(ProjectMember.project_id == communication.project_id, ProjectMember.user_id == user_id).first()
     if not member:
         return False
+    if communication.author_user_id == user_id or can_manage_communications(member):
+        return True
+    if is_expired(communication):
+        return False
     if communication.communication_type == "PLANNING_NOTE" and member.role not in PLANNING_ROLES:
         return False
     if communication.audience_mode == "ALL_MEMBERS":
@@ -60,6 +68,58 @@ def recipient_ids(db: Session, communication_id: UUID) -> list[UUID]:
     return [row[0] for row in db.query(ProjectCommunicationRecipient.recipient_user_id).filter(ProjectCommunicationRecipient.communication_id == communication_id).order_by(ProjectCommunicationRecipient.recipient_user_id).all()]
 
 
+def intended_recipient_ids(db: Session, communication: ProjectCommunication) -> list[UUID]:
+    if communication.audience_mode == "SELECTED_MEMBERS":
+        return recipient_ids(db, communication.id)
+    return sorted(eligible_recipient_ids(db, communication.project_id, planning_only=communication.communication_type == "PLANNING_NOTE"))
+
+
+def recipient_read_states(db: Session, communication: ProjectCommunication) -> list[CommunicationRecipientRead]:
+    rows = (
+        db.query(ProjectCommunicationRecipient, User, ProjectCommunicationRead)
+        .join(User, User.id == ProjectCommunicationRecipient.recipient_user_id)
+        .outerjoin(
+            ProjectCommunicationRead,
+            and_(
+                ProjectCommunicationRead.communication_id == ProjectCommunicationRecipient.communication_id,
+                ProjectCommunicationRead.user_id == ProjectCommunicationRecipient.recipient_user_id,
+            ),
+        )
+        .filter(ProjectCommunicationRecipient.communication_id == communication.id)
+        .all()
+    )
+    if communication.audience_mode == "ALL_MEMBERS":
+        known = {row[0].recipient_user_id for row in rows}
+        rows = list(rows)
+        for user_id in intended_recipient_ids(db, communication):
+            if user_id in known:
+                continue
+            user = db.query(User).filter(User.id == user_id).first()
+            read_state = db.query(ProjectCommunicationRead).filter(
+                ProjectCommunicationRead.communication_id == communication.id,
+                ProjectCommunicationRead.user_id == user_id,
+            ).first()
+            if user:
+                rows.append((None, user, read_state))
+    return [
+        CommunicationRecipientRead(
+            user_id=user.id,
+            user_name=user.name,
+            user_email=user.email,
+            read_at=read_state.read_at if read_state else None,
+        )
+        for _, user, read_state in rows
+    ]
+
+
+def can_view_recipient_summary(db: Session, communication: ProjectCommunication, user_id: UUID) -> bool:
+    membership = db.query(ProjectMember).filter(
+        ProjectMember.project_id == communication.project_id,
+        ProjectMember.user_id == user_id,
+    ).first()
+    return bool(membership and (communication.author_user_id == user_id or can_manage_communications(membership)))
+
+
 def read_ids(db: Session, communication_ids: list[UUID], user_id: UUID) -> set[UUID]:
     if not communication_ids:
         return set()
@@ -68,6 +128,8 @@ def read_ids(db: Session, communication_ids: list[UUID], user_id: UUID) -> set[U
 
 def serialize_communication(db: Session, communication: ProjectCommunication, user_id: UUID) -> CommunicationRead:
     author = db.query(User).filter(User.id == communication.author_user_id).first()
+    show_recipient_summary = can_view_recipient_summary(db, communication, user_id)
+    read_states = recipient_read_states(db, communication) if show_recipient_summary else []
     return CommunicationRead(
         id=communication.id,
         project_id=communication.project_id,
@@ -79,10 +141,14 @@ def serialize_communication(db: Session, communication: ProjectCommunication, us
         communication_type=communication.communication_type,
         priority=communication.priority,
         audience_mode=communication.audience_mode,
-        recipient_user_ids=recipient_ids(db, communication.id),
+        recipient_user_ids=[state.user_id for state in read_states],
+        recipient_read_states=read_states,
+        recipient_count=len(read_states),
+        read_recipient_count=sum(1 for state in read_states if state.read_at is not None),
         is_pinned=communication.is_pinned,
         is_archived=communication.is_archived,
         published_at=communication.published_at,
+        expires_at=communication.expires_at,
         created_at=communication.created_at,
         updated_at=communication.updated_at,
         archived_at=communication.archived_at,
@@ -100,12 +166,21 @@ def list_visible_communications(
     priority: str | None = None,
     author_user_id: UUID | None = None,
     status_filter: str = "ACTIVE",
+    read_status: str | None = None,
     limit: int = 100,
     offset: int = 0,
 ) -> list[ProjectCommunication]:
+    normalized_status = status_filter.upper()
+    if normalized_status not in COMMUNICATION_STATUSES:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported communication status")
+    normalized_read_status = read_status.upper() if read_status else None
+    if normalized_read_status not in {None, "READ", "UNREAD"}:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported read status")
     query = db.query(ProjectCommunication).filter(ProjectCommunication.project_id == project_id)
-    if status_filter.upper() != "ALL":
-        query = query.filter(ProjectCommunication.is_archived == (status_filter.upper() == "ARCHIVED"))
+    if normalized_status != "ALL":
+        query = query.filter(ProjectCommunication.is_archived == (normalized_status == "ARCHIVED"))
+    if normalized_status == "ACTIVE":
+        query = query.filter(or_(ProjectCommunication.expires_at.is_(None), ProjectCommunication.expires_at > now_utc()))
     if communication_type:
         query = query.filter(ProjectCommunication.communication_type == communication_type.upper())
     if priority:
@@ -117,8 +192,18 @@ def list_visible_communications(
         query = query.filter(or_(ProjectCommunication.title.ilike(pattern), ProjectCommunication.body.ilike(pattern)))
     rows = query.order_by(ProjectCommunication.is_pinned.desc(), ProjectCommunication.created_at.desc()).all()
     visible = [row for row in rows if is_visible_to_user(db, row, user_id)]
+    if normalized_read_status:
+        read = read_ids(db, [row.id for row in visible], user_id)
+        visible = [row for row in visible if (row.id in read) == (normalized_read_status == "READ")]
     priority_order = {"URGENT": 0, "IMPORTANT": 1, "NORMAL": 2}
-    visible.sort(key=lambda row: (not row.is_pinned, priority_order.get(row.priority, 3)))
+    visible.sort(
+        key=lambda row: (
+            row.is_pinned,
+            -priority_order.get(row.priority, 3),
+            row.created_at.timestamp() if row.created_at else float("-inf"),
+        ),
+        reverse=True,
+    )
     return visible[max(offset, 0): max(offset, 0) + min(max(limit, 1), 250)]
 
 
@@ -142,6 +227,7 @@ def create_communication(db: Session, project_id: UUID, author_user_id: UUID, pa
         communication_type=payload.communication_type,
         priority=payload.priority,
         audience_mode=payload.audience_mode,
+        expires_at=payload.expires_at,
     )
     db.add(communication)
     db.flush()
@@ -157,7 +243,7 @@ def update_communication(db: Session, communication: ProjectCommunication, paylo
     if communication.is_archived:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Archived communications cannot be edited")
     for field, value in payload.model_dump(exclude_unset=True).items():
-        if value is not None:
+        if field == "expires_at" or value is not None:
             setattr(communication, field, value)
     communication.updated_at = now_utc()
     db.flush()
@@ -181,6 +267,14 @@ def archive_communication(communication: ProjectCommunication) -> ProjectCommuni
     return communication
 
 
+def unarchive_communication(communication: ProjectCommunication) -> ProjectCommunication:
+    if communication.is_archived:
+        communication.is_archived = False
+        communication.archived_at = None
+        communication.updated_at = now_utc()
+    return communication
+
+
 def mark_communication_read(db: Session, communication: ProjectCommunication, user_id: UUID) -> ProjectCommunicationRead:
     read_state = db.query(ProjectCommunicationRead).filter(ProjectCommunicationRead.communication_id == communication.id, ProjectCommunicationRead.user_id == user_id).first()
     if read_state:
@@ -190,6 +284,15 @@ def mark_communication_read(db: Session, communication: ProjectCommunication, us
     db.add(read_state)
     db.flush()
     return read_state
+
+
+def mark_communication_unread(db: Session, communication: ProjectCommunication, user_id: UUID) -> None:
+    read_state = db.query(ProjectCommunicationRead).filter(
+        ProjectCommunicationRead.communication_id == communication.id,
+        ProjectCommunicationRead.user_id == user_id,
+    ).first()
+    if read_state:
+        db.delete(read_state)
 
 
 def communication_summary(db: Session, project_id: UUID, user_id: UUID) -> CommunicationSummary:
