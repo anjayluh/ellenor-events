@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     flutterwave_base_url: str = "https://api.flutterwave.com/v3"
     billing_checkout_redirect_url: str | None = None
     billing_grace_period_days: int = 7
+    document_storage_bucket: str = "event-documents"
+    document_max_file_size_bytes: int = 10485760
+    document_signed_url_expire_seconds: int = 300
 
     model_config = SettingsConfigDict(
         env_file=("backend/.env", ".env", "backend/.env.local", ".env.local", "../.env.local"),

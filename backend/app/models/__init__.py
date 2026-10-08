@@ -4,6 +4,7 @@ from app.models.billing import BillingCustomer, CustomerSubscription, MarketingA
 from app.models.budget import Budget, BudgetLineItem, BudgetProposal, Contribution, ProjectBudgetCategory, ProjectBudgetItem
 from app.models.catalog import EntitlementDefinition, PackageEntitlementGrant, PackagePlan, PackagePrice
 from app.models.customer_account import AccountEntitlement, CustomerAccount, CustomerAccountMember
+from app.models.document import ProjectDocument
 from app.models.communication import ProjectCommunication, ProjectCommunicationRead, ProjectCommunicationRecipient
 from app.models.guest_invite import GuestInvite
 from app.models.invite import Invite
@@ -35,6 +36,7 @@ __all__ = [
     "EntitlementDefinition",
     "CustomerAccount",
     "CustomerAccountMember",
+    "ProjectDocument",
     "ProjectCommunication",
     "ProjectCommunicationRead",
     "ProjectCommunicationRecipient",

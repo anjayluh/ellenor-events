@@ -1214,3 +1214,34 @@ create policy project_communication_reads_select_own on project_communication_re
 create policy project_communication_reads_insert_own on project_communication_reads for insert with check (user_id = auth.uid() and public.can_view_project_communication(communication_id));
 create policy project_communication_reads_update_own on project_communication_reads for update using (user_id = auth.uid() and public.can_view_project_communication(communication_id)) with check (user_id = auth.uid() and public.can_view_project_communication(communication_id));
 create policy project_communication_reads_delete_own on project_communication_reads for delete using (user_id = auth.uid() and public.can_view_project_communication(communication_id));
+
+create table project_documents (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
+  uploaded_by_user_id uuid not null references users(id),
+  original_filename text not null,
+  storage_path text not null unique,
+  mime_type text not null,
+  file_size_bytes bigint not null,
+  category text not null default 'OTHER',
+  description text,
+  is_archived boolean not null default false,
+  archived_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz,
+  constraint ck_project_documents_filename check (length(trim(original_filename)) between 1 and 255),
+  constraint ck_project_documents_storage_path check (storage_path like 'projects/%/documents/%/%'),
+  constraint ck_project_documents_size check (file_size_bytes > 0 and file_size_bytes <= 10485760),
+  constraint ck_project_documents_category check (category in ('INVITATION','CONTRACT','QUOTATION','INVOICE','RECEIPT','VENUE','PLANNING','FAMILY','COMMITTEE','OTHER'))
+);
+
+create index idx_project_documents_project_active on project_documents(project_id, is_archived, created_at desc);
+create index idx_project_documents_project_category on project_documents(project_id, category);
+create index idx_project_documents_project_uploader on project_documents(project_id, uploaded_by_user_id);
+create index idx_project_documents_filename on project_documents(project_id, lower(original_filename));
+
+alter table project_documents enable row level security;
+create policy project_documents_select_members on project_documents for select using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER','FAMILY_VIEWER']));
+create policy project_documents_insert_managers on project_documents for insert with check ((public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage')) and uploaded_by_user_id = auth.uid());
+create policy project_documents_update_managers on project_documents for update using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage'));
+create policy project_documents_delete_managers on project_documents for delete using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage'));

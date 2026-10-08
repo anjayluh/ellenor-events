@@ -54,7 +54,9 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `SUPABASE_URL` | Production, Preview | Supabase project URL used for Auth and JWT verification. |
 | `SUPABASE_ANON_KEY` | Production, Preview | Supabase public anon key used by backend auth flows. |
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production, Preview | Optional public aliases. The backend accepts these as fallbacks only when `SUPABASE_URL` / `SUPABASE_ANON_KEY` are not configured. |
-| `SUPABASE_SERVICE_ROLE_KEY` | Production, Preview | Server-only Supabase service key for admin auth operations such as password reset confirmation. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production, Preview | Server-only Supabase service key for backend-only operations such as password reset confirmation and private event-document storage. Never expose it to the browser. |
+| `DOCUMENT_STORAGE_BUCKET` | Production, Preview | Private Supabase Storage bucket for event documents. Defaults to `event-documents`. |
+| `DOCUMENT_MAX_FILE_SIZE_BYTES` | Production, Preview | Maximum private event-document upload size. Defaults to `10485760` (10 MB). |
 | `SUPABASE_JWT_SECRET` | Production, Preview | Supabase JWT secret for HS256 token verification fallback. |
 | `JWT_SECRET` | Production, Preview | Local signing fallback; use the Supabase JWT secret or another strong secret. |
 | `JWT_ALGORITHM` | Production, Preview | Use `HS256` unless the auth strategy changes. |
