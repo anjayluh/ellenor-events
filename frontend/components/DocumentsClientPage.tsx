@@ -22,6 +22,7 @@ const categories: Array<{ value: DocumentCategory; label: string }> = [
 ];
 
 const managerRoles: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
+type MemberOption = { user_id: string; user_name?: string | null; user_email?: string | null };
 
 function titleCase(value: string) {
   return value.replaceAll("_", " ").replace(/\b\w/g, (character) => character.toUpperCase());
@@ -44,6 +45,8 @@ export function DocumentsClientPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
+  const [uploaderId, setUploaderId] = useState("");
+  const [members, setMembers] = useState<MemberOption[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadCategory, setUploadCategory] = useState<DocumentCategory>("OTHER");
   const [description, setDescription] = useState("");
@@ -59,13 +62,16 @@ export function DocumentsClientPage() {
     const params = new URLSearchParams({ include_archived: String(includeArchived) });
     if (search.trim()) params.set("search", search.trim());
     if (category) params.set("category", category);
-    const [nextDocuments, nextSummary] = await Promise.all([
+    if (uploaderId) params.set("uploader_id", uploaderId);
+    const [nextDocuments, nextSummary, nextMembers] = await Promise.all([
       apiGet<ProjectDocument[]>(`/projects/${projectId}/documents?${params.toString()}`),
-      apiGet<DocumentSummary>(`/projects/${projectId}/documents/summary`)
+      apiGet<DocumentSummary>(`/projects/${projectId}/documents/summary`),
+      apiGet<MemberOption[]>(`/projects/${projectId}/members`)
     ]);
     setDocuments(nextDocuments);
     setSummary(nextSummary);
-  }, [category, includeArchived, search]);
+    setMembers(nextMembers);
+  }, [category, includeArchived, search, uploaderId]);
 
   useEffect(() => {
     if (!project) return;
@@ -74,6 +80,11 @@ export function DocumentsClientPage() {
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     setSelectedFile(event.target.files?.[0] ?? null);
+  }
+
+  function uploaderLabel(userId: string) {
+    const member = members.find((item) => item.user_id === userId);
+    return member?.user_name || member?.user_email || "Event team member";
   }
 
   async function uploadDocument(event: FormEvent<HTMLFormElement>) {
@@ -167,7 +178,7 @@ export function DocumentsClientPage() {
 
       {canManage ? <section className="panel actionPanel" id="upload-document"><div className="sectionHeaderRow"><div><p className="eyebrow">Secure upload</p><h2>Add an event file</h2></div><span className="helperText">PDF, Word, Excel, CSV, JPG, PNG, or WEBP · up to 10 MB</span></div><form className="stack" onSubmit={uploadDocument}><div className="formGrid"><label className="formField">File<input id="document-file" type="file" accept="application/pdf,.doc,.docx,.xls,.xlsx,.csv,image/jpeg,image/png,image/webp" onChange={handleFileChange} required /></label><label className="formField">Category<select value={uploadCategory} onChange={(event) => setUploadCategory(event.target.value as DocumentCategory)}>{categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label></div><label className="formField">Description <textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} placeholder="Optional context for the planning team." /></label><button className="primaryButton" type="submit" disabled={!selectedFile || Boolean(processing)}>{processing === "upload" ? "Uploading..." : "Add file"}</button>{processing === "upload" ? <progress className="uploadProgress" aria-label="Uploading document" /> : null}</form></section> : null}
 
-      <section className="panel resourceCard"><div className="sectionHeaderRow"><div><p className="eyebrow">Event repository</p><h2>Your files</h2></div><div className="filterRow"><input aria-label="Search files" placeholder="Search files" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All categories</option>{categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><label className="checkboxField"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Show archived</label></div></div>{error ? <p className="errorText">{error}</p> : null}{notice ? <p className="successText">{notice}</p> : null}{documents.length ? <div className="documentList">{documents.map((document) => <article className={document.is_archived ? "documentCard archived" : "documentCard"} key={document.id}><div className="documentIcon">{document.mime_type.startsWith("image/") ? "IMG" : document.mime_type === "application/pdf" ? "PDF" : "FILE"}</div><div className="documentCardBody"><div className="sectionHeaderRow"><div><h3>{document.original_filename}</h3><div className="planningAreaList"><span className="badge softBadge">{titleCase(document.category)}</span>{document.is_archived ? <span className="badge">Archived</span> : null}</div></div><span className="helperText">{formatSize(document.file_size_bytes)}</span></div><p>{document.description || "No description added."}</p><small>Added {document.created_at ? formatDate(document.created_at) : "recently"} · Uploaded by event team</small><div className="buttonRow">{isPreviewable(document) ? <button className="ghostButton" type="button" onClick={() => void openDocument(document)} disabled={Boolean(processing)}>Open securely</button> : <button className="ghostButton" type="button" onClick={() => void openDocument(document)} disabled={Boolean(processing)}>Download securely</button>}{canManage && !document.is_archived ? <button className="ghostButton" type="button" onClick={() => { setEditingId(document.id); setEditingDescription(document.description ?? ""); }}>Edit details</button> : null}{canManage && !document.is_archived ? <button className="ghostButton danger" type="button" onClick={() => void archiveDocument(document)}>Archive</button> : null}</div>{editingId === document.id ? <div className="inlineEdit"><textarea value={editingDescription} onChange={(event) => setEditingDescription(event.target.value)} maxLength={500} /><div className="buttonRow"><button className="primaryButton" type="button" onClick={() => void saveDescription(document)}>Save</button><button className="ghostButton" type="button" onClick={() => setEditingId(null)}>Cancel</button></div></div> : null}</div></article>)}</div> : <div className="emptyState"><p className="eyebrow">A calm place for the details</p><h3>{includeArchived ? "No archived files" : "No files added yet"}</h3><p>{includeArchived ? "Archived event files will remain available here for your planning history." : "Keep invitation artwork, agreements, quotes, receipts, and planning notes together."}</p>{canManage ? <a className="primaryButton" href="#upload-document">Add your first file</a> : null}</div>}</section>
+      <section className="panel resourceCard"><div className="sectionHeaderRow"><div><p className="eyebrow">Event repository</p><h2>Your files</h2></div><div className="filterRow"><input aria-label="Search files" placeholder="Search files" value={search} onChange={(event) => setSearch(event.target.value)} /><select aria-label="Filter by category" value={category} onChange={(event) => setCategory(event.target.value)}><option value="">All categories</option>{categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select><select aria-label="Filter by uploader" value={uploaderId} onChange={(event) => setUploaderId(event.target.value)}><option value="">All uploaders</option>{members.map((member) => <option key={member.user_id} value={member.user_id}>{uploaderLabel(member.user_id)}</option>)}</select><label className="checkboxField"><input type="checkbox" checked={includeArchived} onChange={(event) => setIncludeArchived(event.target.checked)} /> Show archived</label></div></div>{error ? <p className="errorText">{error}</p> : null}{notice ? <p className="successText">{notice}</p> : null}{documents.length ? <div className="documentList">{documents.map((document) => <article className={document.is_archived ? "documentCard archived" : "documentCard"} key={document.id}><div className="documentIcon">{document.mime_type.startsWith("image/") ? "IMG" : document.mime_type === "application/pdf" ? "PDF" : "FILE"}</div><div className="documentCardBody"><div className="sectionHeaderRow"><div><h3>{document.original_filename}</h3><div className="planningAreaList"><span className="badge softBadge">{titleCase(document.category)}</span>{document.is_archived ? <span className="badge">Archived</span> : null}</div></div><span className="helperText">{formatSize(document.file_size_bytes)}</span></div><p>{document.description || "No description added."}</p><small>Added {document.created_at ? formatDate(document.created_at) : "recently"} · Uploaded by {uploaderLabel(document.uploaded_by_user_id)}</small><div className="buttonRow">{isPreviewable(document) ? <button className="ghostButton" type="button" onClick={() => void openDocument(document)} disabled={Boolean(processing)}>Open securely</button> : <button className="ghostButton" type="button" onClick={() => void openDocument(document)} disabled={Boolean(processing)}>Download securely</button>}{canManage && !document.is_archived ? <button className="ghostButton" type="button" onClick={() => { setEditingId(document.id); setEditingDescription(document.description ?? ""); }}>Edit details</button> : null}{canManage && !document.is_archived ? <button className="ghostButton danger" type="button" onClick={() => void archiveDocument(document)}>Archive</button> : null}</div>{editingId === document.id ? <div className="inlineEdit"><textarea value={editingDescription} onChange={(event) => setEditingDescription(event.target.value)} maxLength={500} /><div className="buttonRow"><button className="primaryButton" type="button" onClick={() => void saveDescription(document)}>Save</button><button className="ghostButton" type="button" onClick={() => setEditingId(null)}>Cancel</button></div></div> : null}</div></article>)}</div> : <div className="emptyState"><p className="eyebrow">A calm place for the details</p><h3>{includeArchived ? "No archived files" : "No files added yet"}</h3><p>{includeArchived ? "Archived event files will remain available here for your planning history." : "Keep invitation artwork, agreements, quotes, receipts, and planning notes together."}</p>{canManage ? <a className="primaryButton" href="#upload-document">Add your first file</a> : null}</div>}</section>
     </>
   );
 }
