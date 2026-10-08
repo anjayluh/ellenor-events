@@ -28,6 +28,7 @@ from app.models import (
     CustomerAccountMember,
     CustomerSubscription,
     Contribution,
+    ProjectDocument,
     ProjectCommunication,
     ProjectCommunicationRead,
     ProjectCommunicationRecipient,
