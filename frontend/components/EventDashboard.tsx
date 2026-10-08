@@ -6,7 +6,7 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
 import { formatDate } from "../lib/customer-display";
-import type { BudgetItemSummary, CommunicationSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
+import type { BudgetItemSummary, CommunicationSummary, DocumentSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
 
 const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
@@ -26,6 +26,7 @@ type EventOverviewData = {
   taskSummary: TaskSummary | null;
   timelineSummary: TimelineSummary | null;
   communicationSummary: CommunicationSummary | null;
+  documentSummary: DocumentSummary | null;
   meetings: Meeting[];
   members: Member[];
   tasks: Task[];
@@ -39,6 +40,7 @@ const emptyOverviewData: EventOverviewData = {
   taskSummary: null,
   timelineSummary: null,
   communicationSummary: null,
+  documentSummary: null,
   meetings: [],
   members: [],
   tasks: [],
@@ -61,6 +63,12 @@ function formatMoney(value?: number | string | null) {
   if (value == null) return "Not set";
   const parsed = Number(value);
   return new Intl.NumberFormat("en-UG", { style: "currency", currency: "UGX", maximumFractionDigits: 0 }).format(Number.isFinite(parsed) ? parsed : 0);
+}
+
+function formatSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function isOverdue(task: Task) {
@@ -90,6 +98,7 @@ export function EventDashboard({ project }: { project: Project }) {
   const canManageGuests = hasPermission(role, permissions, EVENT_ADMIN_ROLES, "guest_invites.manage");
   const canManageVendors = hasPermission(role, permissions, EVENT_ADMIN_ROLES, "vendors.manage");
   const canEditBudget = hasPermission(role, permissions, ["OWNER", "PARTNER"], "budget.edit");
+  const canManageDocuments = hasPermission(role, permissions, EVENT_ADMIN_ROLES, "documents.manage");
   const titleError = title && title.trim().length < 4 ? "Event title must be at least 4 characters." : "";
   const eventChanged = title.trim() !== currentProject.title || (eventDate || null) !== currentProject.event_date;
   const canSave = canEditEvent && eventChanged && title.trim().length >= 4 && !titleError;
@@ -98,20 +107,21 @@ export function EventDashboard({ project }: { project: Project }) {
     let isMounted = true;
     const projectId = currentProject.id;
     async function loadOverview() {
-      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, meetings, members, tasks, vendors] = await Promise.all([
+      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetItemSummary | null>(`/projects/${projectId}/budget/summary`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
         safeGet<TaskSummary | null>(`/projects/${projectId}/tasks/summary`, null),
         safeGet<TimelineSummary | null>(`/projects/${projectId}/timeline/summary`, null),
         safeGet<CommunicationSummary | null>(`/projects/${projectId}/communications/summary`, null),
+        safeGet<DocumentSummary | null>(`/projects/${projectId}/documents/summary`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
         safeGet<Task[]>(`/projects/${projectId}/tasks`, []),
         safeGet<Vendor[]>(`/projects/${projectId}/vendors`, [])
       ]);
       if (isMounted) {
-        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, meetings, members, tasks, vendors });
+        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, members, tasks, vendors });
       }
     }
     void loadOverview();
@@ -139,6 +149,7 @@ export function EventDashboard({ project }: { project: Project }) {
     { label: "Meetings", hasData: overviewData.meetings.length > 0 },
     { label: "Team", hasData: overviewData.members.length > 0 || Boolean(overviewData.inviteAnalytics?.pending || overviewData.inviteAnalytics?.accepted) }
     ,{ label: "Communications", hasData: Boolean(overviewData.communicationSummary?.total_active) }
+    ,{ label: "Documents", hasData: Boolean(overviewData.documentSummary?.active) }
   ];
   const activePlanningAreas = planningAreas.filter((area) => area.hasData);
   const attentionItems = [
@@ -153,7 +164,8 @@ export function EventDashboard({ project }: { project: Project }) {
     ...(overviewData.communicationSummary?.unread_count ? [{ title: `${overviewData.communicationSummary.unread_count} unread communication${overviewData.communicationSummary.unread_count === 1 ? "" : "s"}`, detail: "Review the latest event updates.", href: `/communications?project=${currentProject.id}` }] : []),
     ...(vendorsNeedingDecision.length ? [{ title: `${vendorsNeedingDecision.length} vendor decision${vendorsNeedingDecision.length === 1 ? "" : "s"} open`, detail: "Review providers not yet confirmed.", href: `/vendors?project=${currentProject.id}` }] : []),
     ...(vendorOutstandingBalance > 0 ? [{ title: `${formatMoney(vendorOutstandingBalance)} outstanding with vendors`, detail: "Review vendor deposits and balances.", href: `/vendors?project=${currentProject.id}` }] : []),
-    ...(budgetBalance && budgetBalance > 0 ? [{ title: `${formatMoney(budgetBalance)} still awaiting payment`, detail: "Review budget deposits and balances.", href: `/budget?project=${currentProject.id}` }] : [])
+            ...(budgetBalance && budgetBalance > 0 ? [{ title: `${formatMoney(budgetBalance)} still awaiting payment`, detail: "Review budget deposits and balances.", href: `/budget?project=${currentProject.id}` }] : [])
+    ,...(overviewData.documentSummary?.active ? [{ title: `${overviewData.documentSummary.active} event file${overviewData.documentSummary.active === 1 ? "" : "s"} available`, detail: "Keep the latest planning documents together.", href: `/documents?project=${currentProject.id}` }] : [])
   ].slice(0, 5);
 
   async function updateEvent(event: FormEvent<HTMLFormElement>) {
@@ -287,6 +299,7 @@ export function EventDashboard({ project }: { project: Project }) {
             <Link className="ghostButton" data-icon="↗" href={`/timeline?project=${currentProject.id}`}>View Timeline</Link>
             <Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Communications</Link>
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
+            <Link className="ghostButton" data-icon="↗" href={`/documents?project=${currentProject.id}`}>{canManageDocuments ? "Manage Documents" : "View Documents"}</Link>
           </div>
         </article>
 
@@ -311,6 +324,11 @@ export function EventDashboard({ project }: { project: Project }) {
       <section className="panel resourceCard communicationDashboardCard">
         <div className="sectionHeaderRow"><div><p className="eyebrow">Communications</p><h2>Recent event updates</h2></div><Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Open communications</Link></div>
         {overviewData.communicationSummary?.recent.length ? <div className="attentionList">{overviewData.communicationSummary.recent.slice(0, 3).map((item) => <Link className="attentionItem" href={`/communications?project=${currentProject.id}`} key={item.id}><strong>{item.title}</strong><span>{item.is_read ? "Read" : "Unread"} · {item.priority.toLowerCase()} · {formatDate(item.created_at)}</span></Link>)}</div> : <p>No event updates yet. Communications shared with this event will appear here.</p>}
+      </section>
+
+      <section className="panel resourceCard communicationDashboardCard">
+        <div className="sectionHeaderRow"><div><p className="eyebrow">Documents &amp; Files</p><h2>Keep the important details close</h2></div><Link className="ghostButton" data-icon="↗" href={`/documents?project=${currentProject.id}`}>{canManageDocuments ? "Manage documents" : "View documents"}</Link></div>
+        {overviewData.documentSummary ? <p>{overviewData.documentSummary.active} active file{overviewData.documentSummary.active === 1 ? "" : "s"} · {overviewData.documentSummary.archived} archived · {formatSize(overviewData.documentSummary.total_size_bytes)} stored privately.</p> : <p>Event agreements, invitations, receipts, and planning files will appear here.</p>}
       </section>
 
       <section className="grid twoColumns">

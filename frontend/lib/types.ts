@@ -245,6 +245,31 @@ export type CommunicationSummary = {
   recent: Communication[];
 };
 
+export type DocumentCategory = "INVITATION" | "CONTRACT" | "QUOTATION" | "INVOICE" | "RECEIPT" | "VENUE" | "PLANNING" | "FAMILY" | "COMMITTEE" | "OTHER";
+
+export type ProjectDocument = {
+  id: string;
+  project_id: string;
+  uploaded_by_user_id: string;
+  original_filename: string;
+  mime_type: string;
+  file_size_bytes: number;
+  category: DocumentCategory;
+  description?: string | null;
+  is_archived: boolean;
+  archived_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type DocumentSummary = {
+  project_id: string;
+  total: number;
+  active: number;
+  archived: number;
+  total_size_bytes: number;
+};
+
 export type Contribution = {
   id: string;
   project_id: string;
@@ -277,7 +302,8 @@ export type EventPermission =
   | "guest_invites.manage"
   | "vendors.manage"
   | "meetings.manage"
-  | "tasks.manage";
+  | "tasks.manage"
+  | "documents.manage";
 
 export type CustomerAccount = {
   id: string;

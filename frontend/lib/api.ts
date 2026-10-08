@@ -105,3 +105,13 @@ export async function apiDelete<TResponse>(path: string, token?: string): Promis
   });
   return parseResponse<TResponse>(response, Boolean(accessToken));
 }
+
+export async function apiUpload<TResponse>(path: string, formData: FormData, token?: string): Promise<TResponse> {
+  const accessToken = resolveAccessToken(path, token);
+  const response = await fetch(apiUrl(path), {
+    method: "POST",
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    body: formData
+  });
+  return parseResponse<TResponse>(response, Boolean(accessToken));
+}

@@ -218,3 +218,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .timelineContent h3 { margin: 0; }
 .warningBadge { background: rgba(214, 169, 59, 0.16); color: #7a5310; }
 @media (max-width: 720px) { .timelineItem { grid-template-columns: 1fr; } .timelineItem::before { display: none; } .timelineTime { align-items: center; display: flex; justify-content: space-between; } }
+
+.documentList { display: grid; gap: 14px; margin-top: 18px; }
+.documentCard { align-items: start; background: rgba(255, 255, 255, 0.72); border: 1px solid var(--border); border-radius: 22px; display: grid; gap: 14px; grid-template-columns: 64px minmax(0, 1fr); padding: 16px; }
+.documentCard.archived { opacity: 0.75; }
+.documentIcon { align-items: center; background: var(--purple); border-radius: 18px; color: white; display: flex; font-size: 0.72rem; font-weight: 900; height: 56px; justify-content: center; letter-spacing: 0.06em; }
+.documentCardBody { min-width: 0; }
+.documentCardBody h3 { margin: 0; overflow-wrap: anywhere; }
+.documentCardBody p { color: var(--muted); margin: 8px 0; }
+.documentCardBody small { color: var(--muted); display: block; }
+.filterRow { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.filterRow input, .filterRow select { min-width: 150px; }
+.checkboxField { align-items: center; display: inline-flex !important; flex-direction: row; gap: 7px !important; white-space: nowrap; }
+.checkboxField input { min-height: auto; }
+.uploadProgress { accent-color: var(--gold); width: 100%; }
+.inlineEdit { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+.inlineEdit textarea, .formField textarea { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--ink); min-height: 96px; padding: 13px 14px; resize: vertical; }
+.emptyState { border: 1px dashed var(--border); border-radius: 22px; margin-top: 18px; padding: 28px; text-align: center; }
+.emptyState h3 { margin: 4px 0 8px; }
+.emptyState p { color: var(--muted); }
+@media (max-width: 860px) { .sectionHeaderRow { align-items: stretch; flex-direction: column; } .filterRow { justify-content: stretch; } .filterRow input, .filterRow select { flex: 1 1 160px; min-width: 0; } }
+@media (max-width: 560px) { .documentCard { grid-template-columns: 1fr; } .documentIcon { height: 42px; width: 64px; } }
