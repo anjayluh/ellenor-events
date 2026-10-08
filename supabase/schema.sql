@@ -1245,3 +1245,76 @@ create policy project_documents_select_members on project_documents for select u
 create policy project_documents_insert_managers on project_documents for insert with check ((public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage')) and uploaded_by_user_id = auth.uid());
 create policy project_documents_update_managers on project_documents for update using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage'));
 create policy project_documents_delete_managers on project_documents for delete using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR']) or public.has_project_permission(project_id, 'documents.manage'));
+
+-- Event meetings collaboration extensions
+alter table meetings
+  add column category text not null default 'PLANNING',
+  add column description text,
+  add column location text,
+  add column meeting_link text,
+  add column start_at timestamptz,
+  add column end_at timestamptz,
+  add column timezone text,
+  add column completed_at timestamptz,
+  add column cancelled_at timestamptz,
+  add column updated_by_user_id uuid references users(id);
+alter table meetings add constraint uq_meetings_id_project unique (id, project_id);
+alter table project_documents add constraint uq_project_documents_id_project unique (id, project_id);
+alter table tasks add column meeting_id uuid;
+alter table tasks add constraint fk_tasks_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete set null;
+
+create table meeting_participants (
+  id uuid primary key default gen_random_uuid(),
+  meeting_id uuid not null,
+  project_id uuid not null references projects(id) on delete cascade,
+  user_id uuid not null,
+  attendance_status text not null default 'INVITED',
+  responded_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint uq_meeting_participant_user unique (meeting_id, user_id),
+  constraint fk_meeting_participant_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete cascade,
+  constraint fk_meeting_participant_project_member foreign key (project_id, user_id) references project_members(project_id, user_id) on delete cascade,
+  constraint ck_meeting_participant_status check (attendance_status in ('INVITED','ACCEPTED','DECLINED','TENTATIVE'))
+);
+create table meeting_agenda_items (
+  id uuid primary key default gen_random_uuid(), meeting_id uuid not null, project_id uuid not null references projects(id) on delete cascade,
+  title text not null, description text, sort_order integer not null default 0, owner_user_id uuid,
+  created_at timestamptz not null default now(), updated_at timestamptz,
+  constraint fk_meeting_agenda_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete cascade,
+  constraint fk_meeting_agenda_owner_member foreign key (project_id, owner_user_id) references project_members(project_id, user_id) on delete set null
+);
+create table meeting_decisions (
+  id uuid primary key default gen_random_uuid(), meeting_id uuid not null, project_id uuid not null references projects(id) on delete cascade,
+  decision_text text not null, context text, recorded_by_user_id uuid not null references users(id),
+  created_at timestamptz not null default now(), updated_at timestamptz,
+  constraint fk_meeting_decision_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete cascade
+);
+create table meeting_documents (
+  id uuid primary key default gen_random_uuid(), meeting_id uuid not null, project_id uuid not null references projects(id) on delete cascade,
+  document_id uuid not null, created_at timestamptz not null default now(),
+  constraint uq_meeting_document unique (meeting_id, document_id),
+  constraint fk_meeting_document_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete cascade,
+  constraint fk_meeting_document_project_document foreign key (document_id, project_id) references project_documents(id, project_id) on delete cascade
+);
+create index idx_meetings_project_start on meetings(project_id, start_at);
+create index idx_meeting_participants_project_meeting on meeting_participants(project_id, meeting_id);
+create index idx_meeting_agenda_project_meeting on meeting_agenda_items(project_id, meeting_id, sort_order);
+create index idx_meeting_decisions_project_meeting on meeting_decisions(project_id, meeting_id, created_at);
+create index idx_meeting_documents_project_meeting on meeting_documents(project_id, meeting_id);
+alter table meeting_participants enable row level security;
+alter table meeting_agenda_items enable row level security;
+alter table meeting_decisions enable row level security;
+alter table meeting_documents enable row level security;
+create policy meeting_participants_select_members on meeting_participants for select using (public.is_project_member(project_id));
+create policy meeting_participants_mutate_managers on meeting_participants for all using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage'));
+create policy meeting_agenda_select_members on meeting_agenda_items for select using (public.is_project_member(project_id));
+create policy meeting_agenda_mutate_managers on meeting_agenda_items for all using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage'));
+create policy meeting_decisions_select_members on meeting_decisions for select using (public.is_project_member(project_id));
+create policy meeting_decisions_mutate_managers on meeting_decisions for all using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage'));
+create policy meeting_documents_select_members on meeting_documents for select using (public.is_project_member(project_id));
+create policy meeting_documents_mutate_managers on meeting_documents for all using (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage')) with check (public.has_project_role(project_id, array['OWNER','PARTNER','COMMITTEE_CHAIR','COMMITTEE_MEMBER']) or public.has_project_permission(project_id, 'meetings.manage'));
+
+alter table tasks drop constraint fk_tasks_meeting_project;
+alter table tasks add constraint fk_tasks_meeting_project foreign key (meeting_id, project_id) references meetings(id, project_id) on delete restrict;
+alter table meeting_agenda_items drop constraint fk_meeting_agenda_owner_member;
+alter table meeting_agenda_items add constraint fk_meeting_agenda_owner_user foreign key (owner_user_id) references users(id) on delete set null;

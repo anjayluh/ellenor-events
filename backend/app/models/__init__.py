@@ -8,7 +8,7 @@ from app.models.document import ProjectDocument
 from app.models.communication import ProjectCommunication, ProjectCommunicationRead, ProjectCommunicationRecipient
 from app.models.guest_invite import GuestInvite
 from app.models.invite import Invite
-from app.models.meeting import Meeting, MeetingRsvp
+from app.models.meeting import Meeting, MeetingAgendaItem, MeetingDecision, MeetingDocument, MeetingParticipant, MeetingRsvp
 from app.models.notification import Notification, NotificationPreference
 from app.models.participant import Participant
 from app.models.project import Project
@@ -44,6 +44,10 @@ __all__ = [
     "GuestInvite",
     "Invite",
     "Meeting",
+    "MeetingAgendaItem",
+    "MeetingDecision",
+    "MeetingDocument",
+    "MeetingParticipant",
     "MeetingRsvp",
     "MarketingAccessToken",
     "MarketingAccessTokenRedemption",
