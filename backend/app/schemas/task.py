@@ -16,6 +16,7 @@ class TaskCreate(BaseModel):
     priority: str = "MEDIUM"
     category: str = "GENERAL"
     due_date: date | None = None
+    meeting_id: UUID | None = None
 
     @field_validator("status")
     @classmethod
@@ -52,6 +53,7 @@ class TaskUpdate(BaseModel):
     priority: str | None = None
     category: str | None = None
     due_date: date | None = None
+    meeting_id: UUID | None = None
 
     @field_validator("status")
     @classmethod
@@ -89,6 +91,7 @@ class TaskUpdate(BaseModel):
 class TaskRead(BaseModel):
     id: UUID
     project_id: UUID
+    meeting_id: UUID | None = None
     title: str
     description: str | None = None
     assigned_to: UUID | None = None

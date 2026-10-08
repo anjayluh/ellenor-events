@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.permissions import PROJECT_ADMIN_ROLES, TASKS_MANAGE_PERMISSION, ProjectRole, has_permission
 from app.models.project_member import ProjectMember
 from app.models.task import Task
+from app.models.meeting import Meeting
 from app.models.user import User
 from app.schemas.task import TaskAssigneeRead, TaskCreate, TaskRead, TaskSummary, TaskUpdate
 
@@ -75,6 +76,14 @@ def validate_assignee(db: Session, project_id: UUID, assignee_user_id: UUID | No
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Task assignee must be an event member")
 
 
+def validate_meeting(db: Session, project_id: UUID, meeting_id: UUID | None) -> None:
+    if meeting_id is None:
+        return
+    exists = db.query(Meeting.id).filter(Meeting.id == meeting_id, Meeting.project_id == project_id).first()
+    if not exists:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Task meeting must belong to this event")
+
+
 def get_task_or_404(db: Session, project_id: UUID, task_id: UUID) -> Task:
     task = db.query(Task).filter(Task.project_id == project_id, Task.id == task_id).first()
     if not task:
@@ -94,6 +103,7 @@ def serialize_task(task: Task, users: dict[UUID, User] | None = None) -> TaskRea
     return TaskRead(
         id=task.id,
         project_id=task.project_id,
+        meeting_id=task.meeting_id,
         title=task.title,
         description=task.description,
         assigned_to=task.assigned_to,
@@ -155,6 +165,7 @@ def list_project_tasks(
 
 def create_project_task(db: Session, project_id: UUID, payload: TaskCreate, *, created_by_user_id: UUID) -> Task:
     validate_assignee(db, project_id, payload.assigned_to)
+    validate_meeting(db, project_id, payload.meeting_id)
     task = Task(
         project_id=project_id,
         title=payload.title.strip(),
@@ -165,6 +176,7 @@ def create_project_task(db: Session, project_id: UUID, payload: TaskCreate, *, c
         priority=payload.priority,
         category=payload.category,
         due_date=payload.due_date,
+        meeting_id=payload.meeting_id,
         completed_at=now_utc() if payload.status == "DONE" else None,
     )
     db.add(task)
@@ -179,6 +191,8 @@ def update_project_task(db: Session, task: Task, payload: TaskUpdate, membership
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient event permissions")
     if "assigned_to" in updates:
         validate_assignee(db, task.project_id, updates["assigned_to"])
+    if "meeting_id" in updates:
+        validate_meeting(db, task.project_id, updates["meeting_id"])
     for field in {"title", "description"}:
         if field in updates:
             updates[field] = clean_optional(updates[field]) if field == "description" else str(updates[field]).strip()
