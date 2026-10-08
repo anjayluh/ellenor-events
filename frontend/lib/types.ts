@@ -24,6 +24,95 @@ export type Project = {
   permissions?: string[];
 };
 
+export type MeetingParticipant = {
+  id: string;
+  meeting_id: string;
+  project_id: string;
+  user_id: string;
+  name?: string | null;
+  email?: string | null;
+  role?: ProjectRole | string | null;
+  attendance_status: "INVITED" | "ACCEPTED" | "DECLINED" | "TENTATIVE";
+  responded_at?: string | null;
+};
+
+export type MeetingAgendaItem = {
+  id: string;
+  meeting_id: string;
+  project_id: string;
+  title: string;
+  description?: string | null;
+  sort_order: number;
+  owner_user_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type MeetingDecision = {
+  id: string;
+  meeting_id: string;
+  project_id: string;
+  decision_text: string;
+  context?: string | null;
+  recorded_by_user_id: string;
+  recorder_name?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type MeetingDocument = {
+  id: string;
+  meeting_id: string;
+  project_id: string;
+  document_id: string;
+  original_filename?: string | null;
+  category?: string | null;
+  created_at?: string | null;
+};
+
+export type Meeting = {
+  id: string;
+  project_id: string;
+  type: string;
+  title: string;
+  agenda?: string | null;
+  notes?: string | null;
+  decisions_log?: string | null;
+  status: string;
+  scheduled_time: string;
+  created_by: string;
+  category: string;
+  description?: string | null;
+  location?: string | null;
+  meeting_link?: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
+  timezone?: string | null;
+  completed_at?: string | null;
+  cancelled_at?: string | null;
+  updated_at?: string | null;
+  participants: MeetingParticipant[];
+  agenda_items: MeetingAgendaItem[];
+  decisions: MeetingDecision[];
+  follow_up_tasks: Array<{ id: string; title: string; status: string; due_date?: string | null }>;
+  documents: MeetingDocument[];
+  conflict_ids: string[];
+};
+
+export type MeetingSummary = {
+  project_id: string;
+  total: number;
+  planned: number;
+  in_progress: number;
+  completed: number;
+  cancelled: number;
+  upcoming: number;
+  today: number;
+  current_item?: Meeting | null;
+  next_item?: Meeting | null;
+  conflicts: number;
+};
+
 export type AuthUser = {
   id: string;
   name?: string | null;

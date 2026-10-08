@@ -1,5 +1,5 @@
 import { PortalShell } from "../../components/PortalShell";
-import { MeetingsClientPage } from "../../components/ProtectedPages";
+import { MeetingsWorkspace } from "../../components/MeetingsWorkspace";
 
 export default function MeetingsPage() {
   return (
@@ -9,7 +9,7 @@ export default function MeetingsPage() {
         <h1>Keep committees and family aligned without the chaos swirl.</h1>
         <p>Open an event workspace to track meetings, notes, decisions, and follow-ups.</p>
       </section>
-      <MeetingsClientPage />
+      <MeetingsWorkspace />
     </PortalShell>
   );
 }

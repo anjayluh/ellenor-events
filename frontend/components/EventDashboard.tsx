@@ -6,7 +6,7 @@ import { BudgetPreview } from "./BudgetPreview";
 import { RoleAwareNav } from "./RoleAwareNav";
 import { apiGet, apiPatch, apiPost } from "../lib/api";
 import { formatDate } from "../lib/customer-display";
-import type { BudgetItemSummary, CommunicationSummary, DocumentSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
+import type { BudgetItemSummary, CommunicationSummary, DocumentSummary, Meeting, MeetingSummary, Project, ProjectRole, TimelineSummary } from "../lib/types";
 
 const EVENT_ADMIN_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR"];
 const EVENT_ARCHIVE_ROLES: ProjectRole[] = ["OWNER", "PARTNER"];
@@ -14,7 +14,6 @@ const COORDINATOR_ROLES: ProjectRole[] = ["OWNER", "PARTNER", "COMMITTEE_CHAIR",
 
 type Task = { id: string; title: string; status: string; due_date?: string | null; is_overdue?: boolean; is_due_soon?: boolean };
 type Vendor = { id: string; name: string; category: string; status: string; financial_summary?: { outstanding_total?: string | number | null } | null };
-type Meeting = { id: string; title: string; scheduled_time: string; status: string };
 type Member = { id: string; role: ProjectRole };
 type GuestInviteSummary = { total: number; invitation_sent: number; attending: number; not_attending: number; pending_rsvp: number; opened: number; responded: number; invitations_opened: number; rsvp_responses: number };
 type InviteAnalytics = { pending: number; accepted: number; expired: number; cancelled: number; total_sent: number; total_opened: number };
@@ -28,6 +27,7 @@ type EventOverviewData = {
   communicationSummary: CommunicationSummary | null;
   documentSummary: DocumentSummary | null;
   meetings: Meeting[];
+  meetingSummary: MeetingSummary | null;
   members: Member[];
   tasks: Task[];
   vendors: Vendor[];
@@ -42,6 +42,7 @@ const emptyOverviewData: EventOverviewData = {
   communicationSummary: null,
   documentSummary: null,
   meetings: [],
+  meetingSummary: null,
   members: [],
   tasks: [],
   vendors: []
@@ -107,7 +108,7 @@ export function EventDashboard({ project }: { project: Project }) {
     let isMounted = true;
     const projectId = currentProject.id;
     async function loadOverview() {
-      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, members, tasks, vendors] = await Promise.all([
+      const [budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, meetingSummary, members, tasks, vendors] = await Promise.all([
         safeGet<BudgetItemSummary | null>(`/projects/${projectId}/budget/summary`, null),
         safeGet<GuestInviteSummary | null>(`/projects/${projectId}/guests/summary`, null),
         safeGet<InviteAnalytics | null>(`/invites/projects/${projectId}/analytics`, null),
@@ -116,12 +117,13 @@ export function EventDashboard({ project }: { project: Project }) {
         safeGet<CommunicationSummary | null>(`/projects/${projectId}/communications/summary`, null),
         safeGet<DocumentSummary | null>(`/projects/${projectId}/documents/summary`, null),
         safeGet<Meeting[]>(`/projects/${projectId}/meetings`, []),
+        safeGet<MeetingSummary | null>(`/projects/${projectId}/meetings/summary`, null),
         safeGet<Member[]>(`/projects/${projectId}/members`, []),
         safeGet<Task[]>(`/projects/${projectId}/tasks`, []),
         safeGet<Vendor[]>(`/projects/${projectId}/vendors`, [])
       ]);
       if (isMounted) {
-        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, members, tasks, vendors });
+        setOverviewData({ budget, guestSummary, inviteAnalytics, taskSummary, timelineSummary, communicationSummary, documentSummary, meetings, meetingSummary, members, tasks, vendors });
       }
     }
     void loadOverview();
@@ -130,7 +132,7 @@ export function EventDashboard({ project }: { project: Project }) {
     };
   }, [currentProject.id]);
 
-  const upcomingMeetings = useMemo(() => overviewData.meetings.filter((meeting) => new Date(meeting.scheduled_time).getTime() >= Date.now()).slice(0, 3), [overviewData.meetings]);
+  const upcomingMeetings = useMemo(() => overviewData.meetings.filter((meeting) => new Date(meeting.start_at ?? meeting.scheduled_time).getTime() >= Date.now()).slice(0, 3), [overviewData.meetings]);
   const overdueTasks = overviewData.tasks.filter(isOverdue);
   const confirmedVendorStatuses = ["BOOKED", "CONFIRMED", "COMPLETED"];
   const vendorsNeedingDecision = overviewData.vendors.filter((vendor) => !confirmedVendorStatuses.includes(vendor.status));
@@ -146,7 +148,7 @@ export function EventDashboard({ project }: { project: Project }) {
     { label: "Tasks", hasData: overviewData.tasks.length > 0 },
     { label: "Timeline", hasData: Boolean(overviewData.timelineSummary?.total) },
     { label: "Budget", hasData: Boolean((overviewData.budget?.total_items ?? 0) > 0) },
-    { label: "Meetings", hasData: overviewData.meetings.length > 0 },
+    { label: "Meetings", hasData: Boolean(overviewData.meetingSummary?.total || overviewData.meetings.length) },
     { label: "Team", hasData: overviewData.members.length > 0 || Boolean(overviewData.inviteAnalytics?.pending || overviewData.inviteAnalytics?.accepted) }
     ,{ label: "Communications", hasData: Boolean(overviewData.communicationSummary?.total_active) }
     ,{ label: "Documents", hasData: Boolean(overviewData.documentSummary?.active) }
@@ -156,7 +158,7 @@ export function EventDashboard({ project }: { project: Project }) {
     ...overdueTasks.slice(0, 2).map((task) => ({ title: task.title, detail: `Task overdue since ${formatDate(task.due_date)}`, href: `/tasks?project=${currentProject.id}` })),
     ...(overviewData.taskSummary?.due_today ? [{ title: `${overviewData.taskSummary.due_today} task${overviewData.taskSummary.due_today === 1 ? "" : "s"} due today`, detail: "Review today’s event planning responsibilities.", href: `/tasks?project=${currentProject.id}` }] : []),
     ...(overviewData.taskSummary?.high_priority_outstanding ? [{ title: `${overviewData.taskSummary.high_priority_outstanding} high-priority task${overviewData.taskSummary.high_priority_outstanding === 1 ? "" : "s"} open`, detail: "Resolve the most important planning actions first.", href: `/tasks?project=${currentProject.id}` }] : []),
-    ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
+    ...upcomingMeetings.slice(0, 2).map((meeting) => ({ title: meeting.title, detail: `Meeting on ${formatDate(meeting.start_at ?? meeting.scheduled_time)}`, href: `/meetings?project=${currentProject.id}` })),
     ...(overviewData.timelineSummary?.current_item ? [{ title: `Now: ${overviewData.timelineSummary.current_item.title}`, detail: `${formatDate(overviewData.timelineSummary.current_item.start_at)} · ${overviewData.timelineSummary.current_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.timelineSummary?.next_item ? [{ title: `Next up: ${overviewData.timelineSummary.next_item.title}`, detail: `${formatDate(overviewData.timelineSummary.next_item.start_at)} · ${overviewData.timelineSummary.next_item.location ?? "Location to be confirmed"}`, href: `/timeline?project=${currentProject.id}` }] : []),
     ...(overviewData.timelineSummary?.conflicts ? [{ title: `${overviewData.timelineSummary.conflicts} schedule conflict${overviewData.timelineSummary.conflicts === 1 ? "" : "s"}`, detail: "Review overlapping timeline items.", href: `/timeline?project=${currentProject.id}` }] : []),
@@ -324,6 +326,12 @@ export function EventDashboard({ project }: { project: Project }) {
       <section className="panel resourceCard communicationDashboardCard">
         <div className="sectionHeaderRow"><div><p className="eyebrow">Communications</p><h2>Recent event updates</h2></div><Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Open communications</Link></div>
         {overviewData.communicationSummary?.recent.length ? <div className="attentionList">{overviewData.communicationSummary.recent.slice(0, 3).map((item) => <Link className="attentionItem" href={`/communications?project=${currentProject.id}`} key={item.id}><strong>{item.title}</strong><span>{item.is_read ? "Read" : "Unread"} · {item.priority.toLowerCase()} · {formatDate(item.created_at)}</span></Link>)}</div> : <p>No event updates yet. Communications shared with this event will appear here.</p>}
+      </section>
+
+      <section className="panel resourceCard communicationDashboardCard">
+        <div className="sectionHeaderRow"><div><p className="eyebrow">Meetings</p><h2>Keep the planning team aligned</h2></div><Link className="ghostButton" data-icon="↗" href={`/meetings?project=${currentProject.id}`}>View meetings</Link></div>
+        {overviewData.meetingSummary?.next_item ? <div className="attentionList"><Link className="attentionItem" href={`/meetings?project=${currentProject.id}`}><strong>Next: {overviewData.meetingSummary.next_item.title}</strong><span>{formatDate(overviewData.meetingSummary.next_item.start_at ?? overviewData.meetingSummary.next_item.scheduled_time)}{overviewData.meetingSummary.next_item.location ? ` · ${overviewData.meetingSummary.next_item.location}` : ""}</span></Link></div> : <p>No upcoming meetings yet. Add a planning touchpoint when the team is ready.</p>}
+        {overviewData.meetingSummary ? <p>{overviewData.meetingSummary.today} today · {overviewData.meetingSummary.upcoming} upcoming · {overviewData.meetingSummary.completed} completed · {overviewData.meetingSummary.conflicts} conflicts</p> : null}
       </section>
 
       <section className="panel resourceCard communicationDashboardCard">
