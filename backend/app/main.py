@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import admin, auth, billing, budget, catalog, communications, customer_accounts, documents, guest_invites, invites, meetings, members, notifications, participants, project_guests, projects, staff, tasks, testimonials, timeline, vendor_portal, vendors
+from app.api import admin, auth, billing, budget, catalog, communications, customer_accounts, documents, guest_invites, invites, meetings, members, notifications, participants, project_guests, projects, reports, staff, tasks, testimonials, timeline, vendor_portal, vendors
 from app.core.config import settings
 from app.db.session import SessionLocal
 
@@ -43,6 +43,7 @@ app.include_router(testimonials.router, prefix="/projects/{project_id}/testimoni
 app.include_router(meetings.router, prefix="/projects/{project_id}/meetings", tags=["meetings"])
 app.include_router(notifications.router, prefix="/projects/{project_id}/notifications", tags=["notifications"])
 app.include_router(budget.router, prefix="/projects/{project_id}/budget", tags=["budget"])
+app.include_router(reports.router, prefix="/projects/{project_id}/reports", tags=["reports"])
 app.include_router(invites.router, prefix="/invites", tags=["invites"])
 app.include_router(vendor_portal.router, prefix="/vendors", tags=["vendor-portal"])
 app.include_router(staff.router, prefix="/staff", tags=["staff"])
