@@ -115,3 +115,17 @@ export async function apiUpload<TResponse>(path: string, formData: FormData, tok
   });
   return parseResponse<TResponse>(response, Boolean(accessToken));
 }
+
+export async function apiDownload(path: string, token?: string): Promise<{ blob: Blob; filename: string | null }> {
+  const accessToken = resolveAccessToken(path, token);
+  const response = await fetch(apiUrl(path), {
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+    cache: "no-store"
+  });
+  if (!response.ok) {
+    await parseResponse<never>(response, Boolean(accessToken));
+  }
+  const disposition = response.headers.get("Content-Disposition");
+  const filename = disposition?.match(/filename="?([^";]+)"?/i)?.[1] ?? null;
+  return { blob: await response.blob(), filename };
+}

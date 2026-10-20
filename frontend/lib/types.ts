@@ -359,6 +359,61 @@ export type DocumentSummary = {
   total_size_bytes: number;
 };
 
+export type ReportGuestSummary = {
+  total: number;
+  invitations_sent: number;
+  invitations_opened: number;
+  rsvp_responses: number;
+  attending: number;
+  not_attending: number;
+  pending: number;
+  guest_limit?: number | null;
+  guest_used: number;
+  invitation_email_limit?: number | null;
+  invitation_email_used: number;
+};
+
+export type ReportMeetingSummary = {
+  summary: MeetingSummary;
+  decisions: number;
+};
+
+export type ReportDocumentSummary = { total: number; active: number; archived: number };
+
+export type ReportCommunicationSummary = {
+  total_active: number;
+  unread_count: number;
+  pinned_count: number;
+  recent_titles: string[];
+};
+
+export type ReportSummary = {
+  project_id: string;
+  title: string;
+  event_type: string;
+  event_date?: string | null;
+  generated_at: string;
+  guests?: ReportGuestSummary | null;
+  budget?: BudgetItemSummary | null;
+  vendors?: {
+    total: number;
+    confirmed: number;
+    needs_attention: number;
+    outstanding_balance: string | number;
+  } | null;
+  tasks?: {
+    total: number;
+    completed: number;
+    overdue: number;
+    due_today: number;
+    completion_percentage: number;
+  } | null;
+  timeline?: TimelineSummary | null;
+  meetings?: ReportMeetingSummary | null;
+  documents?: ReportDocumentSummary | null;
+  communications?: ReportCommunicationSummary | null;
+};
+
 export type Contribution = {
   id: string;
   project_id: string;

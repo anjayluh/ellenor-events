@@ -302,6 +302,7 @@ export function EventDashboard({ project }: { project: Project }) {
             <Link className="ghostButton" data-icon="↗" href={`/communications?project=${currentProject.id}`}>Communications</Link>
             {canManageTeam ? <Link className="ghostButton" data-icon="↗" href={`/invites?project=${currentProject.id}`}>Members</Link> : null}
             <Link className="ghostButton" data-icon="↗" href={`/documents?project=${currentProject.id}`}>{canManageDocuments ? "Manage Documents" : "View Documents"}</Link>
+            <Link className="ghostButton" data-icon="↗" href={`/reports?project=${currentProject.id}`}>View Reports</Link>
           </div>
         </article>
 

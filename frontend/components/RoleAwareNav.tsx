@@ -13,7 +13,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" },
     { href: "communications", label: "Communications" }
-    ,{ href: "documents", label: "Documents" }
+    ,{ href: "documents", label: "Documents" },{ href: "reports", label: "Reports" }
   ],
   PARTNER: [
     { href: "overview", label: "Overview" },
@@ -26,7 +26,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" },
     { href: "communications", label: "Communications" }
-    ,{ href: "documents", label: "Documents" }
+    ,{ href: "documents", label: "Documents" },{ href: "reports", label: "Reports" }
   ],
   COMMITTEE_CHAIR: [
     { href: "overview", label: "Overview" },
@@ -39,7 +39,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "invites", label: "Team Access" },
     { href: "guests", label: "Guests" },
     { href: "communications", label: "Communications" }
-    ,{ href: "documents", label: "Documents" }
+    ,{ href: "documents", label: "Documents" },{ href: "reports", label: "Reports" }
   ],
   COMMITTEE_MEMBER: [
     { href: "overview", label: "Overview" },
@@ -49,7 +49,7 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "tasks", label: "Tasks" },
     { href: "vendors", label: "Vendors" },
     { href: "communications", label: "Communications" }
-    ,{ href: "documents", label: "Documents" }
+    ,{ href: "documents", label: "Documents" },{ href: "reports", label: "Reports" }
   ],
   FAMILY_VIEWER: [
     { href: "overview", label: "Overview" },
@@ -58,13 +58,14 @@ const roleLinks: Record<ProjectRole, Array<{ href: string; label: string }>> = {
     { href: "timeline", label: "Timeline" },
     { href: "budget", label: "Contributions" },
     { href: "communications", label: "Communications" }
-    ,{ href: "documents", label: "Documents" }
+    ,{ href: "documents", label: "Documents" },{ href: "reports", label: "Reports" }
   ],
   GUEST_VIEWER: [
     { href: "overview", label: "Overview" },
     { href: "details", label: "Event Details" },
     { href: "meetings", label: "Meetings" },
-    { href: "timeline", label: "Timeline" }
+    { href: "timeline", label: "Timeline" },
+    { href: "reports", label: "Reports" }
   ]
 };
 
