@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { apiDelete, apiGet, apiPost } from "../lib/api";
+import { getSessionUser } from "../lib/session";
 import type { CatalogPackage, CustomerSubscription, PaymentTransaction } from "../lib/types";
 import { StateBlock } from "./StateBlock";
 
@@ -57,6 +58,7 @@ export function AdminClientPage() {
   const [notice, setNotice] = useState("Ellenor Events admins can manage users, team access, and activity logs.");
   const [processing, setProcessing] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [accessState, setAccessState] = useState<"checking" | "signed_out" | "not_admin" | "allowed">("checking");
 
   async function loadAdmin() {
     const current = await apiGet<Staff>("/admin/me");
@@ -76,7 +78,10 @@ export function AdminClientPage() {
   }
 
   useEffect(() => {
-    void loadAdmin().catch((error) => setNotice(error instanceof Error ? error.message : "Admin access required.")).finally(() => setLoaded(true));
+    void loadAdmin().then(() => setAccessState("allowed")).catch(() => {
+      setAccessState(getSessionUser() ? "not_admin" : "signed_out");
+      setNotice("We could not confirm team access for this account.");
+    }).finally(() => setLoaded(true));
   }, []);
 
   const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? "Enter a valid email address." : "";
@@ -122,8 +127,9 @@ export function AdminClientPage() {
     }
   }
 
-  if (!loaded) return <StateBlock title="Loading admin" message="Checking your Ellenor Events admin access." />;
-  if (!me) return <StateBlock title="Admin access required" message={notice} />;
+  if (!loaded || accessState === "checking") return <StateBlock title="Getting your team area ready" message="Checking the access available to your account." />;
+  if (accessState === "signed_out") return <StateBlock title="Sign in to continue" message="The team area is reserved for Ellenor Events staff. Sign in with your team account to continue." action={{ href: "/login", label: "Go to sign in" }} />;
+  if (accessState === "not_admin" || !me) return <StateBlock title="Team access needed" message="You are signed in, but this account does not have access to the Ellenor Events team area. Return to your workspace or contact an administrator." action={{ href: "/", label: "Back to my workspace" }} />;
 
   return (
     <section className="stack">

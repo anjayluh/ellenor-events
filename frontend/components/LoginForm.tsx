@@ -11,7 +11,7 @@ type Mode = "login" | "register" | "reset";
 export function LoginForm() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-  const [email, setEmail] = useState("anjayluh.wakabi@gmail.com");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("Sign in to continue to your Ellenor Events workspace.");
@@ -41,7 +41,7 @@ export function LoginForm() {
     if (!isValid || isSubmitting) return;
 
     setIsSubmitting(true);
-    setMessage(mode === "reset" ? "Sending reset email..." : mode === "login" ? "Signing you in..." : "Creating your account...");
+    setMessage(mode === "reset" ? "Sending your reset link..." : mode === "login" ? "Signing you in..." : "Creating your account...");
     try {
       if (mode === "reset") {
         const result = await apiPost<AuthMessage, { email: string }>("/auth/password-reset/request", { email });
@@ -59,7 +59,7 @@ export function LoginForm() {
       setMessage(`Signed in as ${result.user.name ?? result.user.email}. Taking you to your workspace...`);
       router.replace("/");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Sign-in failed. Please check your details.");
+      setMessage(error instanceof Error ? error.message : "We could not complete that step. Please check your details and try again.");
     } finally {
       setIsSubmitting(false);
     }

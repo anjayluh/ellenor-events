@@ -20,6 +20,18 @@ export class ApiError extends Error {
   }
 }
 
+function userFacingMessage(status: number, detail: unknown): string {
+  const raw = typeof detail === "string" ? detail : typeof detail === "object" && detail !== null && "message" in detail && typeof detail.message === "string" ? detail.message : "";
+  const normalized = raw.toLowerCase();
+  if (normalized.includes("invalid email or password") || normalized.includes("invalid credentials")) return "The email or password does not match. Please try again.";
+  if (status === 401 || normalized.includes("bearer token") || normalized.includes("invalid bearer")) return "Please sign in to continue.";
+  if (status === 403 && (normalized.includes("admin") || normalized.includes("staff"))) return "This area is available to Ellenor Events team members only.";
+  if (normalized.includes("not a member") || normalized.includes("not available to this account")) return "You do not have access to this event.";
+  if (normalized.includes("insufficient") || normalized.includes("permission")) return "You do not have permission to do that.";
+  if (status >= 500) return "Something went wrong on our side. Please try again in a moment.";
+  return raw || `We could not complete that request (${status}).`;
+}
+
 function isPublicPath(path: string) {
   return path.startsWith("/auth/") || path.startsWith("/catalog/") || path === "/invites/accept" || /^\/invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+$/.test(path) || /^\/guest-invites\/[^/]+\/respond$/.test(path) || /^\/guest-rsvps\/[^/]+$/.test(path) || /^\/guest-rsvps\/[^/]+\/respond$/.test(path);
 }
@@ -31,15 +43,17 @@ function resolveAccessToken(path: string, token?: string): string | null {
 
 async function parseResponse<T>(response: Response, hadAuth: boolean): Promise<T> {
   if (!response.ok) {
-    let message = response.status === 401 ? "Please sign in again to continue." : `We could not complete that request (${response.status}).`;
+    let message = response.status === 401 ? "Please sign in to continue." : `We could not complete that request (${response.status}).`;
+    let detail: unknown = "";
     try {
       const payload = await response.json();
-      message = typeof payload.detail === "string" ? payload.detail : typeof payload.detail?.message === "string" ? payload.detail.message : message;
+      detail = payload.detail;
+      message = userFacingMessage(response.status, detail);
     } catch {
       // Keep default message when the response is not JSON.
     }
     if (response.status === 401 && hadAuth) {
-      const sessionMessage = "Your session expired. Please sign in again.";
+      const sessionMessage = "Your sign-in session has ended. Please sign in again.";
       expireSession(sessionMessage);
       throw new ApiError(response.status, sessionMessage, true);
     }

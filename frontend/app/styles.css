@@ -46,8 +46,11 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .brand { align-items: center; color: var(--purple); display: inline-flex; font-weight: 900; gap: 12px; letter-spacing: -0.03em; }
 .brandLogo { background: white; border: 1px solid rgba(214, 169, 59, 0.28); border-radius: 14px; box-shadow: var(--shadow-1); height: 44px; object-fit: cover; width: 44px; }
-.navCluster { align-items: center; display: flex; gap: 14px; }
+.navCluster { align-items: center; display: flex; gap: 14px; position: relative; }
 .nav { display: flex; gap: 18px; color: var(--muted); font-weight: 600; }
+.nav a { align-items: center; display: inline-flex; min-height: 40px; }
+.navCta { background: var(--purple); border-radius: 999px; color: white; padding: 9px 15px; }
+.navToggle { display: none; }
 .stableNav { min-width: 360px; justify-content: flex-end; }
 .navPlaceholder { visibility: hidden; }
 .sessionNotice { background: rgba(179, 38, 30, 0.08); border: 1px solid rgba(179, 38, 30, 0.22); border-radius: 999px; color: var(--error); font-size: 0.86rem; font-weight: 800; padding: 8px 12px; }
@@ -97,7 +100,17 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .primaryButton:hover:not(:disabled), .ghostButton:hover:not(:disabled), .secondaryButton:hover:not(:disabled) { transform: translateY(-1px); }
 .metric span { color: var(--muted); display: block; }
 .metric strong { color: var(--purple); display: block; font-size: 3rem; margin-top: 8px; }
-@media (max-width: 860px) { .twoColumns, .threeColumns { grid-template-columns: 1fr; } .hero { padding: 34px; } .nav { display: none; } .sessionNotice { display: none; } }
+@media (max-width: 860px) {
+  .twoColumns, .threeColumns { grid-template-columns: 1fr; }
+  .hero { padding: 34px; }
+  .navToggle { background: var(--purple); border: 0; border-radius: 999px; color: white; cursor: pointer; display: inline-flex; font-weight: 800; min-height: 42px; padding: 11px 16px; }
+  .navCluster .nav { display: none; }
+  .navCluster.menuOpen .nav { align-items: stretch; background: rgba(255, 251, 255, 0.98); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow-2); display: flex; flex-direction: column; gap: 4px; min-width: 210px; padding: 10px; position: absolute; right: 0; top: 52px; z-index: 20; }
+  .navCluster.menuOpen .nav a, .navCluster.menuOpen .nav button { border-radius: 12px; padding: 11px 12px; text-align: left; width: 100%; }
+  .navCluster.menuOpen .nav a:hover, .navCluster.menuOpen .nav button:hover { background: var(--surface-variant); }
+  .navCluster.menuOpen .navCta { background: var(--purple); color: white; }
+  .sessionNotice { display: none; }
+}
 
 .dashboardStack { gap: 22px; }
 .customerHero { align-items: center; display: grid; gap: 24px; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.34fr); }
