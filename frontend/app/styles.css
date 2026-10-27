@@ -173,6 +173,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .authPanel { margin-top: 24px; max-width: 720px; }
 .authPanel label { color: var(--purple); display: grid; font-weight: 800; gap: 8px; }
 .authChallenge { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 18px; }
+.authFormGuidance { background: rgba(53, 21, 93, 0.05); border-radius: 14px; color: var(--muted); font-size: 0.9rem; margin: 0; padding: 11px 13px; }
+.authMessage { color: var(--muted); line-height: 1.55; margin-bottom: 0; }
+.confirmationCard { background: linear-gradient(135deg, rgba(20, 108, 46, 0.08), rgba(214, 169, 59, 0.1)); border: 1px solid rgba(20, 108, 46, 0.2); border-radius: 22px; margin-top: 22px; padding: 22px; }
+.confirmationCard h2 { color: var(--purple); font-size: 1.35rem; margin: 0 0 10px; }
+.confirmationCard p { line-height: 1.55; }
+.confirmationCard ol { color: var(--ink); display: grid; gap: 8px; line-height: 1.5; padding-left: 22px; }
 .secondaryButton.light { color: white; background: var(--purple-soft); }
 @media (max-width: 620px) { .main { padding: 28px 4vw; } .hero h1 { font-size: 2.25rem; } .buttonRow { align-items: stretch; flex-direction: column; } .buttonRow a, .buttonRow button { text-align: center; width: 100%; } }
 @media (max-width: 620px) { .eventSwitcherHeader { align-items: stretch; grid-template-columns: 1fr; } .eventDetailsLink { width: 100%; } }

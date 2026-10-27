@@ -5,9 +5,9 @@ export default function LoginPage() {
   return (
     <PortalShell>
       <section className="hero compact">
-        <p className="eyebrow">Welcome Back</p>
-        <h1>Sign in to your Ellenor Events account.</h1>
-        <p>Continue planning your events, managing the workspaces you belong to, or responding to an invitation.</p>
+        <p className="eyebrow">Welcome to Ellenor Events</p>
+        <h1>Your event planning space, ready when you are.</h1>
+        <p>Sign in or create an account to keep your events, people, and planning details together in one calm, private workspace.</p>
       </section>
       <LoginForm />
     </PortalShell>

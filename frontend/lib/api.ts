@@ -24,6 +24,15 @@ function userFacingMessage(status: number, detail: unknown): string {
   const raw = typeof detail === "string" ? detail : typeof detail === "object" && detail !== null && "message" in detail && typeof detail.message === "string" ? detail.message : "";
   const normalized = raw.toLowerCase();
   if (normalized.includes("invalid email or password") || normalized.includes("invalid credentials")) return "The email or password does not match. Please try again.";
+  if (status === 409 || normalized.includes("already registered") || normalized.includes("already exists")) {
+    return "An account already exists with this email. Choose Sign in instead. If you have not confirmed it yet, check your email for the confirmation link first.";
+  }
+  if (normalized.includes("supabase auth rejected account creation")) {
+    return "We could not create your account yet. Check your details and try again. If you already used this email, choose Sign in or Reset password instead.";
+  }
+  if (normalized.includes("not confirmed") || normalized.includes("email address is not confirmed") || normalized.includes("confirm the email")) {
+    return "Your account is not confirmed yet. Check the email address you signed up with for the confirmation link, then return here to sign in.";
+  }
   if (status === 401 || normalized.includes("bearer token") || normalized.includes("invalid bearer")) return "Please sign in to continue.";
   if (status === 403 && (normalized.includes("admin") || normalized.includes("staff"))) return "This area is available to Ellenor Events team members only.";
   if (normalized.includes("not a member") || normalized.includes("not available to this account")) return "You do not have access to this event.";

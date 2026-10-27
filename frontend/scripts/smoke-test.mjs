@@ -102,6 +102,9 @@ console.log('Frontend smoke test passed');
 const loginForm = readFileSync(join(root, 'components/LoginForm.tsx'), 'utf8');
 assert.match(loginForm, /password/, 'Login form should collect password for Supabase email auth');
 assert.doesNotMatch(loginForm, /demo-token/, 'Login form should not save demo sessions');
+assert.match(loginForm, /Check your email to confirm your account/, 'Signup should explain email confirmation next steps');
+assert.match(loginForm, /confirmation link/, 'Signup should tell users where to confirm their account');
+assert.match(loginForm, /already has an account/, 'Signup should explain when an email is already registered');
 
 const homePage = readFileSync(join(root, 'app/page.tsx'), 'utf8');
 assert.doesNotMatch(homePage, /demoProjects/, 'Home page should not expose demo project data to anonymous users');

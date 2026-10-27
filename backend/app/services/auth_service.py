@@ -104,6 +104,16 @@ def register_with_supabase_password(db: Session, payload: RegisterRequest) -> tu
         response = httpx.post(supabase_auth_url("signup"), headers=supabase_auth_headers(), json=request_payload, timeout=10)
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
+        try:
+            error_detail = exc.response.json()
+        except ValueError:
+            error_detail = {}
+        error_message = str(error_detail.get("msg") or error_detail.get("message") or error_detail.get("error_description") or "")
+        normalized_message = error_message.lower()
+        if "already registered" in normalized_message or "already exists" in normalized_message:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account already exists for this email. Please sign in instead.") from exc
+        if "not confirmed" in normalized_message:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This account is not confirmed. Check the email address used to sign up for the confirmation link, then return here to sign in.") from exc
         raise HTTPException(status_code=exc.response.status_code, detail="Supabase Auth rejected account creation") from exc
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Supabase Auth is unavailable") from exc
