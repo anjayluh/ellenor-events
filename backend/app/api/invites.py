@@ -12,7 +12,7 @@ from app.models.invite import Invite
 from app.models.project_member import ProjectMember
 from app.schemas.invite import InviteAccept, InviteAcceptRead, InviteAnalytics, InviteCreate, InviteRead
 from app.services.audit_service import write_audit_log
-from app.services.email_service import build_email_invite_payload
+from app.services.email_service import build_email_invite_payload, member_invitation_copy
 from app.services.notification_service import create_notification
 from app.services.invite_service import (
     aware_datetime,
@@ -87,13 +87,14 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         if payload.delivery_channel == "whatsapp"
         else {"email": build_email_invite_payload(invite.contact, invite_link)}
     )
+    subject, body = member_invitation_copy(invite_link)
     create_notification(
         db,
         project_id=payload.project_id,
         channel=payload.delivery_channel,
         recipient_contact=invite.contact,
-        subject="Your Ellenor Events invitation",
-        body=f"You have been invited to coordinate an Ellenor event. Open: {invite_link}",
+        subject=subject,
+        body=body,
         actor_user_id=current_user.id,
         metadata={"invite_id": str(invite.id), "role": payload.role_assigned.value},
     )
@@ -165,13 +166,15 @@ def resend_invite(invite_id: UUID, current_user: CurrentUser = Depends(get_curre
     invite.status = "pending"
     invite.expires_at = default_invite_expiry()
     mark_invite_sent(invite)
+    invite_link = build_invite_link(invite.token)
+    subject, body = member_invitation_copy(invite_link)
     create_notification(
         db,
         project_id=invite.project_id,
         channel=invite.delivery_channel,
         recipient_contact=invite.contact,
-        subject="Your Ellenor Events invitation",
-        body=f"Your Ellenor event invitation was resent. Open: {build_invite_link(invite.token)}",
+        subject=subject,
+        body=body,
         actor_user_id=current_user.id,
         metadata={"invite_id": str(invite.id), "resent": True},
     )

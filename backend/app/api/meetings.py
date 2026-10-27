@@ -49,6 +49,7 @@ from app.services.meeting_service import (
     upsert_meeting_rsvp,
 )
 from app.services.notification_service import queue_project_notification
+from app.services.email_service import meeting_notification_copy
 from app.services.project_task_service import assignee_map, create_project_task, serialize_task
 
 router = APIRouter()
@@ -89,7 +90,8 @@ def create_meeting(
     apply_meeting_create(meeting, payload, created_by=current_user.id)
     db.add(meeting)
     db.flush()
-    queue_project_notification(db, project_id, "meeting.created", title=meeting.title, message=f"New meeting scheduled: {meeting.title}", actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    notification_subject, notification_message = meeting_notification_copy("created", meeting.title)
+    queue_project_notification(db, project_id, "meeting.created", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
     db.commit()
     db.refresh(meeting)
     return serialize_meeting(db, meeting)
@@ -113,7 +115,8 @@ def update_meeting(
     meeting = get_meeting_or_404(db, project_id, meeting_id)
     apply_meeting_update(meeting, payload)
     meeting.updated_by_user_id = current_user.id
-    queue_project_notification(db, project_id, "meeting.updated", title=meeting.title, message=f"Meeting updated: {meeting.title}", actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    notification_subject, notification_message = meeting_notification_copy("updated", meeting.title)
+    queue_project_notification(db, project_id, "meeting.updated", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
     db.commit()
     db.refresh(meeting)
     return serialize_meeting(db, meeting)

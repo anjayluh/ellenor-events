@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from app.models.notification import Notification
+from app.services.email_service import guest_invitation_copy, member_invitation_copy, meeting_notification_copy
 from app.services.notification_service import build_provider_payload, mark_notification_failed, mark_notification_sent
 from app.services.whatsapp_service import build_whatsapp_manual_url
 
@@ -19,6 +20,30 @@ def test_resend_email_payload_is_prepared():
     assert provider == "resend"
     assert payload["to"] == "user@example.com"
     assert payload["subject"] == "Invite"
+
+
+def test_member_invitation_copy_is_branded_and_reassuring():
+    subject, body = member_invitation_copy("https://ellenor-events.vercel.app/invite/test")
+
+    assert subject == "You're invited to plan with Ellenor Events"
+    assert "Ellenor Events" in body
+    assert "safely ignore" in body
+    assert "Supabase" not in body
+
+
+def test_guest_invitation_copy_is_personal_and_includes_rsvp_link():
+    subject, body = guest_invitation_copy("Grace", "Grace & Daniel's Celebration", "https://ellenor-events.vercel.app/guest-rsvp/test")
+
+    assert subject == "Your invitation to Grace & Daniel's Celebration"
+    assert "Hello Grace" in body
+    assert "View invitation and RSVP" in body
+
+
+def test_meeting_notification_copy_explains_the_action():
+    subject, body = meeting_notification_copy("created", "Family planning meeting")
+
+    assert subject == "A meeting has been added to your event"
+    assert "Family planning meeting" in body
 
 
 def test_whatsapp_manual_url_handles_missing_contact():

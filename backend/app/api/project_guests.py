@@ -21,6 +21,7 @@ from app.schemas.project_guest import (
     ProjectGuestUpdate,
 )
 from app.services.audit_service import write_audit_log
+from app.services.email_service import guest_invitation_copy
 from app.services.invite_service import build_invite_link
 from app.services.notification_service import PreparedNotification, create_notification
 from app.services.project_guest_service import (
@@ -178,13 +179,14 @@ def send_guest_invitation(
     consume_invitation_email(db, project.customer_account_id)
     invitation = create_guest_invitation_record(db, guest)
     link = build_invite_link(invitation.token).replace("/invite/", "/guest-rsvp/")
+    subject, body = guest_invitation_copy(guest.display_name, project.title, link)
     notification = create_notification(
         db,
         project_id=project_id,
         channel="email",
         recipient_contact=guest.email,
-        subject=f"You're invited to {project.title}",
-        body=f"Hello {guest.display_name}, you are invited to {project.title}. RSVP here: {link}",
+        subject=subject,
+        body=body,
         actor_user_id=current_user.id,
         metadata={"project_guest_id": str(guest.id), "project_guest_invitation_id": str(invitation.id), "invitation_card_url": guest.invitation_card_url},
     )
