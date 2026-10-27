@@ -61,6 +61,7 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `JWT_SECRET` | Production, Preview | Local signing fallback; use the Supabase JWT secret or another strong secret. |
 | `JWT_ALGORITHM` | Production, Preview | Use `HS256` unless the auth strategy changes. |
 | `FRONTEND_URL` | Production, Preview | Canonical Vercel deployment URL for links and CORS allow-listing. |
+| `AUTH_CONFIRMATION_REDIRECT_URL` | Production, Preview | Optional email-confirmation return URL; defaults to `<FRONTEND_URL>/login`. |
 | `CORS_ORIGINS` | Production, Preview | Comma-separated production and preview frontend origins, if cross-origin access is needed. |
 | `EMAIL_PROVIDER` | Production, Preview | Use `resend` when email notifications are enabled. |
 | `RESEND_API_KEY` | Production, Preview | Required only when sending email through Resend. |

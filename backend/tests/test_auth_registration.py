@@ -60,3 +60,28 @@ def test_registration_explains_existing_account_state(
 
     assert exc_info.value.status_code == expected_status
     assert exc_info.value.detail == expected_detail
+
+
+def test_registration_uses_configured_frontend_confirmation_url(db_session, monkeypatch):
+    from app.core.config import settings
+
+    captured_url = ""
+
+    def post(*args, **kwargs):
+        nonlocal captured_url
+        captured_url = args[0]
+        return RejectedResponse({"msg": "User already registered"})
+
+    monkeypatch.setattr(settings, "supabase_url", "https://example.supabase.co")
+    monkeypatch.setattr(settings, "supabase_anon_key", "anon-key")
+    monkeypatch.setattr(settings, "frontend_url", "https://ellenor-events.vercel.app")
+    monkeypatch.setattr(settings, "auth_confirmation_redirect_url", None)
+    monkeypatch.setattr("app.services.auth_service.httpx.post", post)
+
+    with pytest.raises(HTTPException):
+        register_with_supabase_password(
+            db_session,
+            RegisterRequest(email="person@example.com", password="password123", name="Person"),
+        )
+
+    assert captured_url == "https://example.supabase.co/auth/v1/signup?redirect_to=https%3A%2F%2Fellenor-events.vercel.app%2Flogin"

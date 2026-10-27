@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     development_otp_code: str = "000000"
     allow_dev_auth_headers: bool = False
     frontend_url: str = "http://localhost:3000"
+    auth_confirmation_redirect_url: str | None = None
     cors_origins: str | None = None
     whatsapp_mode: str = "manual_links"
     email_provider: str = "resend"
@@ -142,6 +143,8 @@ class Settings(BaseSettings):
             errors.append("Supabase URL is missing")
         if self.auth_provider == "supabase" and not self.resolved_supabase_anon_key:
             errors.append("Supabase anon key is missing")
+        if self.is_production and self.frontend_url.startswith(("http://localhost", "http://127.0.0.1")):
+            errors.append("frontend URL points to localhost")
         if self.is_production and self.payment_provider == "mock":
             errors.append("mock payment provider is not allowed in production")
         if errors:
@@ -162,6 +165,8 @@ class Settings(BaseSettings):
             errors.append("supabase_url_missing")
         if self.auth_provider == "supabase" and not self.resolved_supabase_anon_key:
             errors.append("supabase_anon_key_missing")
+        if self.is_production and self.frontend_url.startswith(("http://localhost", "http://127.0.0.1")):
+            errors.append("frontend_url_points_to_localhost")
         if self.is_production and self.payment_provider == "mock":
             errors.append("mock_payment_provider_in_production")
         return errors
@@ -173,6 +178,10 @@ class Settings(BaseSettings):
     @property
     def checkout_redirect_url(self) -> str:
         return self.billing_checkout_redirect_url or f"{self.frontend_url.rstrip('/')}/billing"
+
+    @property
+    def signup_confirmation_redirect_url(self) -> str:
+        return self.auth_confirmation_redirect_url or f"{self.frontend_url.rstrip('/')}/login"
 
 
 @lru_cache

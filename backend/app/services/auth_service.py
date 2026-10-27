@@ -60,6 +60,10 @@ def password_reset_redirect_url() -> str:
     return f"{settings.frontend_url.rstrip('/')}/reset-password"
 
 
+def signup_confirmation_redirect_url() -> str:
+    return settings.signup_confirmation_redirect_url
+
+
 def upsert_public_user_from_supabase_auth(db: Session, auth_user: dict, name: str | None = None) -> User:
     user_id = UUID(auth_user["id"])
     metadata = auth_user.get("user_metadata") or {}
@@ -100,8 +104,9 @@ def register_with_supabase_password(db: Session, payload: RegisterRequest) -> tu
         "password": payload.password,
         "data": {"name": payload.name} if payload.name else {},
     }
+    signup_url = f"{supabase_auth_url('signup')}?redirect_to={quote(signup_confirmation_redirect_url(), safe='')}"
     try:
-        response = httpx.post(supabase_auth_url("signup"), headers=supabase_auth_headers(), json=request_payload, timeout=10)
+        response = httpx.post(signup_url, headers=supabase_auth_headers(), json=request_payload, timeout=10)
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:
         try:

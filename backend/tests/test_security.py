@@ -135,3 +135,19 @@ def test_remote_supabase_auth_accepts_public_deployment_aliases():
     assert settings.resolved_supabase_url == "https://example.supabase.co"
     assert settings.resolved_supabase_anon_key == "anon-key"
     assert settings.uses_remote_supabase_auth is True
+
+
+def test_production_frontend_url_cannot_point_to_localhost():
+    from app.core.config import Settings
+
+    settings = Settings(
+        _env_file=None,
+        environment="production",
+        database_url="postgresql://postgres:postgres@db.example.supabase.co:5432/postgres",
+        auth_provider="supabase",
+        supabase_url="https://example.supabase.co",
+        supabase_anon_key="anon-key",
+        frontend_url="http://localhost:3000",
+    )
+
+    assert "frontend_url_points_to_localhost" in settings.deployment_config_errors
