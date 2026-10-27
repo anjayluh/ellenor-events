@@ -264,7 +264,7 @@ Expected QA:
 - Owner/partner/chair/member can create meetings.
 - Members can list project meetings.
 - RSVP upsert records current user status.
-- Meeting changes prepare notification records.
+- Meeting changes create notifications for eligible event members and attempt provider delivery; QA uses the mock provider and production requires Resend configuration.
 
 ### Phase 6 — Budget and Contributions
 

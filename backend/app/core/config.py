@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     email_provider: str = "resend"
     resend_api_key: str | None = None
     resend_from_email: str = "Ellenor Events <noreply@ellenor.events>"
+    resend_api_base_url: str = "https://api.resend.com"
+    email_delivery_timeout_seconds: float = 10
     whatsapp_cloud_api_token: str | None = None
     whatsapp_phone_number_id: str | None = None
     notification_max_attempts: int = 3
@@ -147,6 +149,10 @@ class Settings(BaseSettings):
             errors.append("frontend URL points to localhost")
         if self.is_production and self.payment_provider == "mock":
             errors.append("mock payment provider is not allowed in production")
+        if self.is_production and self.email_provider == "mock":
+            errors.append("mock email provider is not allowed in production")
+        if self.is_production and self.email_provider == "resend" and not self.resend_api_key:
+            errors.append("Resend email provider key is missing")
         if errors:
             raise RuntimeError(
                 "Invalid deployment configuration: "
@@ -169,6 +175,10 @@ class Settings(BaseSettings):
             errors.append("frontend_url_points_to_localhost")
         if self.is_production and self.payment_provider == "mock":
             errors.append("mock_payment_provider_in_production")
+        if self.is_production and self.email_provider == "mock":
+            errors.append("mock_email_provider_in_production")
+        if self.is_production and self.email_provider == "resend" and not self.resend_api_key:
+            errors.append("resend_api_key_missing")
         return errors
 
     @property

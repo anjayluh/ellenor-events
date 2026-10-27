@@ -81,6 +81,8 @@ def isolated_test_settings(monkeypatch):
     monkeypatch.setattr(settings, "postgres_url_non_pooling", None)
     monkeypatch.setattr(settings, "supabase_db_url", None)
     monkeypatch.setattr(settings, "environment", "test")
+    monkeypatch.setattr(settings, "email_provider", "mock")
+    monkeypatch.setattr(settings, "resend_api_key", None)
     yield
 
 

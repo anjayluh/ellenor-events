@@ -66,6 +66,8 @@ Top-level rewrites route backend API paths to the `backend` service and all othe
 | `EMAIL_PROVIDER` | Production, Preview | Use `resend` when email notifications are enabled. |
 | `RESEND_API_KEY` | Production, Preview | Required only when sending email through Resend. |
 | `RESEND_FROM_EMAIL` | Production, Preview | Verified sender identity, for example `Ellenor Events <noreply@your-domain.com>`. |
+| `RESEND_API_BASE_URL` | Production, Preview | Keep `https://api.resend.com` unless using a tested compatible endpoint. |
+| `EMAIL_DELIVERY_TIMEOUT_SECONDS` | Production, Preview | Provider request timeout; `10` is the recommended starting value. |
 | `WHATSAPP_MODE` | Production, Preview | Use `manual_links` unless WhatsApp Cloud API sending is enabled. |
 | `WHATSAPP_CLOUD_API_TOKEN` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |
 | `WHATSAPP_PHONE_NUMBER_ID` | Production, Preview | Optional until WhatsApp Cloud API sending is enabled. |

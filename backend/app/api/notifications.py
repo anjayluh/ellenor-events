@@ -9,7 +9,7 @@ from app.db.session import get_db
 from app.models.notification import Notification
 from app.schemas.notification import NotificationPreferenceRead, NotificationPreferenceUpdate, NotificationRead, NotificationRetryRead
 from app.services.audit_service import write_audit_log
-from app.services.notification_service import get_or_create_notification_preferences, mark_notification_failed
+from app.services.notification_service import deliver_notification, get_or_create_notification_preferences
 
 router = APIRouter()
 
@@ -48,8 +48,8 @@ def retry_notification(project_id: UUID, notification_id: UUID, membership=Depen
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Sent notifications do not need retry")
     notification.status = "prepared"
     notification.next_retry_at = None
-    mark_notification_failed(notification, "Manual retry queued for provider worker")
-    write_audit_log(db, "notification.retry_queued", actor_user_id=membership.user_id, project_id=project_id, metadata={"notification_id": str(notification_id)})
+    delivery = deliver_notification(db, notification)
+    write_audit_log(db, "notification.retry_attempted", actor_user_id=membership.user_id, project_id=project_id, metadata={"notification_id": str(notification_id), "accepted": delivery.accepted})
     db.commit()
     db.refresh(notification)
     return NotificationRetryRead(id=notification.id, status=notification.status, attempts=notification.attempts, next_retry_at=notification.next_retry_at)

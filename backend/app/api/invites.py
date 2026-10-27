@@ -13,7 +13,7 @@ from app.models.project_member import ProjectMember
 from app.schemas.invite import InviteAccept, InviteAcceptRead, InviteAnalytics, InviteCreate, InviteRead
 from app.services.audit_service import write_audit_log
 from app.services.email_service import build_email_invite_payload, member_invitation_copy
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, deliver_notification
 from app.services.invite_service import (
     aware_datetime,
     build_invite_link,
@@ -76,8 +76,7 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         delivery_channel=payload.delivery_channel,
         permissions_json={"permissions": sorted(normalize_permissions(payload.permissions))},
         budget_visibility_mode=payload.budget_visibility_mode.value,
-        sent_count=1,
-        last_sent_at=datetime.now(timezone.utc),
+        sent_count=0,
         expires_at=default_invite_expiry(),
     )
     db.add(invite)
@@ -88,7 +87,7 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         else {"email": build_email_invite_payload(invite.contact, invite_link)}
     )
     subject, body = member_invitation_copy(invite_link)
-    create_notification(
+    notification = create_notification(
         db,
         project_id=payload.project_id,
         channel=payload.delivery_channel,
@@ -98,6 +97,9 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         actor_user_id=current_user.id,
         metadata={"invite_id": str(invite.id), "role": payload.role_assigned.value},
     )
+    delivery = deliver_notification(db, notification) if payload.delivery_channel == "email" else None
+    if delivery is None or delivery.accepted:
+        mark_invite_sent(invite)
     write_audit_log(
         db,
         "invite.created",
@@ -106,6 +108,8 @@ def create_invite(payload: InviteCreate, current_user: CurrentUser = Depends(get
         metadata={"contact": invite.contact, "role": payload.role_assigned.value, "delivery": delivery_metadata},
     )
     db.commit()
+    if delivery is not None and not delivery.accepted:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The invitation email could not be sent. Please try again.")
     db.refresh(invite)
     return serialize_invite(invite)
 
@@ -163,12 +167,9 @@ def resend_invite(invite_id: UUID, current_user: CurrentUser = Depends(get_curre
     require_invite_permission(invite.project_id, current_user, db)
     if invite.status == "accepted":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Accepted invites cannot be resent")
-    invite.status = "pending"
-    invite.expires_at = default_invite_expiry()
-    mark_invite_sent(invite)
     invite_link = build_invite_link(invite.token)
     subject, body = member_invitation_copy(invite_link)
-    create_notification(
+    notification = create_notification(
         db,
         project_id=invite.project_id,
         channel=invite.delivery_channel,
@@ -178,8 +179,15 @@ def resend_invite(invite_id: UUID, current_user: CurrentUser = Depends(get_curre
         actor_user_id=current_user.id,
         metadata={"invite_id": str(invite.id), "resent": True},
     )
+    delivery = deliver_notification(db, notification) if invite.delivery_channel == "email" else None
+    if delivery is None or delivery.accepted:
+        invite.status = "pending"
+        invite.expires_at = default_invite_expiry()
+        mark_invite_sent(invite)
     write_audit_log(db, "invite.resent", actor_user_id=current_user.id, project_id=invite.project_id, metadata={"invite_id": str(invite.id)})
     db.commit()
+    if delivery is not None and not delivery.accepted:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The invitation email could not be sent. Please try again.")
     db.refresh(invite)
     return serialize_invite(invite)
 

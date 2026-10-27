@@ -12,7 +12,7 @@ from app.models.guest_invite import GuestInvite
 from app.schemas.guest_invite import GuestInviteCreate, GuestInviteRead, GuestInviteResponse, GuestInviteSummary, GuestInviteUpdate
 from app.services.audit_service import write_audit_log
 from app.services.invite_service import build_invite_link, generate_invite_token
-from app.services.notification_service import create_notification
+from app.services.notification_service import create_notification, deliver_notification
 
 router = APIRouter()
 public_router = APIRouter()
@@ -89,11 +89,8 @@ def send_guest_invite(
     invite = get_guest_invite_or_404(db, project_id, invite_id)
     if not invite.email and not invite.phone:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Guest invite has no contact")
-    invite.status = "sent"
-    invite.sent_count = (invite.sent_count or 0) + 1
-    invite.last_sent_at = datetime.now(timezone.utc)
     link = build_invite_link(invite.token).replace("/invite/", "/guest-invite/")
-    create_notification(
+    notification = create_notification(
         db,
         project_id=project_id,
         channel="email" if invite.email else "whatsapp",
@@ -103,8 +100,15 @@ def send_guest_invite(
         actor_user_id=current_user.id,
         metadata={"guest_invite_id": str(invite.id), "invitation_card_url": invite.invitation_card_url},
     )
+    delivery = deliver_notification(db, notification) if invite.email else None
+    if delivery is None or delivery.accepted:
+        invite.status = "sent"
+        invite.sent_count = (invite.sent_count or 0) + 1
+        invite.last_sent_at = datetime.now(timezone.utc)
     write_audit_log(db, "guest_invite.sent", actor_user_id=current_user.id, project_id=project_id, metadata={"invite_id": str(invite_id)})
     db.commit()
+    if delivery is not None and not delivery.accepted:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The invitation email could not be sent. Please try again.")
     db.refresh(invite)
     return invite
 

@@ -5,7 +5,7 @@
 Ellenor Events currently has two email paths:
 
 1. **Supabase Auth** sends account-confirmation and password-reset emails. On the free Supabase mailer, the subject and body are managed by Supabase and cannot be edited. These templates require custom SMTP before they can be branded.
-2. **Ellenor Events notifications** prepare member invitations, guest RSVP invitations, and meeting updates through the configured email provider payload. The application owns the wording for these messages, but a delivery worker/provider is still required to send them.
+2. **Ellenor Events notifications** render and deliver member invitations, guest RSVP invitations, and meeting updates through the configured provider. Provider acceptance is recorded separately from inbox delivery.
 
 ## Supabase Auth: confirmation email
 
@@ -61,8 +61,8 @@ The backend keeps these messages in `backend/app/services/email_service.py` so t
 - **Guest RSVP invitation:** Your invitation to `<event name>`.
 - **Meeting update:** A meeting has been added to your event / A meeting has been updated.
 
-Invitation emails should include a clear event context, one primary action, and a safe-ignore sentence. They should not mention Supabase, Resend, service credentials, internal IDs, or implementation details.
+Invitation emails include a clear event context, one primary action, and a safe-ignore sentence. They do not mention Supabase, Resend, service credentials, internal IDs, or implementation details.
 
 ## Production setup
 
-When ready to send branded Auth emails, configure a verified SMTP sender and set the sender name to **Ellenor Events**. Keep the application-owned message copy unchanged unless the product voice changes. Never put SMTP credentials in the repository or frontend bundle.
+Supabase Auth confirmation and password-reset messages remain owned by Supabase Auth. On the free hosted mailer, their subject/body cannot be customized from this repository; custom SMTP is required for branded Auth messages. Keep the application-owned message copy unchanged unless the product voice changes. Never put SMTP credentials in the repository or frontend bundle.

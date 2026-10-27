@@ -48,7 +48,7 @@ from app.services.meeting_service import (
     serialize_meeting,
     upsert_meeting_rsvp,
 )
-from app.services.notification_service import queue_project_notification
+from app.services.notification_service import deliver_notification, queue_project_notification
 from app.services.email_service import meeting_notification_copy
 from app.services.project_task_service import assignee_map, create_project_task, serialize_task
 
@@ -91,9 +91,12 @@ def create_meeting(
     db.add(meeting)
     db.flush()
     notification_subject, notification_message = meeting_notification_copy("created", meeting.title)
-    queue_project_notification(db, project_id, "meeting.created", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    notifications = queue_project_notification(db, project_id, "meeting.created", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    deliveries = [deliver_notification(db, notification) for notification in notifications]
     db.commit()
     db.refresh(meeting)
+    if any(not delivery.accepted for delivery in deliveries):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="One or more meeting notifications could not be sent.")
     return serialize_meeting(db, meeting)
 
 
@@ -116,9 +119,12 @@ def update_meeting(
     apply_meeting_update(meeting, payload)
     meeting.updated_by_user_id = current_user.id
     notification_subject, notification_message = meeting_notification_copy("updated", meeting.title)
-    queue_project_notification(db, project_id, "meeting.updated", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    notifications = queue_project_notification(db, project_id, "meeting.updated", title=notification_subject, message=notification_message, actor_user_id=current_user.id, metadata={"meeting_id": str(meeting.id)})
+    deliveries = [deliver_notification(db, notification) for notification in notifications]
     db.commit()
     db.refresh(meeting)
+    if any(not delivery.accepted for delivery in deliveries):
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="One or more meeting notifications could not be sent.")
     return serialize_meeting(db, meeting)
 
 

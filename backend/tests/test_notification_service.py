@@ -14,7 +14,10 @@ def test_manual_whatsapp_payload_contains_wa_link():
     assert "Planning" in payload["body"]
 
 
-def test_resend_email_payload_is_prepared():
+def test_configured_email_payload_is_prepared(monkeypatch):
+    from app.core.config import settings
+
+    monkeypatch.setattr(settings, "email_provider", "resend")
     provider, payload = build_provider_payload("email", "user@example.com", "Invite", "Open your invite")
 
     assert provider == "resend"

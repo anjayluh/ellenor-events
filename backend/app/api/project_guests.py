@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import CurrentUser, get_current_user, get_project_membership, membership_role
@@ -23,7 +23,7 @@ from app.schemas.project_guest import (
 from app.services.audit_service import write_audit_log
 from app.services.email_service import guest_invitation_copy
 from app.services.invite_service import build_invite_link
-from app.services.notification_service import PreparedNotification, create_notification
+from app.services.notification_service import PreparedNotification, create_notification, deliver_notification
 from app.services.project_guest_service import (
     RSVP_STATUSES,
     consume_invitation_email,
@@ -176,7 +176,6 @@ def send_guest_invitation(
         from fastapi import HTTPException, status
 
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Guest needs an email address before an email invitation can be sent")
-    consume_invitation_email(db, project.customer_account_id)
     invitation = create_guest_invitation_record(db, guest)
     link = build_invite_link(invitation.token).replace("/invite/", "/guest-rsvp/")
     subject, body = guest_invitation_copy(guest.display_name, project.title, link)
@@ -190,6 +189,12 @@ def send_guest_invitation(
         actor_user_id=current_user.id,
         metadata={"project_guest_id": str(guest.id), "project_guest_invitation_id": str(invitation.id), "invitation_card_url": guest.invitation_card_url},
     )
+    delivery = deliver_notification(db, notification)
+    if not delivery.accepted:
+        db.delete(invitation)
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="The invitation email could not be sent. Please try again.")
+    consume_invitation_email(db, project.customer_account_id)
     invitation.notification_id = notification.id if isinstance(notification, PreparedNotification) else notification.id
     invitation.provider_reference = str(notification.id)
     guest.invitation_status = "SENT"

@@ -70,7 +70,7 @@ This matrix translates the current product scope into user journeys for review.
 
 | Flow | Primary users | Business value | Status |
 | --- | --- | --- | --- |
-| Email-first invite notification is prepared | Owners, invitees | Free-tier-friendly notification path | Covered |
+| Email-first invite notification is delivered | Owners, invitees | Reliable transactional notification path | Provider integration implemented; requires verified sender and key for real delivery |
 | Notification preferences are read/updated | Project admins | Configure notification behavior | Backend covered |
 | Outbound email delivery via provider | Invitees/members | Sends real email outside the app | Partial: payloads are prepared; provider worker is not implemented |
 | Supabase migrations apply remotely | DevOps/contributors | Keeps remote database in sync | Covered |
@@ -82,6 +82,6 @@ This matrix translates the current product scope into user journeys for review.
 2. Frontend member management: add, update, remove roles with last-owner protection.
 3. Budget line items, contributions, and proposal screens.
 4. Staff support actions beyond dashboard visibility.
-5. Real outbound email worker/provider integration.
+5. Resend sender/domain configuration and controlled real-delivery verification.
 6. RSVP summaries and meeting attendance reporting.
 7. Vendor-specific login and work acceptance flow.
